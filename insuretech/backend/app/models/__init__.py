@@ -5,7 +5,9 @@ from .risk_categories import RiskCategory
 from .insurers import Insurer
 from .users import User
 from .risk_factors import RiskFactor
-
+from .segments import Segment
+from .refresh_tokens import RefreshToken
+from .insurance_categories import InsuranceCategory
 
 __all__ = [
 	"Base",
@@ -13,6 +15,9 @@ __all__ = [
 	"RiskCategory",
     "Insurer",
     "User",
-    "RiskFactor"
+    "RiskFactor",
+    "Segment",
+    "RefreshToken",
+    "InsuranceCategory"
     #todo add document chunks table later
 ]

@@ -10,7 +10,10 @@ from app.models import (
     RiskCategory,
     Insurer,
     User,
-    RiskFactor
+    RiskFactor,
+    Segment,
+    RefreshToken,
+    InsuranceCategory
 )
 
 # this is the Alembic Config object, which provides
