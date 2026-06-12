@@ -18,6 +18,8 @@ from app.models import (
     Question,
     BusinessProfile,
     ProfilingSession,
+    QuestionFactorMapping,
+    AnswerScoreRule,
 )
 
 # this is the Alembic Config object, which provides
