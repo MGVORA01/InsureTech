@@ -10,6 +10,7 @@ from .refresh_tokens import RefreshToken
 from .insurance_categories import InsuranceCategory
 from .industries import Industry
 from .questions import Question
+from .business_profiles import BusinessProfile
 
 __all__ = [
 	"Base",
@@ -22,6 +23,7 @@ __all__ = [
     "RefreshToken",
     "InsuranceCategory",
     "Industry",
-    "Question"
+    "Question",
+    "BusinessProfile",
     #todo add document chunks table later
 ]

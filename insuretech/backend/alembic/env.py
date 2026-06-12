@@ -15,7 +15,8 @@ from app.models import (
     RefreshToken,
     InsuranceCategory,
     Industry,
-    Question
+    Question,
+    BusinessProfile,
 )
 
 # this is the Alembic Config object, which provides
