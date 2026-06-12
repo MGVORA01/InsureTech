@@ -20,6 +20,7 @@ from app.models import (
     ProfilingSession,
     QuestionFactorMapping,
     AnswerScoreRule,
+    ProfilingAnswer,
 )
 
 # this is the Alembic Config object, which provides

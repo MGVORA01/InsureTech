@@ -14,6 +14,7 @@ from .business_profiles import BusinessProfile
 from .profiling_sessions import ProfilingSession
 from .question_factor_mappings import QuestionFactorMapping
 from .answer_score_rules import AnswerScoreRule
+from .profiling_answers import ProfilingAnswer
 
 __all__ = [
 	"Base",
@@ -31,5 +32,6 @@ __all__ = [
     "ProfilingSession",
     "QuestionFactorMapping",
     "AnswerScoreRule",
+    "ProfilingAnswer",
     #todo add document chunks table later
 ]
