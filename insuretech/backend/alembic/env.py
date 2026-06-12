@@ -4,7 +4,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import settings
 from alembic import context
-from app.base.base_model import Base
+from app.shared.base_model import Base
 from app.models import (
     Role,
     RiskCategory,

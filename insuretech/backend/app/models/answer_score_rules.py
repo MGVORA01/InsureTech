@@ -1,6 +1,6 @@
 from sqlalchemy import Column, ForeignKey, Text, Boolean, DateTime, Numeric, text
 from sqlalchemy.dialects.postgresql import UUID
-from app.base.base_model import Base
+from app.shared.base_model import Base
 
 
 class AnswerScoreRule(Base):

@@ -1,4 +1,4 @@
-from app.base.base_model import Base
+from app.shared.base_model import Base
 
 from .roles import Role
 from .risk_categories import RiskCategory
