@@ -8,7 +8,9 @@ from app.base.base_model import Base
 from app.models import (
     Role,
     RiskCategory,
-    Insurer
+    Insurer,
+    User,
+    RiskFactor
 )
 
 # this is the Alembic Config object, which provides
