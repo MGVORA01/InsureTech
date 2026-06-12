@@ -17,6 +17,7 @@ from app.models import (
     Industry,
     Question,
     BusinessProfile,
+    ProfilingSession,
 )
 
 # this is the Alembic Config object, which provides

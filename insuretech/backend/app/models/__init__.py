@@ -11,6 +11,7 @@ from .insurance_categories import InsuranceCategory
 from .industries import Industry
 from .questions import Question
 from .business_profiles import BusinessProfile
+from .profiling_sessions import ProfilingSession
 
 __all__ = [
 	"Base",
@@ -25,5 +26,6 @@ __all__ = [
     "Industry",
     "Question",
     "BusinessProfile",
+    "ProfilingSession",
     #todo add document chunks table later
 ]
