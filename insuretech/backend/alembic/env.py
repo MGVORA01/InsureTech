@@ -13,7 +13,9 @@ from app.models import (
     RiskFactor,
     Segment,
     RefreshToken,
-    InsuranceCategory
+    InsuranceCategory,
+    Industry,
+    Question
 )
 
 # this is the Alembic Config object, which provides
