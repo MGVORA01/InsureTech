@@ -22,6 +22,9 @@ from app.models import (
     AnswerScoreRule,
     ProfilingAnswer,
     BusinessRiskScore,
+    Policy,
+    Recommendation,
+    Report,
 )
 
 # this is the Alembic Config object, which provides

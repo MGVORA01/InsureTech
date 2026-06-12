@@ -16,6 +16,9 @@ from .question_factor_mappings import QuestionFactorMapping
 from .answer_score_rules import AnswerScoreRule
 from .profiling_answers import ProfilingAnswer
 from .business_risk_scores import BusinessRiskScore
+from .policies import Policy
+from .recommendations import Recommendation
+from .reports import Report
 
 __all__ = [
 	"Base",
@@ -35,5 +38,8 @@ __all__ = [
     "AnswerScoreRule",
     "ProfilingAnswer",
     "BusinessRiskScore",
+    "Policy",
+    "Recommendation",
+    "Report",
     #todo add document chunks table later
 ]
