@@ -21,6 +21,7 @@ from app.models import (
     QuestionFactorMapping,
     AnswerScoreRule,
     ProfilingAnswer,
+    BusinessRiskScore,
 )
 
 # this is the Alembic Config object, which provides
