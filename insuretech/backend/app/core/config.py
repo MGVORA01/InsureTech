@@ -9,9 +9,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
 
-    PROJECT_NAME: str
-    ENVIRONMENT: str
-    LOG_LEVEL: str
+    # PROJECT_NAME: str
+    # ENVIRONMENT: str
+    # LOG_LEVEL: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
