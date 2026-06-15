@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from jose import jwt
+from jose import JWTError, jwt
 from app.core.config import settings
 
 
@@ -27,7 +27,15 @@ def create_refresh_token(user):
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-#decode token
+def decode_token(token: str):
+    try:
+        return jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+    except JWTError:
+        return None
 
 #verify tokrn
 

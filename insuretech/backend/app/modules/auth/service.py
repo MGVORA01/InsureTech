@@ -1,11 +1,8 @@
-from fastapi import HTTPException
-from starlette import status
-
 from app.core.exceptions import ConflictException, UnauthorizedException
 from app.modules.auth.password_hashing import hash, verify_hash
 from app.modules.auth import repository as Repository
 from app.shared.response import APIResponse
-from app.modules.auth.jwt_halper import create_access_token, create_refresh_token
+from app.modules.auth.jwt_halper import create_access_token, create_refresh_token, decode_token
 
 
 class AuthService:
@@ -74,6 +71,42 @@ class AuthService:
         "refresh_token": refresh_token,
       }
     )
+
+
+  async def logout_user_service(self, data, db):
+
+    payload = decode_token(data.refresh_token)
+
+    if not payload or payload.get("type") != "refresh":
+      raise UnauthorizedException("Invalid refresh token")
+
+    user_id = payload.get("sub")
+
+    if not user_id:
+      raise UnauthorizedException("Invalid refresh token")
+
+    refresh_tokens = await Repository.get_active_refresh_tokens_by_user_id(
+      db,
+      user_id,
+    )
+
+    refresh_token = None
+
+    for stored_refresh_token in refresh_tokens:
+      if verify_hash(data.refresh_token, stored_refresh_token.token_hash):
+        refresh_token = stored_refresh_token
+        break
+
+    if not refresh_token:
+      raise UnauthorizedException("Invalid refresh token")
+
+    await Repository.revoke_refresh_token(db, refresh_token)
+
+    return APIResponse.success_response(
+      message="User logged out successfully",
+      data=None,
+    )
+
 
 
 Service = AuthService()
