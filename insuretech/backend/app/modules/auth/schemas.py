@@ -48,7 +48,7 @@ class RegisterRequest(BaseModel):
 
       if value[0] not in ["6", "7", "8", "9"]:
         raise ValueError(
-          "Phone number must start with 6, 7, 8, or 9"
+          "Invalid Phone Number"
         )
 
       return value

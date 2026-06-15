@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # PROJECT_NAME: str
     # ENVIRONMENT: str
-    # LOG_LEVEL: str
+    LOG_LEVEL: str
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -19,7 +19,7 @@ class APIResponse(BaseModel, Generic[DataT]):
     """
     success: Optional[bool] = None
     error: Optional[str] = None
-    message: str
+    message: Optional[str] = None
     data: Optional[DataT] = None
 
     @classmethod
@@ -38,13 +38,14 @@ class APIResponse(BaseModel, Generic[DataT]):
 
     @classmethod
     def error_response(
-        cls, 
-        message: str
+        cls,
+        message: str,
+        data: Optional[DataT] = None,
     ) -> "APIResponse[DataT]":
         """Create a standardized error response."""
         return cls(
             success=False,
             error=message,
-            message="",
-            data=None
+            message=None,
+            data=data
         )
