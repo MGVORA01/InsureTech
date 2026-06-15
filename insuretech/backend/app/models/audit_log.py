@@ -21,7 +21,7 @@ class AuditMixin:
         Returns:
             Column: Nullable UUID value for the record creator.
         """
-        return Column(UUID(as_uuid=True), ForeignKey("users.id", on_delete="RESTRICT"), nullable=True)
+        return Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
     @declared_attr
     def updated_by(cls):
@@ -30,7 +30,7 @@ class AuditMixin:
         Returns:
             Column: Nullable UUID value for the last updater.
         """
-        return Column(UUID(as_uuid=True), ForeignKey("users.id", on_delete="RESTRICT"), nullable=True)
+        return Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     
 class TimestampMixin:
     """Provides reusable timestamp columns for SQLAlchemy ORM models.

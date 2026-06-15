@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Boolean, text
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.shared.base_model import Base
 from app.models.audit_log import TimestampMixin
@@ -13,3 +14,5 @@ class Insurer(Base, TimestampMixin):
     website = Column(String)
     logo_url = Column(String)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
+
+    policies = relationship("Policy", back_populates="insurer")

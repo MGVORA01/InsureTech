@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey, Text, text
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.shared.base_model import Base
 from app.models.audit_log import TimestampMixin
@@ -14,3 +15,7 @@ class User(Base, TimestampMixin):
     phone = Column(String)
     role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=False)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
+
+    role = relationship("Role", back_populates="users")
+    refresh_tokens = relationship("RefreshToken", back_populates="user")
+    business_profiles = relationship("BusinessProfile", back_populates="user")

@@ -1,4 +1,5 @@
 from sqlalchemy import Column, ForeignKey, Text, DateTime, Numeric, Boolean, String, text
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.shared.base_model import Base
 
@@ -17,3 +18,8 @@ class Recommendation(Base):
     reason_text = Column(Text, nullable=False)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    business_profile = relationship("BusinessProfile", back_populates="recommendations")
+    session = relationship("ProfilingSession", back_populates="recommendations")
+    insurance_category = relationship("InsuranceCategory", back_populates="recommendations")
+    risk_category = relationship("RiskCategory", back_populates="recommendations")

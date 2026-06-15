@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey, Integer, Text, JSON, text
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.shared.base_model import Base
 from app.models.audit_log import TimestampMixin
@@ -18,3 +19,9 @@ class Question(Base, TimestampMixin):
     parent_answer_value = Column(Text)
     order_index = Column(Integer, nullable=False)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
+
+    parent_question = relationship("Question", remote_side="Question.id", back_populates="child_questions")
+    child_questions = relationship("Question", back_populates="parent_question")
+    factor_mappings = relationship("QuestionFactorMapping", back_populates="question")
+    answer_score_rules = relationship("AnswerScoreRule", back_populates="question")
+    profiling_answers = relationship("ProfilingAnswer", back_populates="question")

@@ -1,4 +1,5 @@
 from sqlalchemy import Column, ForeignKey, String, Boolean, Numeric, JSON, text
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.shared.base_model import Base
 from app.models.audit_log import TimestampMixin
@@ -17,3 +18,7 @@ class Policy(Base, TimestampMixin):
     key_features = Column(JSON)
     target_segment = Column(String)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
+
+    insurer = relationship("Insurer", back_populates="policies")
+    insurance_category = relationship("InsuranceCategory", back_populates="policies")
+    document_chunks = relationship("DocumentChunk", back_populates="policy")
