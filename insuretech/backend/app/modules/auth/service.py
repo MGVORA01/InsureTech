@@ -108,5 +108,25 @@ class AuthService:
     )
 
 
+  async def change_password_service(self, data, current_user, db):
+
+    #check current password
+    if not verify_hash(data.current_password, current_user.password_hash):
+      raise UnauthorizedException("Current password is incorrect")
+
+    #check old and new password not same
+    if verify_hash(data.new_password, current_user.password_hash):
+      raise ConflictException("New password cannot be same as current password")
+
+    new_password_hash = hash(data.new_password)
+
+    await Repository.update_user_password(db, current_user.id, new_password_hash)
+
+    return APIResponse.success_response(
+      message="Password changed successfully",
+      data=None,
+    )
+
+
 
 Service = AuthService()
