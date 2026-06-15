@@ -1,9 +1,10 @@
-from sqlalchemy import Column, ForeignKey, String, Boolean, DateTime, Text, Numeric, JSON, text
+from sqlalchemy import Column, ForeignKey, String, Boolean, Numeric, JSON, text
 from sqlalchemy.dialects.postgresql import UUID
 from app.shared.base_model import Base
+from app.models.audit_log import TimestampMixin
 
 
-class Policy(Base):
+class Policy(Base, TimestampMixin):
     __tablename__ = "policies"
 
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -16,5 +17,3 @@ class Policy(Base):
     key_features = Column(JSON)
     target_segment = Column(String)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))

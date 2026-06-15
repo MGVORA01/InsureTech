@@ -1,6 +1,5 @@
 from sqlalchemy import Column, ForeignKey, Text, DateTime, Numeric, Boolean, String, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import CheckConstraint
 from app.shared.base_model import Base
 
 

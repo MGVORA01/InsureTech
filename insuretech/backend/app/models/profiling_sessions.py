@@ -1,9 +1,10 @@
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer, text
+from sqlalchemy import Column, String, DateTime, ForeignKey, text
 from sqlalchemy.dialects.postgresql import UUID
 from app.shared.base_model import Base
+from app.models.audit_log import TimestampMixin
 
 
-class ProfilingSession(Base):
+class ProfilingSession(Base, TimestampMixin):
     __tablename__ = "profiling_sessions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -11,5 +12,3 @@ class ProfilingSession(Base):
     status = Column(String, nullable=False, server_default=text("'in_progress'::character varying"))
     current_section = Column(String)
     completed_at = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))

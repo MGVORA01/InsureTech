@@ -1,9 +1,10 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Text, text
+from sqlalchemy import Column, String, Boolean, text
 from sqlalchemy.dialects.postgresql import UUID
 from app.shared.base_model import Base
+from app.models.audit_log import TimestampMixin
 
 
-class Insurer(Base):
+class Insurer(Base, TimestampMixin):
     __tablename__ = "insurers"
 
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -12,5 +13,3 @@ class Insurer(Base):
     website = Column(String)
     logo_url = Column(String)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))

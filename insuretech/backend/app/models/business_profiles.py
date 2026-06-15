@@ -1,9 +1,10 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer, text
+from sqlalchemy import Column, String, Boolean, Text, ForeignKey, Integer, text
 from sqlalchemy.dialects.postgresql import UUID
 from app.shared.base_model import Base
+from app.models.audit_log import TimestampMixin
 
 
-class BusinessProfile(Base):
+class BusinessProfile(Base, TimestampMixin):
     __tablename__ = "business_profiles"
 
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -20,5 +21,3 @@ class BusinessProfile(Base):
     employee_count = Column(Integer)
     annual_turnover_range = Column(String)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
