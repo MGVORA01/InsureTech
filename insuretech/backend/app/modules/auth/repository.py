@@ -1,6 +1,6 @@
 from sqlalchemy.sql import select
 
-from app.models import User, Role
+from app.models import User, Role, RefreshToken
 
 
 async def get_user_by_email(db, email):
@@ -24,3 +24,14 @@ async def create_user(db, email, full_name, phone_no, password_hash, role_id):
   await db.commit()
   await db.refresh(user)
   return user
+
+async def store_refresh_token(db, user_id, hash_refresh_token):
+
+  refresh_token = RefreshToken(
+    user_id=user_id,
+    token_hash=hash_refresh_token
+  )
+
+  db.add(refresh_token)
+  await db.commit()
+  await db.refresh(refresh_token)
