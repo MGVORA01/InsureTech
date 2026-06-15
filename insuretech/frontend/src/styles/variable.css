@@ -1,0 +1,48 @@
+:root {
+  /* ===== Brand ===== */
+  --color-primary: #1A3A5C;
+  --color-primary-dark: #102A45;
+  --color-primary-light: #2C5078;
+
+  --color-secondary: #0D7377;
+  --color-secondary-dark: #095457;
+  --color-secondary-light: #4FA8AB;
+
+  --color-cta: #E07B39;
+  --color-cta-hover: #C9652A;
+  --color-cta-contrast: #FFFFFF;
+
+  /* ===== Risk status (shared across themes) ===== */
+  --color-risk-low: #1A7B4B;
+  --color-risk-low-bg: #E1F0E7;
+
+  --color-risk-medium: #C97B2E;
+  --color-risk-medium-bg: #F8E9DA;
+
+  --color-risk-high: #C0392B;
+  --color-risk-high-bg: #F8E1DF;
+
+  --color-risk-critical: #8B0000;
+  --color-risk-critical-bg: #F2DADA;
+
+  /* ===== Surfaces ===== */
+  --color-background: #F7F9FC;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #EDF1F6;
+
+  /* ===== Text ===== */
+  --color-text-primary: #1C2B3A;
+  --color-text-secondary: #6B7C93;
+  --color-text-tertiary: #A4B0C0;
+  --color-text-on-primary: #FFFFFF;
+
+  /* ===== Borders ===== */
+  --color-border: #E1E6ED;
+  --color-border-strong: #C7D3E0;
+
+  /* ===== Radii & elevation (optional, shared) ===== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-card: 0 1px 3px rgba(28, 43, 58, 0.08);
+}
