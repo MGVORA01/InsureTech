@@ -1,4 +1,5 @@
 import axios, { AxiosError, type AxiosResponse } from 'axios'
+import baseApi, { BASE_URL } from '../../api/baseApi'
 import { AUTH_API_BASE_URL, AUTH_ENDPOINTS, AUTH_MESSAGES } from './auth.constants'
 import type {
   ApiEnvelope,
@@ -23,7 +24,7 @@ export function getAccessToken() {
 }
 
 export const authHttp = axios.create({
-  baseURL: AUTH_API_BASE_URL,
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -54,7 +55,6 @@ authHttp.interceptors.response.use(
     ) {
       originalRequest._retry = true
       // TODO: Enable token refresh logic below when POST /auth/refresh backend API is ready.
-      /*
       try {
         const refreshRes = await authApi.refreshToken()
         // Save new token and update headers
@@ -65,7 +65,6 @@ authHttp.interceptors.response.use(
         setAccessToken(null)
         return Promise.reject(refreshError)
       }
-      */
     }
     return Promise.reject(error)
   }
@@ -74,8 +73,14 @@ authHttp.interceptors.response.use(
 function unwrapData<T>(response: AxiosResponse<ApiEnvelope<T> | T>): T {
   const body = response.data
 
-  if (body && typeof body === 'object' && 'data' in body) {
-    return body.data
+  if (
+    body &&
+    typeof body === 'object' &&
+    'data' in body &&
+    body.data !== null &&
+    body.data !== undefined
+  ) {
+    return body.data as T
   }
 
   return body as T
@@ -84,7 +89,12 @@ function unwrapData<T>(response: AxiosResponse<ApiEnvelope<T> | T>): T {
 export function getAuthErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<ApiErrorResponse>
-    return axiosError.response?.data?.message ?? AUTH_MESSAGES.genericError
+    // Backend uses 'error' field in APIResponse.error_response(), not 'message'
+    return (
+      axiosError.response?.data?.error ??
+      axiosError.response?.data?.message ??
+      AUTH_MESSAGES.genericError
+    )
   }
 
   if (error instanceof Error) {
@@ -136,42 +146,55 @@ export const authApi = {
     return unwrapData(response)
   },
 
-  async forgotPassword(payload: ForgotPasswordRequest): Promise<PasswordResponse> {
-    const response = await authHttp.post<
-      ApiEnvelope<PasswordResponse> | PasswordResponse
-    >(AUTH_ENDPOINTS.forgotPassword, payload)
+  // async forgotPassword(payload: ForgotPasswordRequest): Promise<PasswordResponse> {
+  //   const response = await authHttp.post<
+  //     ApiEnvelope<PasswordResponse> | PasswordResponse
+  //   >(AUTH_ENDPOINTS.forgotPassword, payload)
 
-    return unwrapData(response)
+  //   return unwrapData(response)
+  // },
+  async forgotPassword(
+    payload: ForgotPasswordRequest,
+  ): Promise<PasswordResponse> {
+    const response = await authHttp.post<PasswordResponse>(
+      AUTH_ENDPOINTS.forgotPassword,
+      payload,
+    )
+
+    return response.data
   },
-
-  async resetPassword(payload: ResetPasswordRequest): Promise<PasswordResponse> {
+  async resetPassword(
+    payload: ResetPasswordRequest,
+  ): Promise<PasswordResponse> {
     const requestBody = {
       token: payload.token,
       new_password: payload.password,
       confirm_password: payload.confirmPassword,
     }
-    const response = await authHttp.post<
-      ApiEnvelope<PasswordResponse> | PasswordResponse
-    >(AUTH_ENDPOINTS.resetPassword, requestBody)
 
-    return unwrapData(response)
+    const response = await authHttp.post<PasswordResponse>(
+      AUTH_ENDPOINTS.resetPassword,
+      requestBody,
+    )
+
+    return response.data
   },
 
   async refreshToken(): Promise<PasswordResponse> {
     // TODO: Enable when POST /api/auth/refresh is available.
-    // const response = await authHttp.post<ApiEnvelope<PasswordResponse> | PasswordResponse>(
-    //   AUTH_ENDPOINTS.refresh,
-    // )
-    // return unwrapData(response)
+    const response = await authHttp.post<ApiEnvelope<PasswordResponse> | PasswordResponse>(
+      AUTH_ENDPOINTS.refresh,
+    )
+    return unwrapData(response)
     return { message: AUTH_MESSAGES.refreshPending }
   },
 
   async logout(): Promise<PasswordResponse> {
     // TODO: Enable when POST /api/auth/logout is available.
-    // const response = await authHttp.post<ApiEnvelope<PasswordResponse> | PasswordResponse>(
-    //   AUTH_ENDPOINTS.logout,
-    // )
-    // return unwrapData(response)
+    const response = await authHttp.post<ApiEnvelope<PasswordResponse> | PasswordResponse>(
+      AUTH_ENDPOINTS.logout,
+    )
+    return unwrapData(response)
     return { message: AUTH_MESSAGES.logoutPending }
   },
 }

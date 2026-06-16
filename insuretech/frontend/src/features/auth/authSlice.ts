@@ -135,12 +135,13 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false
         state.error = null
-        if (action.payload.user) {
+        // Backend returns { access_token, refresh_token } — no user object.
+        // Mark as authenticated since login succeeded and token is stored in memory.
+        state.isAuthenticated = true
+        state.status = 'authenticated'
+        // Populate user only if a /me-style response includes it in future
+        if (action.payload?.user) {
           state.user = action.payload.user
-          state.isAuthenticated = true
-          state.status = 'authenticated'
-        } else {
-          state.status = 'idle'
         }
       })
       .addCase(loginUser.rejected, (state, action) => {

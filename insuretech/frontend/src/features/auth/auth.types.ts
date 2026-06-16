@@ -48,9 +48,11 @@ export interface PasswordState {
 }
 
 export interface ApiErrorResponse {
-  message: string
+  // Backend sends errors in 'error' field via APIResponse.error_response()
+  error?: string | null
+  message?: string | null
+  success?: boolean
   statusCode?: number
-  errors?: Record<string, string[]>
 }
 
 export interface ApiEnvelope<T> {
@@ -60,6 +62,9 @@ export interface ApiEnvelope<T> {
 }
 
 export interface AuthResponse {
+  // Login returns tokens; user is populated only when /me endpoint exists
+  access_token?: string
+  refresh_token?: string
   user?: User
   message?: string
 }
