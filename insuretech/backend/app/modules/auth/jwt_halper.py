@@ -37,6 +37,14 @@ def decode_token(token: str):
     except JWTError:
         return None
 
-#verify tokrn
 
-#get refresh token expiry
+def create_password_reset_token(user):
+
+    payload = {
+        "sub": str(user.id),
+        "email": user.email,
+        "type": "password_reset",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES)
+    }
+
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

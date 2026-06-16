@@ -2,7 +2,8 @@ from app.core.exceptions import ConflictException, UnauthorizedException
 from app.modules.auth.password_hashing import hash, verify_hash
 from app.modules.auth import repository as Repository
 from app.shared.response import APIResponse
-from app.modules.auth.jwt_halper import create_access_token, create_refresh_token, decode_token
+from app.modules.auth.jwt_halper import create_access_token, create_refresh_token, create_password_reset_token, \
+  decode_token
 
 
 class AuthService:
@@ -68,40 +69,6 @@ class AuthService:
     )
 
 
-  # async def logout_user_service(self, data, db):
-  #
-  #   payload = decode_token(data.refresh_token)
-  #
-  #   if not payload or payload.get("type") != "refresh":
-  #     raise UnauthorizedException("Invalid refresh token")
-  #
-  #   user_id = payload.get("sub")
-  #
-  #   if not user_id:
-  #     raise UnauthorizedException("Invalid refresh token")
-  #
-  #   refresh_tokens = await Repository.get_active_refresh_tokens_by_user_id(
-  #     db,
-  #     user_id,
-  #   )
-  #
-  #   refresh_token = None
-  #
-  #   for stored_refresh_token in refresh_tokens:
-  #     if verify_hash(data.refresh_token, stored_refresh_token.token_hash):
-  #       refresh_token = stored_refresh_token
-  #       break
-  #
-  #   if not refresh_token:
-  #     raise UnauthorizedException("Invalid refresh token")
-  #
-  #   await Repository.revoke_refresh_token(db, refresh_token)
-  #
-  #   return APIResponse.success_response(
-  #     message="User logged out successfully",
-  #     data=None,
-  #   )
-
 
   async def change_password_service(self, data, current_user, db):
 
@@ -122,6 +89,79 @@ class AuthService:
       data=None,
     )
 
+
+
+  async def forgot_password_service(self, data, db):
+
+    user = await Repository.get_user_by_email(db, data.email)
+
+    if not user:
+      raise UnauthorizedException(
+        "User with this email does not exist"
+      )
+
+    password_reset_token = create_password_reset_token(user)
+    hashed_password_reset_token = hash(password_reset_token)
+
+    await Repository.store_password_reset_token(db, user.id, hashed_password_reset_token)
+
+    return APIResponse.success_response(
+      message="Password reset token generated successfully",
+      data={
+        "password_reset_token": password_reset_token,
+      }
+    )
+
+  async def reset_password_service(self, data, db):
+
+    if data.new_password != data.confirm_password:
+      raise ConflictException(
+        "Passwords do not match"
+      )
+
+    payload = decode_token(data.token)
+
+    if not payload:
+      raise UnauthorizedException(
+        "Invalid token"
+      )
+
+    if payload.get("type") != "password_reset":
+      raise UnauthorizedException(
+        "Invalid token type"
+      )
+
+    user = await Repository.get_user_by_id(
+      db,
+      payload["sub"]
+    )
+
+    if not user:
+      raise UnauthorizedException(
+        "User not found"
+      )
+
+    reset_token = await Repository.get_active_password_reset_token(db,user.id)
+
+    if not reset_token:
+      raise UnauthorizedException(
+        "Reset token not found"
+      )
+
+    if not verify_hash(data.token,reset_token.token_hash):
+      raise UnauthorizedException(
+        "Invalid token"
+      )
+
+    new_password_hash = hash(data.new_password)
+
+    await Repository.update_user_password(db, user.id, new_password_hash)
+
+    await Repository.mark_reset_token_used(db, reset_token)
+
+    return APIResponse.success_response(
+      message="Password changed successfully"
+    )
 
 
 Service = AuthService()

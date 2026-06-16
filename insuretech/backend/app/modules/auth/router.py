@@ -6,7 +6,8 @@ from starlette import status
 
 from app.core.database import get_db
 from app.models import User
-from app.modules.auth.schemas import RegisterRequest, LoginRequest, LogoutRequest, ChangePasswordRequest
+from app.modules.auth.schemas import RegisterRequest, LoginRequest, ChangePasswordRequest, ForgotPasswordRequest, \
+  ResetPasswordRequest
 from app.modules.auth.service import Service
 from app.shared.dependency.get_current_user import get_current_user
 
@@ -25,10 +26,14 @@ async def register_user(data: RegisterRequest, db: Annotated[AsyncSession, Depen
 async def login_user(data: LoginRequest, db: Annotated[AsyncSession, Depends(get_db)]):
     return await Service.login_user_service(data, db)
 
-# @router.post("/logout", status_code=status.HTTP_200_OK)
-# async def logout_user(data: LogoutRequest , db: Annotated[AsyncSession, Depends(get_db)]):
-#     return await Service.logout_user_service(data, db)
-
 @router.post("/change-password", status_code=status.HTTP_200_OK)
 async def change_password(data: ChangePasswordRequest , current_user: Annotated[User, Depends(get_current_user)],db: Annotated[AsyncSession, Depends(get_db)],):
     return await Service.change_password_service(data, current_user, db)
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(data: ForgotPasswordRequest, db: Annotated[AsyncSession, Depends(get_db)]):
+    return await Service.forgot_password_service(data, db)
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(data: ResetPasswordRequest, db: Annotated[AsyncSession, Depends(get_db)]):
+    return await Service.reset_password_service(data, db)

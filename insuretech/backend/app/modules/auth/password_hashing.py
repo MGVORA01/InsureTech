@@ -24,3 +24,4 @@ def verify_hash(plain: str, hashed: str) -> bool:
         True if the input matches, otherwise False.
     """
     return pwd_context.verify(plain, hashed)
+
