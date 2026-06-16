@@ -58,8 +58,8 @@ class LoginRequest(BaseModel):
   email: EmailStr
   password: str
 
-class LogoutRequest(BaseModel):
-  refresh_token: str
+# class LogoutRequest(BaseModel):
+#   refresh_token: str
 
 class ChangePasswordRequest(BaseModel):
   current_password: str

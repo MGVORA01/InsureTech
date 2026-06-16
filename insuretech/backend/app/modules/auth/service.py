@@ -59,11 +59,6 @@ class AuthService:
     access_token = create_access_token(user)
     refresh_token = create_refresh_token(user)
 
-    hash_refresh_token = hash(refresh_token)
-
-    #store hash_refresh_token in database
-    await Repository.store_refresh_token(db, user.id, hash_refresh_token)
-
     return APIResponse.success_response(
       message="User logged in successfully",
       data={
@@ -73,39 +68,39 @@ class AuthService:
     )
 
 
-  async def logout_user_service(self, data, db):
-
-    payload = decode_token(data.refresh_token)
-
-    if not payload or payload.get("type") != "refresh":
-      raise UnauthorizedException("Invalid refresh token")
-
-    user_id = payload.get("sub")
-
-    if not user_id:
-      raise UnauthorizedException("Invalid refresh token")
-
-    refresh_tokens = await Repository.get_active_refresh_tokens_by_user_id(
-      db,
-      user_id,
-    )
-
-    refresh_token = None
-
-    for stored_refresh_token in refresh_tokens:
-      if verify_hash(data.refresh_token, stored_refresh_token.token_hash):
-        refresh_token = stored_refresh_token
-        break
-
-    if not refresh_token:
-      raise UnauthorizedException("Invalid refresh token")
-
-    await Repository.revoke_refresh_token(db, refresh_token)
-
-    return APIResponse.success_response(
-      message="User logged out successfully",
-      data=None,
-    )
+  # async def logout_user_service(self, data, db):
+  #
+  #   payload = decode_token(data.refresh_token)
+  #
+  #   if not payload or payload.get("type") != "refresh":
+  #     raise UnauthorizedException("Invalid refresh token")
+  #
+  #   user_id = payload.get("sub")
+  #
+  #   if not user_id:
+  #     raise UnauthorizedException("Invalid refresh token")
+  #
+  #   refresh_tokens = await Repository.get_active_refresh_tokens_by_user_id(
+  #     db,
+  #     user_id,
+  #   )
+  #
+  #   refresh_token = None
+  #
+  #   for stored_refresh_token in refresh_tokens:
+  #     if verify_hash(data.refresh_token, stored_refresh_token.token_hash):
+  #       refresh_token = stored_refresh_token
+  #       break
+  #
+  #   if not refresh_token:
+  #     raise UnauthorizedException("Invalid refresh token")
+  #
+  #   await Repository.revoke_refresh_token(db, refresh_token)
+  #
+  #   return APIResponse.success_response(
+  #     message="User logged out successfully",
+  #     data=None,
+  #   )
 
 
   async def change_password_service(self, data, current_user, db):
