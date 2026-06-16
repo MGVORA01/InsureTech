@@ -17,5 +17,5 @@ class User(Base, TimestampMixin):
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
 
     role = relationship("Role", back_populates="users")
-    refresh_tokens = relationship("RefreshToken", back_populates="user")
     business_profiles = relationship("BusinessProfile", back_populates="user")
+    password_reset_tokens = relationship("PasswordResetToken", back_populates="user")
