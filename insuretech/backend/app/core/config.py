@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int
 
     # PROJECT_NAME: str
     # ENVIRONMENT: str

@@ -1,4 +1,5 @@
 from sqlalchemy import Column, ForeignKey, String, Integer, Text, DateTime, text
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from app.shared.base_model import Base
 
@@ -14,3 +15,5 @@ class DocumentChunk(Base):
     embedding = Column(JSONB)
     page_number = Column(Integer)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    policy = relationship("Policy", back_populates="document_chunks")
