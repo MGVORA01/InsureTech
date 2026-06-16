@@ -6,7 +6,6 @@ from .insurers import Insurer
 from .users import User
 from .risk_factors import RiskFactor
 from .segments import Segment
-from .refresh_tokens import RefreshToken
 from .insurance_categories import InsuranceCategory
 from .industries import Industry
 from .questions import Question
@@ -19,6 +18,7 @@ from .business_risk_scores import BusinessRiskScore
 from .policies import Policy
 from .recommendations import Recommendation
 from .reports import Report
+from .password_reset import PasswordResetToken
 
 __all__ = [
 	"Base",
@@ -28,7 +28,6 @@ __all__ = [
     "User",
     "RiskFactor",
     "Segment",
-    "RefreshToken",
     "InsuranceCategory",
     "Industry",
     "Question",
@@ -41,5 +40,6 @@ __all__ = [
     "Policy",
     "Recommendation",
     "Report",
+    "PasswordResetToken",
     #todo add document chunks table later
 ]

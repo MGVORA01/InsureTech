@@ -12,7 +12,6 @@ from app.models import (
     User,
     RiskFactor,
     Segment,
-    RefreshToken,
     InsuranceCategory,
     Industry,
     Question,
