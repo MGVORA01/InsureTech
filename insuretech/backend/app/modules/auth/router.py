@@ -10,6 +10,7 @@ from app.modules.auth.schemas import RegisterRequest, LoginRequest, ChangePasswo
   ResetPasswordRequest
 from app.modules.auth.service import Service
 from app.shared.dependency.get_current_user import get_current_user
+from fastapi import BackgroundTasks
 
 
 
@@ -31,8 +32,8 @@ async def change_password(data: ChangePasswordRequest , current_user: Annotated[
     return await Service.change_password_service(data, current_user, db)
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
-async def forgot_password(data: ForgotPasswordRequest, db: Annotated[AsyncSession, Depends(get_db)]):
-    return await Service.forgot_password_service(data, db)
+async def forgot_password(data: ForgotPasswordRequest, db: Annotated[AsyncSession, Depends(get_db)],background_tasks: BackgroundTasks):
+    return await Service.forgot_password_service(data, db, background_tasks)
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
 async def reset_password(data: ResetPasswordRequest, db: Annotated[AsyncSession, Depends(get_db)]):

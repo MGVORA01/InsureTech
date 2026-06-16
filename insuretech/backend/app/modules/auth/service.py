@@ -4,6 +4,7 @@ from app.modules.auth import repository as Repository
 from app.shared.response import APIResponse
 from app.modules.auth.jwt_halper import create_access_token, create_refresh_token, create_password_reset_token, \
   decode_token
+from app.core.mail import send_reset_password_email
 
 
 class AuthService:
@@ -91,7 +92,7 @@ class AuthService:
 
 
 
-  async def forgot_password_service(self, data, db):
+  async def forgot_password_service(self, data, db, background_tasks):
 
     user = await Repository.get_user_by_email(db, data.email)
 
@@ -105,11 +106,16 @@ class AuthService:
 
     await Repository.store_password_reset_token(db, user.id, hashed_password_reset_token)
 
+    reset_url = (
+      f"http://localhost:5173/reset-password"
+      f"?token={password_reset_token}"
+    )
+
+    background_tasks.add_task(send_reset_password_email, user.email, reset_url)
+
     return APIResponse.success_response(
-      message="Password reset token generated successfully",
-      data={
-        "password_reset_token": password_reset_token,
-      }
+      message="Password reset email sent successfully",
+      data=password_reset_token
     )
 
   async def reset_password_service(self, data, db):
