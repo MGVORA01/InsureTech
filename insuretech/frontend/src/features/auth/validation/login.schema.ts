@@ -1,0 +1,15 @@
+import { z } from 'zod'
+import { AUTH_VALIDATION } from '../auth.constants'
+
+export const loginSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, AUTH_VALIDATION.emailRequired)
+    .email(AUTH_VALIDATION.emailInvalid),
+  password: z
+    .string()
+    .min(1, AUTH_VALIDATION.passwordRequired)
+    .min(8, AUTH_VALIDATION.passwordMinLength),
+  rememberMe: z.boolean(),
+})

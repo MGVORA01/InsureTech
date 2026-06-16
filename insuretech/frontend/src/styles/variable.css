@@ -40,6 +40,22 @@
   --color-border: #E1E6ED;
   --color-border-strong: #C7D3E0;
 
+  /* ===== Interactive states & overlays ===== */
+  --focus-ring-secondary: rgba(13, 115, 119, 0.26);
+  --focus-ring-secondary-soft: rgba(13, 115, 119, 0.16);
+  --focus-ring-secondary-strong: rgba(13, 115, 119, 0.32);
+  --focus-ring-danger: rgba(192, 57, 43, 0.14);
+  --shadow-cta: 0 10px 20px rgba(224, 123, 57, 0.2);
+
+  --auth-brand-gradient-start: rgba(16, 42, 69, 0.96);
+  --auth-brand-gradient-end: rgba(13, 115, 119, 0.9);
+  --auth-brand-border: rgba(255, 255, 255, 0.26);
+  --auth-brand-border-soft: rgba(255, 255, 255, 0.18);
+  --auth-brand-text: rgba(255, 255, 255, 0.86);
+  --auth-brand-text-muted: rgba(255, 255, 255, 0.78);
+  --auth-brand-text-subtle: rgba(255, 255, 255, 0.82);
+  --auth-brand-surface: rgba(255, 255, 255, 0.08);
+
   /* ===== Radii & elevation (optional, shared) ===== */
   --radius-sm: 4px;
   --radius-md: 8px;
