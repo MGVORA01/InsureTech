@@ -1,0 +1,138 @@
+.layout {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: minmax(340px, 0.92fr) minmax(420px, 1fr);
+  background: var(--color-background);
+}
+
+.branding {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  min-height: 100vh;
+  padding: 56px;
+  color: var(--color-text-on-primary);
+  background:
+    linear-gradient(
+      145deg,
+      var(--auth-brand-gradient-start),
+      var(--auth-brand-gradient-end)
+    ),
+    var(--color-primary-dark);
+}
+
+.brandingContent {
+  display: grid;
+  gap: 44px;
+}
+
+.logo {
+  display: inline-flex;
+  width: 56px;
+  height: 56px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--auth-brand-border);
+  border-radius: var(--radius-md);
+  color: var(--color-primary-dark);
+  background: var(--color-surface);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.kicker {
+  margin: 0 0 14px;
+  color: var(--auth-brand-text-muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.title {
+  max-width: 560px;
+  margin: 0;
+  font-size: clamp(2.4rem, 5vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.tagline {
+  max-width: 540px;
+  margin: 24px 0 0;
+  color: var(--auth-brand-text-subtle);
+  font-size: 1.06rem;
+  line-height: 1.7;
+}
+
+.signalGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.signalGrid span {
+  min-height: 72px;
+  border: 1px solid var(--auth-brand-border-soft);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  color: var(--auth-brand-text);
+  background: var(--auth-brand-surface);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.formArea {
+  display: grid;
+  align-items: center;
+  padding: 48px;
+  background: var(--color-background);
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .branding {
+    min-height: auto;
+    gap: 24px;
+    padding: 32px 24px;
+  }
+
+  .brandingContent {
+    gap: 28px;
+  }
+
+  .title {
+    font-size: 2.35rem;
+    line-height: 1.05;
+  }
+
+  .tagline {
+    margin-top: 16px;
+  }
+
+  .signalGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .formArea {
+    align-items: start;
+    padding: 32px 20px 48px;
+  }
+}
+
+@media (max-width: 560px) {
+  .branding {
+    padding: 28px 20px;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .signalGrid {
+    grid-template-columns: 1fr;
+  }
+}

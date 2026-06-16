@@ -1,3 +1,4 @@
+from app.core.config import settings
 from app.core.exceptions import ConflictException, UnauthorizedException
 from app.modules.auth.password_hashing import hash, verify_hash
 from app.modules.auth import repository as Repository
