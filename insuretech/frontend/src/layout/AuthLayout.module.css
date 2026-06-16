@@ -22,6 +22,11 @@
     var(--color-primary-dark);
 }
 
+.brandingContent {
+  display: grid;
+  gap: 44px;
+}
+
 .logo {
   display: inline-flex;
   width: 56px;
@@ -81,6 +86,7 @@
   display: grid;
   align-items: center;
   padding: 48px;
+  background: var(--color-background);
 }
 
 @media (max-width: 860px) {
@@ -90,19 +96,43 @@
 
   .branding {
     min-height: auto;
+    gap: 24px;
     padding: 32px 24px;
+  }
+
+  .brandingContent {
+    gap: 28px;
   }
 
   .title {
     font-size: 2.35rem;
+    line-height: 1.05;
+  }
+
+  .tagline {
+    margin-top: 16px;
   }
 
   .signalGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .formArea {
     align-items: start;
     padding: 32px 20px 48px;
+  }
+}
+
+@media (max-width: 560px) {
+  .branding {
+    padding: 28px 20px;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .signalGrid {
+    grid-template-columns: 1fr;
   }
 }
