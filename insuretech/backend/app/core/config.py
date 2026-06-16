@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     MAIL_SERVER: str
     MAIL_PORT: int
 
+    FRONTEND_URL: str
+
     # PROJECT_NAME: str
     # ENVIRONMENT: str
     LOG_LEVEL: str
