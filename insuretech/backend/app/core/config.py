@@ -10,6 +10,14 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int
 
+    MAIL_USERNAME: str
+    MAIL_PASSWORD: str
+    MAIL_FROM: str
+    MAIL_SERVER: str
+    MAIL_PORT: int
+
+    FRONTEND_URL: str
+
     # PROJECT_NAME: str
     # ENVIRONMENT: str
     LOG_LEVEL: str

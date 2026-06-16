@@ -4,6 +4,8 @@ from app.modules.auth import repository as Repository
 from app.shared.response import APIResponse
 from app.modules.auth.jwt_halper import create_access_token, create_refresh_token, create_password_reset_token, \
   decode_token
+from app.core.mail import send_reset_password_email
+from app.modules.auth.cookie_helper import set_auth_cookies, get_refresh_token_from_cookie, delete_auth_cookies
 
 
 class AuthService:
@@ -41,13 +43,18 @@ class AuthService:
 
 
 
-  async def login_user_service(self, data, db):
+  async def login_user_service(self, data, db, response):
 
     user = await Repository.get_user_by_email(db, data.email)
 
     if not user:
       raise UnauthorizedException(
         "User with this email does not exist"
+      )
+
+    if not user.is_active:
+      raise UnauthorizedException(
+        "Account is inactive"
       )
 
     # Password verification
@@ -60,12 +67,16 @@ class AuthService:
     access_token = create_access_token(user)
     refresh_token = create_refresh_token(user)
 
+    #store token in cookies
+    set_auth_cookies(
+      response,
+      access_token,
+      refresh_token
+    )
+
     return APIResponse.success_response(
       message="User logged in successfully",
-      data={
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-      }
+      data=None
     )
 
 
@@ -91,7 +102,7 @@ class AuthService:
 
 
 
-  async def forgot_password_service(self, data, db):
+  async def forgot_password_service(self, data, db, background_tasks):
 
     user = await Repository.get_user_by_email(db, data.email)
 
@@ -100,16 +111,29 @@ class AuthService:
         "User with this email does not exist"
       )
 
+    # Check if old active token exists
+    active_token = await Repository.get_active_password_reset_token(db,user.id)
+
+    # Invalidate old token
+    if active_token:
+      await Repository.mark_reset_token_used(db,active_token)
+
+    # Create new token
     password_reset_token = create_password_reset_token(user)
     hashed_password_reset_token = hash(password_reset_token)
 
     await Repository.store_password_reset_token(db, user.id, hashed_password_reset_token)
 
+    reset_url = (
+      f"{settings.FRONTEND_URL}/reset-password"
+      f"?token={password_reset_token}"
+    )
+
+    background_tasks.add_task(send_reset_password_email, user.email, reset_url)
+
     return APIResponse.success_response(
-      message="Password reset token generated successfully",
-      data={
-        "password_reset_token": password_reset_token,
-      }
+      message="Password reset email sent successfully",
+      data=None
     )
 
   async def reset_password_service(self, data, db):
@@ -133,7 +157,7 @@ class AuthService:
 
     user = await Repository.get_user_by_id(
       db,
-      payload["sub"]
+      payload.get("sub")
     )
 
     if not user:
@@ -161,6 +185,56 @@ class AuthService:
 
     return APIResponse.success_response(
       message="Password changed successfully"
+    )
+
+  async def refresh_token_service(self,request,response,db):
+
+    refresh_token = get_refresh_token_from_cookie(request)
+
+    payload = decode_token(refresh_token)
+
+    if not payload:
+      raise UnauthorizedException(
+        "Invalid refresh token"
+      )
+
+    if payload.get("type") != "refresh":
+      raise UnauthorizedException(
+        "Invalid refresh token"
+      )
+
+    user = await Repository.get_user_by_id(db,payload.get("sub"))
+
+    if not user:
+      raise UnauthorizedException(
+        "User not found"
+      )
+
+    if not user.is_active:
+      raise UnauthorizedException(
+        "Account is inactive"
+      )
+
+    access_token = create_access_token(user)
+
+    set_auth_cookies(
+      response,
+      access_token,
+      refresh_token
+    )
+
+    return APIResponse.success_response(
+      message="Token refreshed",
+      data=None
+    )
+
+  async def logout_service(self,response):
+
+    delete_auth_cookies(response)
+
+    return APIResponse.success_response(
+      message="Logged out successfully",
+      data=None
     )
 
 

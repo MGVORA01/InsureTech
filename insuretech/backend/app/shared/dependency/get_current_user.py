@@ -1,36 +1,60 @@
-from fastapi import Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import UnauthorizedException
+
 from app.modules.auth.jwt_halper import decode_token
 from app.modules.auth.repository import get_user_by_id
-
-
-bearer_scheme = HTTPBearer(auto_error=False)
+from app.modules.auth.cookie_helper import (
+    get_access_token_from_cookie
+)
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    db: AsyncSession = Depends(get_db),
+  request: Request,
+  db: AsyncSession = Depends(get_db),
 ):
-    if not credentials or credentials.scheme.lower() != "bearer":
-        raise UnauthorizedException("Authentication required")
+  access_token = (
+    get_access_token_from_cookie(
+      request
+    )
+  )
 
-    payload = decode_token(credentials.credentials)
+  if not access_token:
+    raise UnauthorizedException(
+      "Authentication required"
+    )
 
-    if not payload or payload.get("type") != "access":
-        raise UnauthorizedException("Invalid access token")
+  payload = decode_token(
+    access_token
+  )
 
-    user_id = payload.get("sub")
+  if not payload:
+    raise UnauthorizedException(
+      "Invalid access token"
+    )
 
-    if not user_id:
-        raise UnauthorizedException("Invalid access token")
+  if payload.get("type") != "access":
+    raise UnauthorizedException(
+      "Invalid access token"
+    )
 
-    user = await get_user_by_id(db, user_id)
+  user_id = payload.get("sub")
 
-    if not user or not user.is_active:
-        raise UnauthorizedException("User does not exist")
+  user = await get_user_by_id(
+    db,
+    user_id
+  )
 
-    return user
+  if not user:
+    raise UnauthorizedException(
+      "User not found"
+    )
+
+  if not user.is_active:
+    raise UnauthorizedException(
+      "Account is inactive"
+    )
+
+  return user
