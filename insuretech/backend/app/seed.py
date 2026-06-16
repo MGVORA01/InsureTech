@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.core.database import AsyncSessionLocal
 from app.models.users import User
 from app.models.roles import Role
-from app.modules.auth.password_hashing import hash_password
+from app.modules.auth.password_hashing import hash
 
 
 async def seed_roles_and_admin():
@@ -46,7 +46,7 @@ async def seed_roles_and_admin():
         if not existing_admin:
             admin_user = User(
                 email="admin@gmail.com",
-                password_hash=hash_password("Admin@123"),
+                password_hash=hash("Admin@123"),
                 full_name="System Admin",
                 phone="7234567891",
                 role_id=admin_role.id
