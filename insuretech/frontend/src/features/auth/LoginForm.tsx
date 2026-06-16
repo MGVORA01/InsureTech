@@ -1,18 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Button from '../../components/Button'
 import Checkbox from '../../components/Checkbox'
 import Input from '../../components/Input'
 import { AUTH_MESSAGES } from './auth.constants'
 import type { LoginFormData } from './auth.types'
 import PasswordInput from './PasswordInput'
-import { useAuth } from './useAuth'
+import { useAuth } from '../../hooks/useAuth'
 import { loginSchema } from './validation/login.schema'
 import styles from './LoginForm.module.css'
 
 function LoginForm() {
-  const { error, loading, login } = useAuth()
+  const navigate = useNavigate()
+  const { error, loading, loadCurrentUser, login } = useAuth()
   const {
     formState: { errors },
     handleSubmit,
@@ -27,7 +28,13 @@ function LoginForm() {
   })
 
   const onSubmit = async (data: LoginFormData) => {
-    await login(data)
+    try {
+      await login(data)
+      await loadCurrentUser()
+      navigate('/dashboard', { replace: true })
+    } catch {
+      // Auth errors are stored in Redux by the async thunks.
+    }
   }
 
   return (

@@ -1,34 +1,42 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Button from '../../components/Button'
 import Input from '../../components/Input'
 import { AUTH_MESSAGES } from './auth.constants'
 import type { RegisterFormData } from './auth.types'
 import PasswordInput from './PasswordInput'
-import { useAuth } from './useAuth'
+import { useAuth } from '../../hooks/useAuth'
 import { registerSchema } from './validation/register.schema'
 import styles from './RegisterForm.module.css'
 
 function RegisterForm() {
+  const navigate = useNavigate()
   const { error, loading, register: registerAccount } = useAuth()
+
   const {
     formState: { errors },
     handleSubmit,
     register,
   } = useForm<RegisterFormData>({
     defaultValues: {
-      companyName: '',
-      confirmPassword: '',
-      email: '',
       fullName: '',
+      email: '',
+      phoneNo: '',
       password: '',
+      confirmPassword: '',
     },
     resolver: zodResolver(registerSchema),
   })
 
   const onSubmit = async (data: RegisterFormData) => {
-    await registerAccount(data)
+    try {
+      await registerAccount(data)
+      // Success: redirect to /login
+      navigate('/login', { replace: true })
+    } catch {
+      // Auth errors are stored in Redux by the async thunks.
+    }
   }
 
   return (
@@ -47,14 +55,7 @@ function RegisterForm() {
           type="text"
           {...register('fullName')}
         />
-        <Input
-          autoComplete="organization"
-          error={errors.companyName?.message}
-          label="Company Name"
-          placeholder="Northstar Manufacturing"
-          type="text"
-          {...register('companyName')}
-        />
+
         <Input
           autoComplete="email"
           error={errors.email?.message}
@@ -63,6 +64,16 @@ function RegisterForm() {
           type="email"
           {...register('email')}
         />
+
+        <Input
+          autoComplete="tel"
+          error={errors.phoneNo?.message}
+          label="Phone Number"
+          placeholder="9876543210"
+          type="tel"
+          {...register('phoneNo')}
+        />
+
         <PasswordInput
           autoComplete="new-password"
           error={errors.password?.message}
@@ -70,6 +81,7 @@ function RegisterForm() {
           placeholder="Create a strong password"
           {...register('password')}
         />
+
         <PasswordInput
           autoComplete="new-password"
           error={errors.confirmPassword?.message}

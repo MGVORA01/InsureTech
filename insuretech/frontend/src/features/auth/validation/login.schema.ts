@@ -7,9 +7,5 @@ export const loginSchema = z.object({
     .trim()
     .min(1, AUTH_VALIDATION.emailRequired)
     .email(AUTH_VALIDATION.emailInvalid),
-  password: z
-    .string()
-    .min(1, AUTH_VALIDATION.passwordRequired)
-    .min(8, AUTH_VALIDATION.passwordMinLength),
-  rememberMe: z.boolean(),
+  password: z.string().min(1, AUTH_VALIDATION.passwordRequired),
 })

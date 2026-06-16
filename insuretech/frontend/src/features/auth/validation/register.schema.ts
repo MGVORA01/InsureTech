@@ -7,12 +7,20 @@ const strongPasswordPattern =
 export const registerSchema = z
   .object({
     fullName: z.string().trim().min(1, AUTH_VALIDATION.fullNameRequired),
-    companyName: z.string().trim().min(1, AUTH_VALIDATION.companyNameRequired),
     email: z
       .string()
       .trim()
       .min(1, AUTH_VALIDATION.emailRequired)
       .email(AUTH_VALIDATION.emailInvalid),
+    phoneNo: z
+      .string()
+      .trim()
+      .optional()
+      .or(z.literal(''))
+      .refine(
+        (val) => !val || (/^[6-9]\d{9}$/.test(val)),
+        { message: AUTH_VALIDATION.phoneInvalid }
+      ),
     password: z
       .string()
       .min(1, AUTH_VALIDATION.passwordRequired)
