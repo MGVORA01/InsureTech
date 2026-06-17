@@ -6,6 +6,7 @@ import Input from '../../components/Input'
 import { AUTH_MESSAGES } from './auth.constants'
 import type { RegisterFormData } from './auth.types'
 import PasswordInput from './PasswordInput'
+import PasswordRequirements from './PasswordRequirements'
 import { useAuth } from '../../hooks/useAuth'
 import { registerSchema } from './validation/register.schema'
 import styles from './RegisterForm.module.css'
@@ -18,6 +19,7 @@ function RegisterForm() {
     formState: { errors },
     handleSubmit,
     register,
+    watch,
   } = useForm<RegisterFormData>({
     defaultValues: {
       fullName: '',
@@ -28,6 +30,8 @@ function RegisterForm() {
     },
     resolver: zodResolver(registerSchema),
   })
+
+  const passwordValue = watch('password')
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
@@ -81,6 +85,7 @@ function RegisterForm() {
           placeholder="Create a strong password"
           {...register('password')}
         />
+        <PasswordRequirements password={passwordValue} />
 
         <PasswordInput
           autoComplete="new-password"
