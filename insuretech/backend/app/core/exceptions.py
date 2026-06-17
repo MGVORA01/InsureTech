@@ -56,17 +56,22 @@ async def validation_exception_handler(
 ) -> JSONResponse:
     """Handle Pydantic validation errors."""
 
-    validation_errors = [
-        {
-            "field": ".".join(
-                str(location)
-                for location in error["loc"]
-                if location != "body"
-            ),
-            "message": error["msg"],
-        }
-        for error in exc.errors()
-    ]
+    validation_errors = []
+
+    for error in exc.errors():
+        field = ".".join(
+            str(location)
+            for location in error["loc"]
+            if location != "body"
+        )
+        message = error["msg"].removeprefix("Value error, ")
+
+        if field == "email":
+            message = "Invalid email"
+
+        validation_errors.append(
+            f"{message}" if field else message
+        )
 
     logger.warning(
         "Validation error occurred: %s",
@@ -76,8 +81,7 @@ async def validation_exception_handler(
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content=APIResponse.error_response(
-            message="Validation error",
-            data=validation_errors,
+            message="; ".join(validation_errors),
         ).model_dump(),
     )
 
