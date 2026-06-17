@@ -1,11 +1,12 @@
 import RegisterForm from '../features/auth/RegisterForm'
-import AuthLayout from '../layout/AuthLayout'
 
 function RegisterPage() {
   return (
-    <AuthLayout>
-      <RegisterForm />
-    </AuthLayout>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-md">
+        <RegisterForm />
+      </div>
+    </div>
   )
 }
 

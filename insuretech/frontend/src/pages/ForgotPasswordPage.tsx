@@ -1,11 +1,12 @@
 import ForgotPasswordForm from '../features/auth/ForgotPasswordForm'
-import AuthLayout from '../layout/AuthLayout'
 
 function ForgotPasswordPage() {
   return (
-    <AuthLayout title="Reset Your Password" tagline="Request a secure password reset link to get back to your work.">
-      <ForgotPasswordForm />
-    </AuthLayout>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-md">
+        <ForgotPasswordForm />
+      </div>
+    </div>
   )
 }
 
