@@ -11,7 +11,8 @@ export const registerSchema = z
       .string()
       .trim()
       .min(1, AUTH_VALIDATION.emailRequired)
-      .email(AUTH_VALIDATION.emailInvalid),
+      .email(AUTH_VALIDATION.emailInvalid)
+      .transform((value) => value.toLowerCase()),
     phoneNo: z
       .string()
       .trim()

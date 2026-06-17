@@ -1,6 +1,8 @@
 from passlib.context import CryptContext
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.modules.auth.constants import BCRYPT_SCHEME, PASSLIB_DEPRECATED_AUTO
+
+pwd_context = CryptContext(schemes=[BCRYPT_SCHEME], deprecated=PASSLIB_DEPRECATED_AUTO)
 
 def hash(input: str) -> str:
     """Hash a plain-text input.
@@ -24,4 +26,3 @@ def verify_hash(plain: str, hashed: str) -> bool:
         True if the input matches, otherwise False.
     """
     return pwd_context.verify(plain, hashed)
-
