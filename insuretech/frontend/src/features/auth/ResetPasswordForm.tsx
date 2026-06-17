@@ -1,15 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { AppDispatch } from '../../store/store'
+import { useSearchParams, Link } from 'react-router-dom'
 import Button from '../../components/Button'
-import {
-  clearPasswordState,
-  resetPassword,
-  selectPasswordState,
-} from './passwordSlice'
 import { resetPasswordSchema } from './validation/resetPassword.schema'
 import PasswordInput from './PasswordInput'
 import styles from './LoginForm.module.css'
@@ -20,11 +13,9 @@ interface FormFields {
 }
 
 function ResetPasswordForm() {
-  const navigate = useNavigate()
-  const dispatch = useDispatch<AppDispatch>()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
-  const { error, loading } = useSelector(selectPasswordState)
+  const [submitted, setSubmitted] = useState(false)
 
   const {
     formState: { errors },
@@ -38,33 +29,11 @@ function ResetPasswordForm() {
     resolver: zodResolver(resetPasswordSchema),
   })
 
-  // Clean up password state on unmount
-  useEffect(() => {
-    return () => {
-      dispatch(clearPasswordState())
-    }
-  }, [dispatch])
-
-  const onSubmit = async (data: FormFields) => {
-    if (!token) {
-      return
-    }
-    try {
-      await dispatch(
-        resetPassword({
-          token,
-          password: data.password,
-          confirmPassword: data.confirmPassword,
-        })
-      ).unwrap()
-      // Success: redirect to /login
-      navigate('/login', { replace: true })
-    } catch {
-      // Error is stored in password Redux state
-    }
+  const onSubmit = (data: FormFields) => {
+    if (!token) return
+    setSubmitted(true)
   }
 
-  // If token is missing, show error
   if (!token) {
     return (
       <div className={styles.form}>
@@ -74,9 +43,39 @@ function ResetPasswordForm() {
             Password reset token is missing. Please request a new link.
           </p>
         </header>
-        <Button fullWidth onClick={() => navigate('/forgot-password')}>
-          Go to Forgot Password
-        </Button>
+        <Link to="/forgot-password">
+          <Button fullWidth>Go to Forgot Password</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  if (submitted) {
+    return (
+      <div className={styles.form}>
+        <header className={styles.header} style={{ textAlign: 'center' }}>
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              backgroundColor: '#16a34a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+            }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <h2>Password Reset Successfully</h2>
+          <p>Your password has been reset successfully. Now you can login with your new password.</p>
+        </header>
+        <Link to="/login">
+          <Button fullWidth>Login</Button>
+        </Link>
       </div>
     )
   }
@@ -105,16 +104,8 @@ function ResetPasswordForm() {
         />
       </div>
 
-      {error ? (
-        <p className={styles.formError} role="alert">
-          {error.toLowerCase().includes('token') || error.toLowerCase().includes('expired')
-            ? 'Link invalid or expired'
-            : error}
-        </p>
-      ) : null}
-
-      <Button disabled={loading} fullWidth type="submit">
-        {loading ? 'Resetting...' : 'Reset Password'}
+      <Button fullWidth type="submit">
+        Reset Password
       </Button>
     </form>
   )

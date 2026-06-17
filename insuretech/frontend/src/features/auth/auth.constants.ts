@@ -14,11 +14,11 @@ export const AUTH_REFRESH_INTERVAL_MS = 12 * 60 * 1000
 
 export const AUTH_MESSAGES = {
   loginTitle: 'Welcome back',
-  loginSubtitle: 'Sign in to continue your insurance risk assessment work.',
+  loginSubtitle: 'Login to continue your insurance risk assessment work.',
   registerTitle: 'Create your workspace',
   registerSubtitle: 'Start building a structured risk profile for your business.',
   loginButton: 'Login',
-  registerButton: 'Create account',
+  registerButton: 'Register',
   rememberMe: 'Remember me',
   forgotPassword: 'Forgot password?',
   noAccount: 'Need an account?',

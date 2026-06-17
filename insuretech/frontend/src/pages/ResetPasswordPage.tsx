@@ -1,11 +1,11 @@
 import ResetPasswordForm from '../features/auth/ResetPasswordForm'
-import AuthLayout from '../layout/AuthLayout'
+import styles from '../features/auth/ResetPasswordPage.module.css'
 
 function ResetPasswordPage() {
   return (
-    <AuthLayout title="Choose New Password" tagline="Create a new secure credentials to protect your workspace.">
-      <ResetPasswordForm />
-    </AuthLayout>
+      <div className={styles.card}>
+        <ResetPasswordForm />
+    </div>
   )
 }
 

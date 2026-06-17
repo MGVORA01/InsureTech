@@ -83,7 +83,7 @@ function HomePage() {
                 onClick={() => openAuthRoute('register')}
                 type="button"
               >
-                Create an account
+                Register
               </button>
             </div>
           </div>

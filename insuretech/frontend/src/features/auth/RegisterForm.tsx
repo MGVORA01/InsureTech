@@ -117,7 +117,7 @@ function RegisterForm({ onLogin }: RegisterFormProps) {
       ) : null}
 
       <Button disabled={loading} fullWidth type="submit">
-        {loading ? 'Creating account...' : AUTH_MESSAGES.registerButton}
+        {loading ? 'Registering...' : AUTH_MESSAGES.registerButton}
       </Button>
 
       <p className={styles.footer}>

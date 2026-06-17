@@ -3,9 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import ForgotPasswordForm from '../auth/ForgotPasswordForm'
 import LoginForm from '../auth/LoginForm'
 import RegisterForm from '../auth/RegisterForm'
+import ResetPasswordForm from '../auth/ResetPasswordForm'
 import './AuthModal.css'
 
-export type AuthModalTab = 'login' | 'register' | 'forgotPassword'
+export type AuthModalTab = 'login' | 'register' | 'forgotPassword' | 'resetPassword'
 
 interface AuthModalProps {
   initialTab?: AuthModalTab
@@ -22,6 +23,7 @@ function AuthModal({ initialTab = 'login', onClose }: AuthModalProps) {
     let currentTab: AuthModalTab = 'login'
     if (location.pathname === '/register') currentTab = 'register'
     else if (location.pathname === '/forgot-password') currentTab = 'forgotPassword'
+    else if (location.pathname === '/reset-password') currentTab = 'resetPassword'
 
     setActiveTab(currentTab)
   }, [location.pathname])
@@ -47,7 +49,7 @@ function AuthModal({ initialTab = 'login', onClose }: AuthModalProps) {
       tab === 'register' ? '/register' : tab === 'forgotPassword' ? '/forgot-password' : '/login'
 
     // Preserve any existing location.state (e.g backgroundLocation)
-    navigate(path, { state: location.state })
+    navigate(path, { state: location.state, replace: true })
   }
 
   // Handle click outside the modal to close it
@@ -63,30 +65,33 @@ function AuthModal({ initialTab = 'login', onClose }: AuthModalProps) {
       className="auth-modal-overlay"
       role="dialog"
       onClick={handleBackdropClick}
+      style={activeTab === 'resetPassword' ? { alignItems: 'center' } : undefined}
     >
       <div className="auth-modal-shell animate-fadeIn">
-        <button
-          aria-label="Close"
-          className="auth-modal-close"
-          onClick={handleClose}
-          type="button"
-        >
-          <svg
-            fill="none"
-            height="22"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-            width="22"
+        {activeTab !== 'resetPassword' ? (
+          <button
+            aria-label="Close"
+            className="auth-modal-close"
+            onClick={handleClose}
+            type="button"
           >
-            <line x1="18" x2="6" y1="6" y2="18" />
-            <line x1="6" x2="18" y1="6" y2="18" />
-          </svg>
-        </button>
+            <svg
+              fill="none"
+              height="22"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              width="22"
+            >
+              <line x1="18" x2="6" y1="6" y2="18" />
+              <line x1="6" x2="18" y1="6" y2="18" />
+            </svg>
+          </button>
+        ) : null}
 
         <div className="auth-modal-card">
-          {activeTab !== 'forgotPassword' ? (
+          {activeTab !== 'forgotPassword' && activeTab !== 'resetPassword' ? (
             <div className="flex border-b border-border px-8 pt-6" role="tablist">
               <button
                 aria-selected={activeTab === 'login'}
@@ -99,7 +104,7 @@ function AuthModal({ initialTab = 'login', onClose }: AuthModalProps) {
                 role="tab"
                 type="button"
               >
-                Sign in
+                Login
               </button>
               <button
                 aria-selected={activeTab === 'register'}
@@ -128,6 +133,7 @@ function AuthModal({ initialTab = 'login', onClose }: AuthModalProps) {
             {activeTab === 'forgotPassword' ? (
               <ForgotPasswordForm onLogin={() => goToTab('login')} />
             ) : null}
+            {activeTab === 'resetPassword' ? <ResetPasswordForm /> : null}
           </div>
         </div>
       </div>
