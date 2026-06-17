@@ -44,17 +44,33 @@
   font-weight: 700;
 }
 
+.formSuccess {
+  margin: 0;
+  border-radius: var(--radius-md);
+  padding: 12px;
+  color: var(--color-risk-low);
+  background: var(--color-risk-low-bg);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .footer {
   text-align: center;
 }
 
-.footer a {
+.footer a,
+.linkButton {
+  border: 0;
+  background: transparent;
+  padding: 0;
   color: var(--color-secondary);
   font-weight: 800;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.footer a:hover {
+.footer a:hover,
+.linkButton:hover {
   color: var(--color-secondary-dark);
   text-decoration: underline;
 }

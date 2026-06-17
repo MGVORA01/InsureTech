@@ -16,7 +16,11 @@ import {
 import { forgotPasswordSchema } from './validation/forgotPassword.schema'
 import styles from './LoginForm.module.css'
 
-function ForgotPasswordForm() {
+interface ForgotPasswordFormProps {
+  onLogin?: () => void
+}
+
+function ForgotPasswordForm({ onLogin }: ForgotPasswordFormProps) {
   const dispatch = useDispatch<AppDispatch>()
   const { error, loading, message } = useSelector(selectPasswordState)
   const [countdown, setCountdown] = useState(0)
@@ -47,24 +51,12 @@ function ForgotPasswordForm() {
     }
   }, [countdown])
 
-  // const onSubmit = async (data: ForgotPasswordRequest) => {
-  //   try {
-  //     await dispatch(forgotPassword(data)).unwrap()
-  //     setCountdown(60) // Disable submit for 60s on success
-  //   } catch {
-  //     // Error is stored in password Redux state
-  //   }
-  // }
   const onSubmit = async (data: ForgotPasswordRequest) => {
-    console.log("Forgot password submit", data)
-
     try {
-      const result = await dispatch(forgotPassword(data)).unwrap()
-      console.log("Success", result)
-
+      await dispatch(forgotPassword(data)).unwrap()
       setCountdown(60)
-    } catch (err) {
-      console.error("Forgot password failed", err)
+    } catch {
+      // Error is stored in password Redux state.
     }
   }
 
@@ -93,19 +85,7 @@ function ForgotPasswordForm() {
       ) : null}
 
       {message ? (
-        <p
-          className={styles.formSuccess || styles.formError}
-          style={{
-            margin: 0,
-            borderRadius: 'var(--radius-md)',
-            padding: '12px',
-            color: 'var(--color-risk-low)',
-            background: 'var(--color-risk-low-bg)',
-            fontSize: '0.9rem',
-            fontWeight: 700,
-          }}
-          role="status"
-        >
+        <p className={styles.formSuccess} role="status">
           {message}
         </p>
       ) : null}
@@ -124,7 +104,13 @@ function ForgotPasswordForm() {
 
       <p className={styles.footer}>
         Remembered your password?{' '}
-        <Link to="/login">{AUTH_MESSAGES.loginLink}</Link>
+        {onLogin ? (
+          <button className={styles.linkButton} onClick={onLogin} type="button">
+            {AUTH_MESSAGES.loginLink}
+          </button>
+        ) : (
+          <Link to="/login">{AUTH_MESSAGES.loginLink}</Link>
+        )}
       </p>
     </form>
   )

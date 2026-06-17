@@ -11,7 +11,12 @@ import { useAuth } from '../../hooks/useAuth'
 import { loginSchema } from './validation/login.schema'
 import styles from './LoginForm.module.css'
 
-function LoginForm() {
+interface LoginFormProps {
+    onForgotPassword?: () => void
+    onRegister?: () => void
+}
+
+function LoginForm({ onForgotPassword, onRegister }: LoginFormProps) {
     const navigate = useNavigate()
     const { error, loading, login } = useAuth()
     const {
@@ -63,7 +68,17 @@ function LoginForm() {
 
             <div className={styles.actionsRow}>
                 <Checkbox label={AUTH_MESSAGES.rememberMe} {...register('rememberMe')} />
-                <Link to="/forgot-password">{AUTH_MESSAGES.forgotPassword}</Link>
+                {onForgotPassword ? (
+                    <button
+                        className={styles.linkButton}
+                        onClick={onForgotPassword}
+                        type="button"
+                    >
+                        {AUTH_MESSAGES.forgotPassword}
+                    </button>
+                ) : (
+                    <Link to="/forgot-password">{AUTH_MESSAGES.forgotPassword}</Link>
+                )}
             </div>
 
             {error ? (
@@ -77,7 +92,18 @@ function LoginForm() {
             </Button>
 
             <p className={styles.footer}>
-                {AUTH_MESSAGES.noAccount} <Link to="/register">{AUTH_MESSAGES.registerLink}</Link>
+                {AUTH_MESSAGES.noAccount}{' '}
+                {onRegister ? (
+                    <button
+                        className={styles.linkButton}
+                        onClick={onRegister}
+                        type="button"
+                    >
+                        {AUTH_MESSAGES.registerLink}
+                    </button>
+                ) : (
+                    <Link to="/register">{AUTH_MESSAGES.registerLink}</Link>
+                )}
             </p>
         </form>
     )
