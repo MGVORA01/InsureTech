@@ -13,7 +13,7 @@ import styles from './LoginForm.module.css'
 
 function LoginForm() {
     const navigate = useNavigate()
-    const { error, loading, loadCurrentUser, login } = useAuth()
+    const { error, loading, login } = useAuth()
     const {
         formState: { errors },
         handleSubmit,
@@ -30,7 +30,6 @@ function LoginForm() {
     const onSubmit = async (data: LoginFormData) => {
         try {
             await login(data)
-            //   await loadCurrentUser()
             navigate('/dashboard', { replace: true })
         } catch {
             // Auth errors are stored in Redux by the async thunks.

@@ -1,6 +1,6 @@
 import axios, { AxiosError, type AxiosResponse } from 'axios'
-import baseApi, { BASE_URL } from '../../api/baseApi'
-import { AUTH_API_BASE_URL, AUTH_ENDPOINTS, AUTH_MESSAGES } from './auth.constants'
+import { BASE_URL } from '../../api/baseApi'
+import { AUTH_ENDPOINTS, AUTH_MESSAGES } from './auth.constants'
 import type {
   ApiEnvelope,
   ApiErrorResponse,
@@ -56,7 +56,7 @@ authHttp.interceptors.response.use(
       originalRequest._retry = true
       // TODO: Enable token refresh logic below when POST /auth/refresh backend API is ready.
       try {
-        const refreshRes = await authApi.refreshToken()
+        await authApi.refreshToken()
         // Save new token and update headers
         // setAccessToken(newAccessToken)
         // originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
@@ -86,6 +86,10 @@ function unwrapData<T>(response: AxiosResponse<ApiEnvelope<T> | T>): T {
   return body as T
 }
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
 export function getAuthErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<ApiErrorResponse>
@@ -108,7 +112,7 @@ export const authApi = {
   async register(payload: RegisterFormData): Promise<AuthResponse> {
     const requestBody = {
       full_name: payload.fullName,
-      email: payload.email,
+      email: normalizeEmail(payload.email),
       phone_no: payload.phoneNo || null,
       password: payload.password,
       confirm_password: payload.confirmPassword,
@@ -123,7 +127,7 @@ export const authApi = {
 
   async login(payload: LoginFormData): Promise<AuthResponse> {
     const requestBody = {
-      email: payload.email,
+      email: normalizeEmail(payload.email),
       password: payload.password,
     }
     const response = await authHttp.post<any>(
@@ -158,7 +162,10 @@ export const authApi = {
   ): Promise<PasswordResponse> {
     const response = await authHttp.post<PasswordResponse>(
       AUTH_ENDPOINTS.forgotPassword,
-      payload,
+      {
+        ...payload,
+        email: normalizeEmail(payload.email),
+      },
     )
 
     return response.data

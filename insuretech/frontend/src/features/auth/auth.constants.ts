@@ -38,7 +38,7 @@ export const AUTH_VALIDATION = {
   passwordStrong:
     'Password must include uppercase, lowercase, number, and special character.',
   fullNameRequired: 'Full name is required.',
-  phoneInvalid: 'Phone number must be exactly 10 digits and start with 6, 7, 8, or 9.',
+  phoneInvalid: 'Please enter a valid 10-digit mobile number.',
   confirmPasswordRequired: 'Confirm your password.',
   passwordMismatch: 'Passwords must match.',
 } as const
