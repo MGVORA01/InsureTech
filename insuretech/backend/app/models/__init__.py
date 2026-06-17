@@ -19,6 +19,8 @@ from .policies import Policy
 from .recommendations import Recommendation
 from .reports import Report
 from .password_reset import PasswordResetToken
+from .policy_documents import PolicyDocument
+from .document_chunks import DocumentChunk
 
 __all__ = [
 	"Base",
@@ -41,5 +43,6 @@ __all__ = [
     "Recommendation",
     "Report",
     "PasswordResetToken",
-    #todo add document chunks table later
+    "PolicyDocument",
+    "DocumentChunk"
 ]
