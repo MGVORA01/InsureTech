@@ -24,6 +24,8 @@ from app.models import (
     Policy,
     Recommendation,
     Report,
+    PolicyDocument,
+    DocumentChunk
 )
 
 # this is the Alembic Config object, which provides
