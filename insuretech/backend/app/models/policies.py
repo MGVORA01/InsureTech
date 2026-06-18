@@ -21,4 +21,5 @@ class Policy(Base, TimestampMixin):
 
     insurer = relationship("Insurer", back_populates="policies")
     insurance_category = relationship("InsuranceCategory", back_populates="policies")
-    document_chunks = relationship("DocumentChunk", back_populates="policy")
+    documents = relationship("PolicyDocument", back_populates="policy", cascade="all, delete-orphan")
+    document_chunks = relationship("DocumentChunk", back_populates="policy", cascade="all, delete-orphan")

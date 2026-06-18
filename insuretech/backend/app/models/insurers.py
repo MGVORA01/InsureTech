@@ -16,3 +16,4 @@ class Insurer(Base, TimestampMixin):
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
 
     policies = relationship("Policy", back_populates="insurer")
+    documents = relationship("PolicyDocument", back_populates="insurer", cascade="all, delete-orphan")
