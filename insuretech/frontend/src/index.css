@@ -1,4 +1,9 @@
 @import './styles/variable.css';
+@import './styles/overlay-tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 * {
   box-sizing: border-box;

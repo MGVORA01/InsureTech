@@ -14,11 +14,11 @@ export const AUTH_REFRESH_INTERVAL_MS = 12 * 60 * 1000
 
 export const AUTH_MESSAGES = {
   loginTitle: 'Welcome back',
-  loginSubtitle: 'Sign in to continue your insurance risk assessment work.',
+  loginSubtitle: 'Login to continue your insurance risk assessment work.',
   registerTitle: 'Create your workspace',
   registerSubtitle: 'Start building a structured risk profile for your business.',
   loginButton: 'Login',
-  registerButton: 'Create account',
+  registerButton: 'Register',
   rememberMe: 'Remember me',
   forgotPassword: 'Forgot password?',
   noAccount: 'Need an account?',
@@ -38,7 +38,7 @@ export const AUTH_VALIDATION = {
   passwordStrong:
     'Password must include uppercase, lowercase, number, and special character.',
   fullNameRequired: 'Full name is required.',
-  phoneInvalid: 'Phone number must be exactly 10 digits and start with 6, 7, 8, or 9.',
+  phoneInvalid: 'Please enter a valid 10-digit mobile number.',
   confirmPasswordRequired: 'Confirm your password.',
   passwordMismatch: 'Passwords must match.',
 } as const

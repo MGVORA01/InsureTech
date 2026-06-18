@@ -1,23 +1,31 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import Button from '../../components/Button'
 import Input from '../../components/Input'
 import { AUTH_MESSAGES } from './auth.constants'
 import type { RegisterFormData } from './auth.types'
 import PasswordInput from './PasswordInput'
+import PasswordRequirements from './PasswordRequirements'
 import { useAuth } from '../../hooks/useAuth'
 import { registerSchema } from './validation/register.schema'
 import styles from './RegisterForm.module.css'
 
-function RegisterForm() {
-  const navigate = useNavigate()
+interface RegisterFormProps {
+  onLogin?: () => void
+}
+
+function RegisterForm({ onLogin }: RegisterFormProps) {
   const { error, loading, register: registerAccount } = useAuth()
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const {
     formState: { errors },
     handleSubmit,
     register,
+    reset,
+    watch,
   } = useForm<RegisterFormData>({
     defaultValues: {
       fullName: '',
@@ -29,11 +37,15 @@ function RegisterForm() {
     resolver: zodResolver(registerSchema),
   })
 
+  const passwordValue = watch('password')
+
   const onSubmit = async (data: RegisterFormData) => {
+    setSuccessMessage(null)
+
     try {
       await registerAccount(data)
-      // Success: redirect to /login
-      navigate('/login', { replace: true })
+      setSuccessMessage('Registered successfully. Now login.')
+      reset()
     } catch {
       // Auth errors are stored in Redux by the async thunks.
     }
@@ -81,6 +93,7 @@ function RegisterForm() {
           placeholder="Create a strong password"
           {...register('password')}
         />
+        <PasswordRequirements password={passwordValue} />
 
         <PasswordInput
           autoComplete="new-password"
@@ -97,12 +110,25 @@ function RegisterForm() {
         </p>
       ) : null}
 
+      {successMessage ? (
+        <p className={styles.formSuccess} role="status">
+          {successMessage}
+        </p>
+      ) : null}
+
       <Button disabled={loading} fullWidth type="submit">
-        {loading ? 'Creating account...' : AUTH_MESSAGES.registerButton}
+        {loading ? 'Registering...' : AUTH_MESSAGES.registerButton}
       </Button>
 
       <p className={styles.footer}>
-        {AUTH_MESSAGES.hasAccount} <Link to="/login">{AUTH_MESSAGES.loginLink}</Link>
+        {AUTH_MESSAGES.hasAccount}{' '}
+        {onLogin ? (
+          <button className={styles.linkButton} onClick={onLogin} type="button">
+            {AUTH_MESSAGES.loginLink}
+          </button>
+        ) : (
+          <Link to="/login">{AUTH_MESSAGES.loginLink}</Link>
+        )}
       </p>
     </form>
   )

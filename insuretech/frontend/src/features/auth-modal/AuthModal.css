@@ -1,0 +1,88 @@
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 20px 16px;
+  background: var(--overlay-primary-dark-55);
+  backdrop-filter: blur(4px);
+}
+
+.auth-modal-shell {
+  display: grid;
+  width: min(100%, 440px);
+  max-height: calc(100vh - 40px);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.auth-modal-close {
+  justify-self: end;
+  margin-bottom: 8px;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px;
+  color: rgba(255, 255, 255, 0.86);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.auth-modal-close:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.auth-modal-close:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.72);
+  outline-offset: 2px;
+}
+
+.auth-modal-card {
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 24px 64px rgba(16, 42, 69, 0.32);
+}
+
+.auth-modal-form-host {
+  max-height: calc(100vh - 132px);
+  overflow-y: auto;
+}
+
+/* Scoped to the AuthModal only: strips the form's own standalone card
+   chrome (border/shadow/radius/background) so it sits flush inside the
+   modal's outer card, directly beneath the Sign in / Register tabs.
+   The LoginForm/RegisterForm components and their CSS modules are
+   untouched — this purely overrides presentation in this one context. */
+
+.auth-modal-form-host form {
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 28px 32px 32px;
+}
+
+@media (max-width: 520px) {
+  .auth-modal-overlay {
+    padding: 12px;
+  }
+
+  .auth-modal-shell {
+    max-height: calc(100vh - 24px);
+  }
+
+  .auth-modal-form-host {
+    max-height: calc(100vh - 116px);
+  }
+
+  .auth-modal-form-host form {
+    padding: 22px 24px 28px;
+  }
+}
