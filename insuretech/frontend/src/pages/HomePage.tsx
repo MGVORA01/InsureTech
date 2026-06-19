@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import AuthModal from '../features/auth-modal/AuthModal'
+import type { AuthModalTab } from '../features/auth-modal/AuthModal'
 
 function HomePage() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [authModalTab, setAuthModalTab] = useState<AuthModalTab | null>(null)
 
   useEffect(() => {
     function onScroll() {
@@ -168,8 +171,8 @@ function HomePage() {
             </nav>
 
             <div className="hidden lg:flex items-center gap-3">
-              <Link
-                to="/login"
+              <button
+                onClick={() => setAuthModalTab('login')}
                 className={`text-sm font-medium px-4 py-2 rounded-md border transition-all duration-200 ${
                   scrolled
                     ? 'text-text-primary border-border-strong hover:bg-surface-alt'
@@ -177,16 +180,16 @@ function HomePage() {
                 }`}
               >
                 Login
-              </Link>
-              <Link
-                to="/register"
+              </button>
+              <button
+                onClick={() => setAuthModalTab('register')}
                 className="text-sm font-semibold px-5 py-2.5 rounded-md transition-all duration-200"
                 style={{ background: 'var(--color-cta)', color: 'var(--color-cta-contrast)' }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.filter = 'brightness(0.9)' }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1)' }}
               >
                 Get Started
-              </Link>
+              </button>
             </div>
 
             <button
@@ -229,21 +232,19 @@ function HomePage() {
                 )
               })}
               <div className="flex gap-3 pt-3 border-t border-border">
-                <Link
-                  to="/login"
+                <button
+                  onClick={() => { setMenuOpen(false); setAuthModalTab('login') }}
                   className="flex-1 text-center px-4 py-2 rounded-md border border-border-strong text-text-primary"
-                  onClick={() => setMenuOpen(false)}
                 >
                   Login
-                </Link>
-                <Link
-                  to="/register"
+                </button>
+                <button
+                  onClick={() => { setMenuOpen(false); setAuthModalTab('register') }}
                   className="flex-1 text-center px-4 py-2 rounded-md font-semibold"
                   style={{ background: 'var(--color-cta)', color: 'var(--color-cta-contrast)' }}
-                  onClick={() => setMenuOpen(false)}
                 >
                   Get Started
-                </Link>
+                </button>
               </div>
             </nav>
           </div>
@@ -285,8 +286,8 @@ function HomePage() {
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-4">
-                <Link
-                  to="/register"
+                <button
+                  onClick={() => setAuthModalTab('register')}
                   className="inline-flex items-center gap-2 text-sm font-semibold px-6 py-3.5 rounded-md transition-all duration-200"
                   style={{ background: 'var(--color-cta)', color: 'var(--color-cta-contrast)' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.filter = 'brightness(0.9)' }}
@@ -297,7 +298,7 @@ function HomePage() {
                     <line x1="5" y1="12" x2="19" y2="12" />
                     <polyline points="12 5 19 12 12 19" />
                   </svg>
-                </Link>
+                </button>
                 <a href="#features"
                   className="inline-flex items-center gap-2 text-sm font-semibold px-6 py-3.5 rounded-md border border-white/30 text-white hover:bg-white/10 transition-colors duration-200"
                 >
@@ -897,7 +898,8 @@ function HomePage() {
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-4">
-                <Link to="/register"
+                <button
+                  onClick={() => setAuthModalTab('register')}
                   className="inline-flex items-center gap-2 text-sm font-semibold px-6 py-3.5 rounded-md transition-all duration-200"
                   style={{ background: 'var(--color-cta)', color: 'var(--color-cta-contrast)' }}
                 >
@@ -906,7 +908,7 @@ function HomePage() {
                     <line x1="5" y1="12" x2="19" y2="12" />
                     <polyline points="12 5 19 12 12 19" />
                   </svg>
-                </Link>
+                </button>
               </div>
 
               <ul className="mt-10 space-y-3">
@@ -1113,6 +1115,14 @@ function HomePage() {
         </svg>
         <span className="text-sm font-semibold">Chat with us</span>
       </Link>
+
+      {authModalTab && (
+        <AuthModal
+          inline
+          initialTab={authModalTab}
+          onClose={() => setAuthModalTab(null)}
+        />
+      )}
     </>
   )
 }
