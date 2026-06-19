@@ -188,20 +188,17 @@ export const authApi = {
   },
 
   async refreshToken(): Promise<PasswordResponse> {
-    // TODO: Enable when POST /api/auth/refresh is available.
     const response = await authHttp.post<ApiEnvelope<PasswordResponse> | PasswordResponse>(
       AUTH_ENDPOINTS.refresh,
     )
     return unwrapData(response)
-    return { message: AUTH_MESSAGES.refreshPending }
   },
 
   async logout(): Promise<PasswordResponse> {
-    // TODO: Enable when POST /api/auth/logout is available.
     const response = await authHttp.post<ApiEnvelope<PasswordResponse> | PasswordResponse>(
       AUTH_ENDPOINTS.logout,
     )
+    setAccessToken(null)
     return unwrapData(response)
-    return { message: AUTH_MESSAGES.logoutPending }
   },
 }

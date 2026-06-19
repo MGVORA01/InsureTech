@@ -4,6 +4,8 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+// import DashboardPage from './pages/DashboardPage'
+import GetStartedPage from './pages/GetStartedPage'
 import AuthModal from './features/auth-modal/AuthModal'
 
 function App() {
@@ -17,6 +19,8 @@ function App() {
       {/* Main routes. If we came here with a background location, render that background */}
       <Routes location={background ?? location}>
         <Route path="/" element={<HomePage />} />
+        {/*<Route path="/dashboard" element={<DashboardPage />} />*/}
+        <Route path="/get-started" element={<GetStartedPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />}/>
         {/* Keep page versions too if desired */}
         <Route path="/login" element={<LoginPage />} />

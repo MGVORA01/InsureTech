@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import Button from '../../components/Button'
 import { resetPasswordSchema } from './validation/resetPassword.schema'
 import PasswordInput from './PasswordInput'
