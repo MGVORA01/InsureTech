@@ -2,11 +2,18 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AuthModal from '../features/auth-modal/AuthModal'
 import type { AuthModalTab } from '../features/auth-modal/AuthModal'
+import { submitContact } from '../features/contact/contactApi'
 
 function HomePage() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState<AuthModalTab | null>(null)
+  const [contactName, setContactName] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
+  const [contactMessage, setContactMessage] = useState('')
+  const [contactSending, setContactSending] = useState(false)
+  const [contactSent, setContactSent] = useState(false)
+  const [contactError, setContactError] = useState<string | null>(null)
 
   useEffect(() => {
     function onScroll() {
@@ -983,7 +990,28 @@ function HomePage() {
 
               <form
                 className="mt-8 space-y-4"
-                onSubmit={(e) => e.preventDefault()}
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  if (contactSending || contactSent) return
+                  setContactSending(true)
+                  setContactError(null)
+                  try {
+                    await submitContact({
+                      name: contactName,
+                      email: contactEmail,
+                      message: contactMessage,
+                    })
+                    setContactSent(true)
+                  } catch (err: unknown) {
+                    const msg =
+                      err && typeof err === 'object' && 'response' in err
+                        ? (err as { response: { data: { detail?: string } } }).response?.data?.detail
+                        : 'Something went wrong. Please try again.'
+                    setContactError(msg ?? 'Something went wrong. Please try again.')
+                  } finally {
+                    setContactSending(false)
+                  }
+                }}
               >
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
@@ -994,6 +1022,9 @@ function HomePage() {
                       id="contact-name"
                       type="text"
                       placeholder="Your name"
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      required
                       className="w-full rounded-md px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none transition-colors duration-200 focus:border-[var(--color-cta)]"
                       style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)' }}
                     />
@@ -1006,6 +1037,9 @@ function HomePage() {
                       id="contact-email"
                       type="email"
                       placeholder="you@company.com"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      required
                       className="w-full rounded-md px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none transition-colors duration-200 focus:border-[var(--color-cta)]"
                       style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)' }}
                     />
@@ -1020,21 +1054,35 @@ function HomePage() {
                     id="contact-message"
                     rows={3}
                     placeholder="How can we help?"
+                    value={contactMessage}
+                    onChange={(e) => setContactMessage(e.target.value)}
+                    required
                     className="w-full rounded-md px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none resize-none transition-colors duration-200 focus:border-[var(--color-cta)]"
                     style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)' }}
                   />
                 </div>
 
+                {contactSent ? (
+                  <p className="text-sm text-green-400">Message sent successfully! We'll get back to you soon.</p>
+                ) : null}
+
+                {contactError ? (
+                  <p className="text-sm text-red-400">{contactError}</p>
+                ) : null}
+
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 text-sm font-semibold px-6 py-3 rounded-md transition-all duration-200"
+                  disabled={contactSending || contactSent}
+                  className="inline-flex items-center gap-2 text-sm font-semibold px-6 py-3 rounded-md transition-all duration-200 disabled:opacity-60"
                   style={{ background: 'var(--color-cta)', color: 'var(--color-cta-contrast)' }}
                 >
-                  Send Message
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
+                  {contactSending ? 'Sending...' : contactSent ? 'Sent' : 'Send Message'}
+                  {!contactSending && !contactSent ? (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13" />
+                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                    </svg>
+                  ) : null}
                 </button>
               </form>
             </div>
