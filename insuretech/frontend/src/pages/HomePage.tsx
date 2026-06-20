@@ -1143,13 +1143,7 @@ function HomePage() {
         </div>
       </footer>
 
-      {/* ====================================================================
-          STICKY FLOATING CHAT BUTTON
-          Fixed to bottom-right of the viewport, visible across the entire
-          page regardless of scroll position (sits outside the normal
-          section flow so position:fixed isn't affected by any ancestor's
-          position:relative/overflow-hidden). Navigates to the /chat route.
-      ==================================================================== */}
+      {/* Fixed bottom-right chat button linking to /chat */}
       <Link
         to="/chat"
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 pl-4 pr-5 py-3.5 rounded-full shadow-card transition-all duration-200 hover:-translate-y-0.5"
