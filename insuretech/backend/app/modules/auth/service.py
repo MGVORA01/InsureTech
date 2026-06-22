@@ -77,7 +77,12 @@ class AuthService:
 
     return APIResponse.success_response(
       message="User logged in successfully",
-      data=None
+      data={
+        "id": str(user.id),
+        "full_name": user.full_name,
+        "email": user.email,
+        "role": user.role.name
+      }
     )
 
 
