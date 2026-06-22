@@ -44,3 +44,24 @@ async def send_reset_password_email(
   fm = FastMail(conf)
 
   await fm.send_message(message)
+
+
+async def send_contact_email(name: str, email: str, message: str):
+  html = f"""
+    <h2>New Contact Form Submission</h2>
+    <table style="border-collapse:collapse;width:100%;max-width:600px;">
+      <tr><td style="padding:8px;font-weight:bold;">Name:</td><td style="padding:8px;">{name}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;">Email:</td><td style="padding:8px;">{email}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;">Message:</td><td style="padding:8px;">{message}</td></tr>
+    </table>
+    """
+
+  msg = MessageSchema(
+    subject=f"Contact Form: {name}",
+    recipients=[settings.MAIL_FROM],
+    body=html,
+    subtype="html",
+  )
+
+  fm = FastMail(conf)
+  await fm.send_message(msg)

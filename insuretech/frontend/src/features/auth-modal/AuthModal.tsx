@@ -11,22 +11,25 @@ export type AuthModalTab = 'login' | 'register' | 'forgotPassword' | 'resetPassw
 interface AuthModalProps {
   initialTab?: AuthModalTab
   onClose: () => void
+  inline?: boolean
 }
 
-function AuthModal({ initialTab = 'login', onClose }: AuthModalProps) {
+function AuthModal({ initialTab = 'login', onClose, inline = false }: AuthModalProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const [activeTab, setActiveTab] = useState<AuthModalTab>(initialTab)
 
   // Sync activeTab with current pathname (so URL <-> tab stay in sync)
+  // Skip when rendered inline inside another page (e.g. HomePage modal)
   useEffect(() => {
+    if (inline) return
     let currentTab: AuthModalTab = 'login'
     if (location.pathname === '/register') currentTab = 'register'
     else if (location.pathname === '/forgot-password') currentTab = 'forgotPassword'
     else if (location.pathname === '/reset-password') currentTab = 'resetPassword'
 
     setActiveTab(currentTab)
-  }, [location.pathname])
+  }, [inline, location.pathname])
 
   // Lock background scroll while modal is open
   useEffect(() => {
@@ -45,6 +48,7 @@ function AuthModal({ initialTab = 'login', onClose }: AuthModalProps) {
   // Navigate to a tab
   function goToTab(tab: AuthModalTab) {
     setActiveTab(tab)
+    if (inline) return
     const path =
       tab === 'register' ? '/register' : tab === 'forgotPassword' ? '/forgot-password' : '/login'
 
@@ -52,19 +56,11 @@ function AuthModal({ initialTab = 'login', onClose }: AuthModalProps) {
     navigate(path, { state: location.state, replace: true })
   }
 
-  // Handle click outside the modal to close it
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      handleClose()
-    }
-  }
-
   return (
     <div
       aria-modal="true"
       className="auth-modal-overlay"
       role="dialog"
-      onClick={handleBackdropClick}
       style={activeTab === 'resetPassword' ? { alignItems: 'center' } : undefined}
     >
       <div className="auth-modal-shell animate-fadeIn">
