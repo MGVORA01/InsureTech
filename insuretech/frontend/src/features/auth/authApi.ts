@@ -135,11 +135,18 @@ export const authApi = {
       requestBody,
     )
 
-    const data = unwrapData(response)
+    const data = unwrapData<Record<string, any>>(response)
     if (data && typeof data === 'object' && 'access_token' in data) {
       setAccessToken(data.access_token)
     }
-    return data
+    // Map snake_case from backend to camelCase User type
+    const user: User = {
+      id: data.id,
+      fullName: data.full_name,
+      email: data.email,
+      role: data.role,
+    }
+    return { user }
   },
 
   async me(): Promise<CurrentUserResponse> {

@@ -4,14 +4,24 @@ from sqlalchemy.sql import select
 
 from app.core.config import settings
 from app.models import User, Role, PasswordResetToken
+from sqlalchemy.orm import selectinload
 
 
 async def get_user_by_email(db, email):
-  result = await db.execute(select(User).where(User.email == email))
+  result = await db.execute(
+    select(User)
+    .options(selectinload(User.role))
+    .where(User.email == email)
+  )
   return result.scalar_one_or_none()
 
 async def get_user_by_id(db, user_id):
-  result = await db.execute(select(User).where(User.id == user_id))
+  result = await db.execute(
+    select(User)
+    .options(selectinload(User.role))
+    .where(User.id == user_id)
+  )
+
   return result.scalar_one_or_none()
 
 async def get_role(db, role_name):
