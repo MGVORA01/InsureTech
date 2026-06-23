@@ -10,12 +10,22 @@ import AuthModal from './features/auth-modal/AuthModal'
 import DashboardPage from './pages/DashboardPage'
 import AdminRoute from './Routes/AdminRoute'
 import ProtectedRoute from './Routes/ProtectedRoute'
+import { useSessionCheck } from './hooks/useSessionCheck'
 
 function App() {
   const location = useLocation()
   const navigate = useNavigate()
   const state = (location.state as any) || {}
   const background = state.backgroundLocation
+  const { checking } = useSessionCheck()
+
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
 
   return (
     <>

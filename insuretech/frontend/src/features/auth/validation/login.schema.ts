@@ -9,4 +9,5 @@ export const loginSchema = z.object({
     .email(AUTH_VALIDATION.emailInvalid)
     .transform((value) => value.toLowerCase()),
   password: z.string().min(1, AUTH_VALIDATION.passwordRequired),
+  rememberMe: z.boolean().optional().default(false),
 })

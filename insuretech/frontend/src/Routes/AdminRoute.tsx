@@ -1,9 +1,16 @@
+import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.ts'
 
 function AdminRoute() {
-  const { user, isAuthenticated, status } = useAuth()
+  const { user, isAuthenticated, status, loadCurrentUser } = useAuth()
   const location = useLocation()
+
+  useEffect(() => {
+    if (status === 'idle' && !isAuthenticated) {
+      loadCurrentUser()
+    }
+  }, [status, isAuthenticated, loadCurrentUser])
 
   if (status === 'loading' || status === 'idle') {
     return (
