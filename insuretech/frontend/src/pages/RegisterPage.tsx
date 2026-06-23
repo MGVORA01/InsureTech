@@ -4,13 +4,19 @@ import { useAuth } from '../hooks/useAuth'
 import RegisterForm from '../features/auth/RegisterForm'
 
 function RegisterPage() {
-  const { isAuthenticated, status, loadCurrentUser, user } = useAuth()
+  const { isAuthenticated, status, loadCurrentUser, user, error, setError } = useAuth()
 
   useEffect(() => {
     if (status === 'idle' && !isAuthenticated) {
       loadCurrentUser()
     }
   }, [status, isAuthenticated, loadCurrentUser])
+
+  useEffect(() => {
+    if (status === 'unauthenticated' && error) {
+      setError(null)
+    }
+  }, [status, error, setError])
 
   if (status === 'loading' || status === 'idle') {
     return (

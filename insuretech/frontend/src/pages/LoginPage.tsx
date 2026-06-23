@@ -8,7 +8,7 @@ interface LocationState {
 }
 
 function LoginPage() {
-  const { isAuthenticated, status, loadCurrentUser, user } = useAuth()
+  const { isAuthenticated, status, loadCurrentUser, user, error, setError } = useAuth()
   const location = useLocation()
 
   useEffect(() => {
@@ -16,6 +16,12 @@ function LoginPage() {
       loadCurrentUser()
     }
   }, [status, isAuthenticated, loadCurrentUser])
+
+  useEffect(() => {
+    if (status === 'unauthenticated' && error) {
+      setError(null)
+    }
+  }, [status, error, setError])
 
   if (status === 'loading' || status === 'idle') {
     return (
