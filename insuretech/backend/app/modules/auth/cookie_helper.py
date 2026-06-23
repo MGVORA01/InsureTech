@@ -2,7 +2,7 @@ from fastapi import Request, Response
 from app.core.config import settings
 
 
-def set_auth_cookies(response: Response,access_token: str,refresh_token: str):
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str, remember_me: bool = True):
 
     response.set_cookie(
         key="access_token",
@@ -10,7 +10,7 @@ def set_auth_cookies(response: Response,access_token: str,refresh_token: str):
         httponly=True,
         secure=False,
         samesite="lax",
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 if remember_me else None
     )
 
     response.set_cookie(
@@ -20,7 +20,7 @@ def set_auth_cookies(response: Response,access_token: str,refresh_token: str):
         secure=False,
         samesite="lax",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS
-                 * 24 * 60 * 60
+                 * 24 * 60 * 60 if remember_me else None
     )
 
 

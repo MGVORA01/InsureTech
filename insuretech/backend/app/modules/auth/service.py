@@ -72,7 +72,8 @@ class AuthService:
     set_auth_cookies(
       response,
       access_token,
-      refresh_token
+      refresh_token,
+      remember_me=data.remember_me
     )
 
     return APIResponse.success_response(
@@ -231,7 +232,23 @@ class AuthService:
 
     return APIResponse.success_response(
       message="Token refreshed",
-      data=None
+      data={
+        "id": str(user.id),
+        "full_name": user.full_name,
+        "email": user.email,
+        "role": user.role.name
+      }
+    )
+
+  async def get_current_user_me_service(self, current_user):
+    return APIResponse.success_response(
+      message="User fetched successfully",
+      data={
+        "id": str(current_user.id),
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+        "role": current_user.role.name
+      }
     )
 
   async def logout_service(self,response):

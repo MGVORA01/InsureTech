@@ -57,6 +57,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
   email: EmailStr
   password: str
+  remember_me: bool = False
 
 class ChangePasswordRequest(BaseModel):
   current_password: str

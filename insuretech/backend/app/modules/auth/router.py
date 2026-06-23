@@ -45,6 +45,10 @@ async def reset_password(data: ResetPasswordRequest, db: Annotated[AsyncSession,
 async def refresh_token(request: Request,response: Response,db: Annotated[AsyncSession, Depends(get_db)]):
     return await Service.refresh_token_service(request,response,db)
 
+@router.get("/me", status_code=status.HTTP_200_OK)
+async def get_current_user_me(current_user: Annotated[User, Depends(get_current_user)]):
+    return await Service.get_current_user_me_service(current_user)
+
 @router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(response: Response):
     return await Service.logout_service(response)
