@@ -11,6 +11,7 @@ import type {
   PasswordResponse,
   RegisterFormData,
   ResetPasswordRequest,
+  User,
 } from './auth.types'
 // In-memory token storage to work with backend Bearer auth in current phase
 let accessToken: string | null = null
@@ -51,7 +52,8 @@ authHttp.interceptors.response.use(
       error.response?.status === 401 &&
       !originalRequest._retry &&
       originalRequest.url !== AUTH_ENDPOINTS.login &&
-      originalRequest.url !== AUTH_ENDPOINTS.register
+      originalRequest.url !== AUTH_ENDPOINTS.register &&
+      originalRequest.url !== AUTH_ENDPOINTS.refresh
     ) {
       originalRequest._retry = true
       // TODO: Enable token refresh logic below when POST /auth/refresh backend API is ready.
@@ -108,6 +110,29 @@ export function getAuthErrorMessage(error: unknown): string {
   return AUTH_MESSAGES.genericError
 }
 
+const AUTH_MARKER_KEY = 'ins_auth_session'
+
+function setSessionMarker(rememberMe: boolean) {
+  clearSessionMarkers()
+  if (rememberMe) {
+    localStorage.setItem(AUTH_MARKER_KEY, '1')
+  } else {
+    sessionStorage.setItem(AUTH_MARKER_KEY, '1')
+  }
+}
+
+export function clearSessionMarkers() {
+  localStorage.removeItem(AUTH_MARKER_KEY)
+  sessionStorage.removeItem(AUTH_MARKER_KEY)
+}
+
+export function hasSessionMarker(): boolean {
+  return (
+    localStorage.getItem(AUTH_MARKER_KEY) === '1' ||
+    sessionStorage.getItem(AUTH_MARKER_KEY) === '1'
+  )
+}
+
 export const authApi = {
   async register(payload: RegisterFormData): Promise<AuthResponse> {
     const requestBody = {
@@ -129,25 +154,41 @@ export const authApi = {
     const requestBody = {
       email: normalizeEmail(payload.email),
       password: payload.password,
+      remember_me: payload.rememberMe ?? false,
     }
-    const response = await authHttp.post<any>(
+    const response = await authHttp.post<ApiEnvelope<Record<string, unknown>>>(
       AUTH_ENDPOINTS.login,
       requestBody,
     )
 
-    const data = unwrapData(response)
+    const data = unwrapData<Record<string, unknown>>(response)
     if (data && typeof data === 'object' && 'access_token' in data) {
-      setAccessToken(data.access_token)
+      setAccessToken(data.access_token as string)
     }
-    return data
+    // Map snake_case from backend to camelCase User type
+    const user: User = {
+      id: data.id as string,
+      fullName: data.full_name as string,
+      email: data.email as string,
+      role: data.role as string,
+    }
+    setSessionMarker(payload.rememberMe ?? false)
+    return { user }
   },
 
   async me(): Promise<CurrentUserResponse> {
-    const response = await authHttp.get<
-      ApiEnvelope<CurrentUserResponse> | CurrentUserResponse
-    >(AUTH_ENDPOINTS.me)
+    const response = await authHttp.get<ApiEnvelope<Record<string, unknown>>>(
+      AUTH_ENDPOINTS.me
+    )
 
-    return unwrapData(response)
+    const data = unwrapData<Record<string, unknown>>(response)
+    const user: User = {
+      id: data.id as string,
+      fullName: data.full_name as string,
+      email: data.email as string,
+      role: data.role as string,
+    }
+    return { user }
   },
 
   // async forgotPassword(payload: ForgotPasswordRequest): Promise<PasswordResponse> {
@@ -187,11 +228,19 @@ export const authApi = {
     return response.data
   },
 
-  async refreshToken(): Promise<PasswordResponse> {
-    const response = await authHttp.post<ApiEnvelope<PasswordResponse> | PasswordResponse>(
+  async refreshToken(): Promise<CurrentUserResponse> {
+    const response = await authHttp.post<ApiEnvelope<Record<string, unknown>>>(
       AUTH_ENDPOINTS.refresh,
     )
-    return unwrapData(response)
+
+    const data = unwrapData<Record<string, unknown>>(response)
+    const user: User = {
+      id: data.id as string,
+      fullName: data.full_name as string,
+      email: data.email as string,
+      role: data.role as string,
+    }
+    return { user }
   },
 
   async logout(): Promise<PasswordResponse> {
@@ -199,6 +248,7 @@ export const authApi = {
       AUTH_ENDPOINTS.logout,
     )
     setAccessToken(null)
+    clearSessionMarkers()
     return unwrapData(response)
   },
 }

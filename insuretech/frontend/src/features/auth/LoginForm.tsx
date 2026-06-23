@@ -34,8 +34,12 @@ function LoginForm({ onForgotPassword, onRegister }: LoginFormProps) {
 
     const onSubmit = async (data: LoginFormData) => {
         try {
-            await login(data)
-            navigate('/dashboard', { replace: true })
+            const result = await login(data)
+            if (result?.user?.role === 'ADMIN') {
+                navigate('/admin/dashboard', { replace: true })
+            } else {
+                navigate('/dashboard', { replace: true })
+            }
         } catch {
             // Auth errors are stored in Redux by the async thunks.
         }

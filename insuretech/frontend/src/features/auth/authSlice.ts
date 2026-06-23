@@ -56,13 +56,11 @@ export const fetchCurrentUser = createAsyncThunk<
 })
 
 export const refreshToken = createAsyncThunk<
-  PasswordResponse,
+  CurrentUserResponse,
   void,
   { rejectValue: string }
 >('auth/refreshToken', async (_, { rejectWithValue }) => {
   try {
-    // TODO: Backend endpoint is pending. authApi.refreshToken currently returns a
-    // typed no-op response and does not execute a network request.
     return await authApi.refreshToken()
   } catch (error) {
     return rejectWithValue(getAuthErrorMessage(error))
@@ -167,6 +165,13 @@ const authSlice = createSlice({
         state.isAuthenticated = false
         state.error = action.payload ?? null
         state.status = 'unauthenticated'
+      })
+      .addCase(refreshToken.fulfilled, (state, action) => {
+        state.loading = false
+        state.user = action.payload.user
+        state.isAuthenticated = true
+        state.status = 'authenticated'
+        state.error = null
       })
       .addCase(refreshToken.rejected, (state, action) => {
         state.error = action.payload ?? null
