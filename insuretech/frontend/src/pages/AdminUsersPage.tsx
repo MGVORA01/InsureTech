@@ -39,8 +39,8 @@ function AdminUsersPage() {
     setLoading(true)
     try {
       const params: Record<string, string | number> = { page, limit }
-      if (filterActive === 'true') params.is_active = true
-      else if (filterActive === 'false') params.is_active = false
+      if (filterActive === 'true') params.is_active = true as any
+      else if (filterActive === 'false') params.is_active = false as any
       const res = await baseApi.get('/admin/users', { params })
       const body = res.data
       setData(body?.data ?? body)
