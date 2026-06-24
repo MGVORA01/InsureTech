@@ -44,7 +44,8 @@ function ChatPopup({ onClose }: ChatPopupProps) {
     setLoading(true)
 
     try {
-      const res = await sendChatMessage(q, sessionRef.current)
+      const history = messages.slice(1).map(m => ({ role: m.role, content: m.content }))
+      const res = await sendChatMessage(q, sessionRef.current, history)
       sessionRef.current = res.session_id
 
       const assistantMsg: ChatMessage = {

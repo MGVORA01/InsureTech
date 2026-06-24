@@ -44,7 +44,8 @@ function ChatPage() {
     setError(null)
 
     try {
-      const response = await sendChatMessage(trimmed, sessionId)
+      const history = messages.slice(1).map(m => ({ role: m.role, content: m.content }))
+      const response = await sendChatMessage(trimmed, sessionId, history)
       setMessages((current) => [
         ...current,
         {

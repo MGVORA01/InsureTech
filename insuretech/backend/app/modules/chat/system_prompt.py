@@ -27,6 +27,4 @@ HOW TO WRITE YOUR ANSWER:
 Context:
 {context}
 
-Question: {question}
-
 Answer:"""

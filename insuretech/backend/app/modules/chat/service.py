@@ -29,10 +29,10 @@ def _embed_text(text: str) -> list[float]:
     return _get_embed_model().encode(text).tolist()
 
 
-def _call_groq(prompt: str) -> str:
+def _call_groq(messages: list[dict]) -> str:
     response = client.chat.completions.create(
         model=settings.GROQ_MODEL,
-        messages=[{"role": "system", "content": prompt}],
+        messages=messages,
         temperature=settings.GROQ_TEMPERATURE,
     )
     return response.choices[0].message.content
@@ -54,8 +54,9 @@ async def chat(data: ChatRequest, db: AsyncSession) -> APIResponse:
         )
 
     context = "\n\n".join(c[0] for c in chunks)
-    prompt = SYSTEM_PROMPT.format(context=context, question=data.question)
-    answer = _call_groq(prompt)
+    system_msg = {"role": "system", "content": SYSTEM_PROMPT.format(context=context)}
+    messages = [system_msg, *data.history, {"role": "user", "content": data.question}]
+    answer = _call_groq(messages)
     sources = [f"Page {page}: {text[:150]}..." for text, page, _ in chunks]
 
     return APIResponse.success_response(

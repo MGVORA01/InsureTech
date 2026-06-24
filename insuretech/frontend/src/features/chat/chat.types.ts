@@ -7,6 +7,7 @@ export interface ChatMessage {
 export interface ChatRequest {
   question: string
   session_id: string | null
+  history: { role: string; content: string }[]
 }
 
 export interface ChatResponse {
