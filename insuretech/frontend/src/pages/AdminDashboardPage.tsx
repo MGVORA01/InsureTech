@@ -9,6 +9,12 @@ interface DashboardStats {
   inactive_users: number
 }
 
+interface UploadResult {
+  document_id: string
+  filename: string
+  chunks_count: number
+}
+
 // ---- tiny inline icon set (no extra dependency required) ---------------
 
 function IconUsers(props: React.SVGProps<SVGSVGElement>) {
@@ -109,6 +115,10 @@ function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
   const [statsError, setStatsError] = useState(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) {
@@ -136,6 +146,28 @@ function AdminDashboardPage() {
     fetchStats()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const handleUpload = async () => {
+    if (!uploadFile) return
+    setUploading(true)
+    setUploadResult(null)
+    setUploadError(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      const res = await baseApi.post('/admin/upload/file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const body = res.data
+      setUploadResult(body?.data ?? body)
+      setUploadFile(null)
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Upload failed'
+      setUploadError(msg)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleLogout = async () => {
     try {
@@ -286,6 +318,81 @@ function AdminDashboardPage() {
           </div>
           <IconArrowRight className="h-5 w-5 text-slate-300 transition group-hover:text-primary" />
         </Link>
+
+        {/* PDF Upload */}
+        <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Upload Knowledge Base PDF</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Upload a PDF document to make it available for the AI chat assistant.
+          </p>
+
+          <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label
+                htmlFor="pdf-upload"
+                className="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500 transition hover:border-primary/40 hover:bg-primary/5"
+              >
+                <svg className="h-6 w-6 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="12" y1="18" x2="12" y2="12" />
+                  <line x1="9" y1="15" x2="15" y2="15" />
+                </svg>
+                <span className="truncate">
+                  {uploadFile ? uploadFile.name : 'Choose a PDF file...'}
+                </span>
+              </label>
+              <input
+                id="pdf-upload"
+                type="file"
+                accept=".pdf"
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null
+                  setUploadFile(file)
+                  setUploadResult(null)
+                  setUploadError(null)
+                }}
+              />
+            </div>
+
+            <button
+              type="button"
+              disabled={!uploadFile || uploading}
+              onClick={handleUpload}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {uploading ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Uploading...
+                </>
+              ) : (
+                'Upload PDF'
+              )}
+            </button>
+          </div>
+
+          {uploadResult && (
+            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              <p className="font-semibold">
+                Uploaded successfully: {uploadResult.filename}
+              </p>
+              <p className="mt-0.5 text-emerald-600">
+                {uploadResult.chunks_count} chunks indexed · Document ID: {uploadResult.document_id.slice(0, 8)}...
+              </p>
+            </div>
+          )}
+
+          {uploadError && (
+            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {uploadError}
+            </div>
+          )}
+        </div>
 
         {/* Profile */}
         <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
