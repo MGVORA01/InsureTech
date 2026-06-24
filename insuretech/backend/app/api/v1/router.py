@@ -11,5 +11,5 @@ API_router = APIRouter()
 API_router.include_router(admin_router)
 API_router.include_router(auth_router)
 API_router.include_router(contact_router)
-API_router.include_router(chat_router)
+API_router.include_router(rag_router)
 
