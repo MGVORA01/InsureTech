@@ -28,3 +28,10 @@ class UserListResponse(BaseModel):
 
 class UpdateUserStatusRequest(BaseModel):
     is_active: bool
+
+
+class UploadRequest(BaseModel):
+    file_path: str
+
+
+

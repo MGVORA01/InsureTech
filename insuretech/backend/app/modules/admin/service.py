@@ -1,9 +1,17 @@
+import os
 from uuid import UUID
 
-from app.core.exceptions import NotFoundException
+from fastapi import UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import BadRequestException, NotFoundException
 from app.modules.admin import repository as Repository
 from app.modules.admin.schemas import UserListItem
+from app.modules.chat.schemas import UploadResponse
+from app.modules.chat.service import process_pdf_upload
 from app.shared.response import APIResponse
+
+PDFS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat", "pdfs")
 
 
 async def get_dashboard_stats_service(db):
@@ -39,6 +47,24 @@ async def get_all_users_service(db, page: int, limit: int, is_active: bool | Non
             "limit": result["limit"],
         },
     )
+
+
+async def upload_pdf_service(file_path: str, db: AsyncSession) -> APIResponse:
+    return await process_pdf_upload(file_path, db)
+
+
+async def upload_pdf_file_service(file: UploadFile, db: AsyncSession) -> APIResponse:
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise BadRequestException("Only PDF files are allowed")
+
+    os.makedirs(PDFS_DIR, exist_ok=True)
+    file_path = os.path.join(PDFS_DIR, file.filename)
+
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    return await process_pdf_upload(file_path, db)
 
 
 async def update_user_status_service(db, user_id: str, is_active: bool):
