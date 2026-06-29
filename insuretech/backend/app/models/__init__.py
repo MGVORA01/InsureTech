@@ -21,6 +21,7 @@ from .reports import Report
 from .password_reset import PasswordResetToken
 from .policy_documents import PolicyDocument
 from .document_chunks import DocumentChunk
+from .customer_support_chunks import CustomerSupportChunk
 
 __all__ = [
 	"Base",
@@ -44,5 +45,6 @@ __all__ = [
     "Report",
     "PasswordResetToken",
     "PolicyDocument",
-    "DocumentChunk"
+    "DocumentChunk",
+    "CustomerSupportChunk"
 ]

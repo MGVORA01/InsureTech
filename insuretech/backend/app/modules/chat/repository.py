@@ -1,12 +1,12 @@
 from sqlalchemy import select, delete
 
-from app.models import DocumentChunk, Policy, PolicyDocument, Insurer, InsuranceCategory
+from app.models import CustomerSupportChunk, Policy, PolicyDocument, Insurer, InsuranceCategory
 
 
 async def search_similar_chunks(db, query_embedding: list[float], limit: int = 5):
-    distance = DocumentChunk.embedding.cosine_distance(query_embedding)
+    distance = CustomerSupportChunk.embedding.cosine_distance(query_embedding)
     stmt = (
-        select(DocumentChunk, distance.label("distance"))
+        select(CustomerSupportChunk, distance.label("distance"))
         .order_by(distance)
         .limit(limit)
     )
@@ -20,7 +20,10 @@ async def search_similar_chunks(db, query_embedding: list[float], limit: int = 5
 
 async def get_or_create_knowledge_document(db, filename: str):
     result = await db.execute(
-        select(PolicyDocument).where(PolicyDocument.doc_type == "knowledge_base")
+        select(PolicyDocument).where(
+            PolicyDocument.doc_type == "knowledge_base",
+            PolicyDocument.file_name == filename,
+        )
     )
     existing = result.scalar_one_or_none()
     if existing:
@@ -74,14 +77,14 @@ async def get_or_create_knowledge_document(db, filename: str):
 
 
 async def delete_existing_chunks(db, document_id):
-    stmt = delete(DocumentChunk).where(DocumentChunk.document_id == document_id)
+    stmt = delete(CustomerSupportChunk).where(CustomerSupportChunk.document_id == document_id)
     await db.execute(stmt)
     await db.commit()
 
 
 async def store_chunks(db, chunks_with_embeddings: list[dict], policy_id, document_id):
     db.add_all([
-        DocumentChunk(
+        CustomerSupportChunk(
             policy_id=policy_id,
             document_id=document_id,
             chunk_index=chunk["chunk_index"],
