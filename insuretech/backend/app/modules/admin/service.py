@@ -99,6 +99,13 @@ async def delete_knowledge_document_service(db, document_id: str):
     doc = await Repository.delete_knowledge_document(db, UUID(document_id))
     if not doc:
         raise NotFoundException("Document not found")
+
+    file_path = os.path.join(PDFS_DIR, doc.file_name)
+    try:
+        os.remove(file_path)
+    except OSError:
+        pass
+
     return APIResponse.success_response(
         message=f"'{doc.file_name}' deleted successfully",
         data=None,
