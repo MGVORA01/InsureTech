@@ -1,285 +1,155 @@
-# app/ai/policy_cleaner.py
-
-from pathlib import Path
 import json
 import re
-from collections import Counter
+from pathlib import Path
+from html import unescape
 
-
-INPUT_DIR = Path("parsed_output")
-OUTPUT_DIR = Path("cleaned_output")
-
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-
-# =====================================================
-# Patterns
-# =====================================================
-
-HEADER_PATTERNS = [
-    r"ICICI\s*Lombard",
-    r"HDFC\s*ERGO",
-    r"TATA\s*AIG",
-    r"Nibhaye\s*Vaade",
-    r"Policy\s*Wordings",
-]
+INPUT_DIR = Path(__file__).resolve().parents[2] / "parsed_output"
+OUTPUT_DIR = Path(__file__).resolve().parents[2] / "cleaned_output"
 
 FOOTER_PATTERNS = [
-    r"Free\s*No[:\s]",
-    r"Alternate\s*No[:\s]",
-    r"E-mail[:\s]",
-    r"Email[:\s]",
-    r"Website[:\s]",
-    r"www\.",
-    r"IRDA[I]?",
-    r"CIN[:\s]",
     r"Registered\s*Office",
+    r"Corporate\s*Office",
     r"Mailing\s*Address",
     r"Customer\s*Service\s*Address",
     r"Toll\s*Free",
+    r"^Website\s*:\s*",
+    r"^Email\s*:\s*",
+    r"^Telephone\s*:",
+    r"^Facsimile\s*:",
+    r"^Fax\s*:",
+    r"^Tel\s*:",
+    r"^Phone\s*:",
+    r"IRDA[I]?\s*(Reg|Registration)",
+
 ]
 
-ADMIN_PAGE_KEYWORDS = [
+ADMIN_KEYWORDS = [
     "insurance ombudsman",
     "grievance redressal",
-    "grievance",
+    "office of the insurance ombudsman",
+    "office of the governing body of insurance council",
     "bimalokpal",
-    "customer support",
-    "branch office",
-    "branch offices",
-    "governing body of insurance council",
 ]
 
-REMOVE_LINE_PATTERNS = [
-    r"^UIN[:\s].*$",
-    r"^IRDA[I]?\s.*$",
-    r"^CIN[:\s].*$",
-    r"^Fax[:\s].*$",
-    r"^Tel[:\s].*$",
-    r"^Phone[:\s].*$",
-    r"^Toll[- ]?Free[:\s].*$",
+SECTION_TRANSITIONS = [
+    r"^#\s+",
+    r"^##\s+",
 ]
 
-# =====================================================
-# Utilities
-# =====================================================
 
-
-def normalize_whitespace(text: str) -> str:
-    """
-    Preserve tables and section structure.
-    """
-    text = text.replace("\r", "")
-
-    # remove trailing spaces
-    text = re.sub(r"[ \t]+$", "", text, flags=re.MULTILINE)
-
-    # collapse excessive blank lines
-    text = re.sub(r"\n{3,}", "\n\n", text)
-
-    return text.strip()
-
-
-def remove_noise_lines(text: str):
-    cleaned_lines = []
-
-    for line in text.splitlines():
-
-        stripped = line.strip()
-
-        if not stripped:
-            cleaned_lines.append("")
-            continue
-
-        remove = False
-
-        for pattern in REMOVE_LINE_PATTERNS:
-            if re.search(pattern, stripped, re.IGNORECASE):
-                remove = True
-                break
-
-        if not remove:
-            cleaned_lines.append(line)
-
-    return "\n".join(cleaned_lines)
-
-
-def remove_footer_blocks(text: str):
-    lines = []
-
-    for line in text.splitlines():
-
-        lower = line.lower()
-
-        if any(
-            re.search(pattern, line, re.IGNORECASE)
-            for pattern in FOOTER_PATTERNS
-        ):
-            continue
-
-        lines.append(line)
-
-    return "\n".join(lines)
-
-
-def remove_header_lines(text: str):
-    lines = []
-
-    for line in text.splitlines():
-
-        remove = False
-
-        for pattern in HEADER_PATTERNS:
-            if re.search(pattern, line, re.IGNORECASE):
-                remove = True
-                break
-
-        if not remove:
-            lines.append(line)
-
-    return "\n".join(lines)
-
-
-def is_admin_page(text: str) -> bool:
-    """
-    Remove only pages that are heavily dominated
-    by grievance / ombudsman content.
-    """
-
-    lower = text.lower()
-
-    hits = 0
-
-    for keyword in ADMIN_PAGE_KEYWORDS:
-        if keyword in lower:
-            hits += 1
-
-    return hits >= 3
-
-
-def clean_page(text: str):
-    """
-    Preserve tables.
-    Preserve markdown headings.
-    Remove noise.
-    """
-
-    text = remove_header_lines(text)
-    text = remove_footer_blocks(text)
-    text = remove_noise_lines(text)
-    text = normalize_whitespace(text)
-
+def fix_html_entities(text: str) -> str:
+    text = unescape(text)
+    text = re.sub(r"</h\d+>", "", text)
     return text
 
 
-# =====================================================
-# Main Processing
-# =====================================================
+def is_footer_line(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return False
+    if re.match(r"^\d+$", stripped) and len(stripped) <= 3:
+        return True
+    for pattern in FOOTER_PATTERNS:
+        if re.search(pattern, stripped, re.IGNORECASE):
+            return True
+    if re.match(r"^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(Limited|Ltd|Insurance)", stripped):
+        if any(kw in stripped.lower() for kw in ["office", "address", "branch"]):
+            return True
+    return False
+
+
+def is_admin_page(text: str) -> bool:
+    lower = text.lower()
+    hits = sum(1 for kw in ADMIN_KEYWORDS if kw in lower)
+    return hits >= 3
+
+
+def clean_page_text(text: str) -> str:
+    text = fix_html_entities(text)
+
+    lines = text.splitlines()
+    cleaned_lines = []
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped:
+            cleaned_lines.append("")
+            continue
+        if is_footer_line(stripped):
+            continue
+        cleaned_lines.append(stripped)
+
+    text = "\n".join(cleaned_lines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = text.strip()
+    return text
+
 
 def process_file(json_path: Path):
-
     with open(json_path, "r", encoding="utf-8") as f:
         doc = json.load(f)
 
-    cleaned_pages = []
+    if not doc.get("pages"):
+        print(f"  ✗ Skipped (no pages): {json_path.name}")
+        return
 
+    cleaned_pages = []
     removed_pages = []
 
-    stats = {
-        "pages_removed": 0,
-        "pages_kept": 0,
-    }
-
     for page in doc["pages"]:
-
         page_number = page["page_number"]
-        content = page["content"]
+        content = page.get("content", "")
 
         if is_admin_page(content):
             removed_pages.append(page_number)
-            stats["pages_removed"] += 1
             continue
 
-        cleaned_content = clean_page(content)
+        cleaned_content = clean_page_text(content)
 
         if not cleaned_content.strip():
             removed_pages.append(page_number)
-            stats["pages_removed"] += 1
             continue
 
-        cleaned_pages.append(
-            {
-                "page_number": page_number,
-                "content": cleaned_content,
-            }
-        )
+        cleaned_pages.append({
+            "page_number": page_number,
+            "content": cleaned_content,
+        })
 
-        stats["pages_kept"] += 1
-
-    cleaned_text = "\n\n".join(
-        page["content"]
-        for page in cleaned_pages
-    )
+    cleaned_text = "\n\n".join(p["content"] for p in cleaned_pages)
 
     output = {
-        "source_file": doc["source_file"],
-        "document_id": doc["document_id"],
-        "insurance_category": doc["insurance_category"],
-
+        "source_file": doc.get("source_file", ""),
+        "document_id": doc.get("document_id", ""),
+        "insurance_category": doc.get("insurance_category", ""),
         "page_count": len(cleaned_pages),
-
         "cleaned_text_length": len(cleaned_text),
-
         "removed_pages": removed_pages,
-
-        "cleaning_stats": stats,
-
+        "raw_text_length": doc.get("raw_text_length", len(doc.get("raw_text", ""))),
         "cleaned_text": cleaned_text,
-
         "pages": cleaned_pages,
     }
 
-    output_file = (
-        OUTPUT_DIR /
-        f"{doc['document_id']}.json"
-    )
+    rel_path = json_path.relative_to(INPUT_DIR)
+    out_dir = OUTPUT_DIR / rel_path.parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output_file = out_dir / f"{doc['document_id']}.json"
 
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(
-            output,
-            f,
-            ensure_ascii=False,
-            indent=2
-        )
+        json.dump(output, f, indent=2, ensure_ascii=False)
 
-    print(
-        f"✓ Cleaned: {doc['document_id']} "
-        f"({stats['pages_kept']} pages)"
-    )
-    print("Original length:", len(doc["raw_text"])),
-    print("Cleaned length:", len(cleaned_text))
+    print(f"  ✓ {doc['document_id']} ({len(cleaned_pages)} pages, {len(removed_pages)} removed)")
 
 
 def main():
-
-    files = list(INPUT_DIR.rglob("*.json"))
-#     files = [
-#     Path(
-#         "parsed_output/Industry_All_risk/pw_msme_pdf.json"
-#     )
-# ]
-    print(f"\nFound {len(files)} files\n")
+    files = sorted(INPUT_DIR.glob("*/*.json"))
+    print(f"\nFound {len(files)} parsed files\n")
 
     for file in files:
         try:
             process_file(file)
         except Exception as e:
-            print(
-                f"✗ Failed: {file.name}"
-            )
-            print(e)
+            print(f"  ✗ Failed: {file.name} — {e}")
 
-    print("\nCleaning complete.")
+    print("\nCleaning complete.\n")
 
 
 if __name__ == "__main__":
