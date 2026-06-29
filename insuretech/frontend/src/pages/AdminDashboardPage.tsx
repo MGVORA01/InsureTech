@@ -15,6 +15,14 @@ interface UploadResult {
   chunks_count: number
 }
 
+interface KnowledgeDocument {
+  id: string
+  file_name: string
+  file_size: number | null
+  chunks_count: number
+  created_at: string
+}
+
 // ---- tiny inline icon set (no extra dependency required) ---------------
 
 function IconUsers(props: React.SVGProps<SVGSVGElement>) {
@@ -119,6 +127,10 @@ function AdminDashboardPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [documents, setDocuments] = useState<KnowledgeDocument[]>([])
+  const [documentsLoading, setDocumentsLoading] = useState(true)
+  const [deleteConfirm, setDeleteConfirm] = useState<KnowledgeDocument | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!user) {
@@ -142,8 +154,36 @@ function AdminDashboardPage() {
     }
   }
 
+  const fetchDocuments = async () => {
+    setDocumentsLoading(true)
+    try {
+      const res = await baseApi.get('/admin/documents')
+      const body = res.data
+      setDocuments(body?.data ?? [])
+    } catch {
+      setDocuments([])
+    } finally {
+      setDocumentsLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return
+    setDeleting(true)
+    try {
+      await baseApi.delete(`/admin/documents/${deleteConfirm.id}`)
+      setDeleteConfirm(null)
+      fetchDocuments()
+    } catch {
+      setDeleteConfirm(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   useEffect(() => {
     fetchStats()
+    fetchDocuments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -161,6 +201,7 @@ function AdminDashboardPage() {
       const body = res.data
       setUploadResult(body?.data ?? body)
       setUploadFile(null)
+      fetchDocuments()
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Upload failed'
       setUploadError(msg)
@@ -393,6 +434,100 @@ function AdminDashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Uploaded Documents */}
+        <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Uploaded Knowledge Base Documents</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            All PDFs that have been uploaded for the AI chat assistant.
+          </p>
+
+          {documentsLoading ? (
+            <div className="mt-4 space-y-2">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100" />
+              ))}
+            </div>
+          ) : documents.length === 0 ? (
+            <p className="mt-6 text-center text-sm text-slate-400">
+              No documents uploaded yet.
+            </p>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    <th className="py-3 pr-4">Filename</th>
+                    <th className="py-3 pr-4">Chunks</th>
+                    <th className="py-3 pr-4">Size</th>
+                    <th className="py-3 pr-4">Uploaded</th>
+                    <th className="py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {documents.map((doc) => (
+                    <tr key={doc.id} className="text-slate-700">
+                      <td className="py-3 pr-4 font-medium text-slate-900">{doc.file_name}</td>
+                      <td className="py-3 pr-4 text-slate-500">{doc.chunks_count}</td>
+                      <td className="py-3 pr-4 text-slate-500">
+                        {doc.file_size != null
+                          ? `${(doc.file_size / 1024).toFixed(1)} KB`
+                          : '—'}
+                      </td>
+                      <td className="py-3 pr-4 text-slate-500">
+                        {new Date(doc.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirm(doc)}
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                        >
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+              <h3 className="text-lg font-semibold text-slate-900">Delete Document</h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Are you sure you want to delete <strong>{deleteConfirm.file_name}</strong>?
+                This will remove all its chunks and cannot be undone.
+              </p>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm(null)}
+                  disabled={deleting}
+                  className="rounded-md px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Profile */}
         <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">

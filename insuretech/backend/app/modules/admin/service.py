@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.modules.admin import repository as Repository
-from app.modules.admin.schemas import UserListItem
+from app.modules.admin.schemas import KnowledgeDocumentItem, UserListItem
 from app.modules.chat.schemas import UploadResponse
 from app.modules.chat.service import process_pdf_upload
 from app.shared.response import APIResponse
@@ -74,4 +74,32 @@ async def update_user_status_service(db, user_id: str, is_active: bool):
     return APIResponse.success_response(
         message="User status updated successfully",
         data=_user_to_list_item(user),
+    )
+
+
+async def list_knowledge_documents_service(db):
+    rows = await Repository.get_knowledge_documents(db)
+    documents = [
+        KnowledgeDocumentItem(
+            id=str(row.id),
+            file_name=row.file_name,
+            file_size=row.file_size,
+            chunks_count=row.chunks_count,
+            created_at=row.created_at.isoformat() if row.created_at else "",
+        )
+        for row in rows
+    ]
+    return APIResponse.success_response(
+        message="Documents fetched successfully",
+        data=documents,
+    )
+
+
+async def delete_knowledge_document_service(db, document_id: str):
+    doc = await Repository.delete_knowledge_document(db, UUID(document_id))
+    if not doc:
+        raise NotFoundException("Document not found")
+    return APIResponse.success_response(
+        message=f"'{doc.file_name}' deleted successfully",
+        data=None,
     )

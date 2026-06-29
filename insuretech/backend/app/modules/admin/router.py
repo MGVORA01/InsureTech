@@ -7,8 +7,10 @@ from app.core.database import get_db
 from app.models import User
 from app.modules.admin.schemas import UpdateUserStatusRequest, UploadRequest
 from app.modules.admin.service import (
+    delete_knowledge_document_service,
     get_all_users_service,
     get_dashboard_stats_service,
+    list_knowledge_documents_service,
     update_user_status_service,
     upload_pdf_file_service,
     upload_pdf_service,
@@ -39,6 +41,23 @@ async def admin_get_users(
     db: AsyncSession = Depends(get_db),
 ):
     return await get_all_users_service(db, page, limit, is_active)
+
+
+@router.get("/documents")
+async def admin_list_documents(
+    current_user: User = Depends(role_required("ADMIN")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await list_knowledge_documents_service(db)
+
+
+@router.delete("/documents/{document_id}")
+async def admin_delete_document(
+    document_id: str,
+    current_user: User = Depends(role_required("ADMIN")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await delete_knowledge_document_service(db, document_id)
 
 
 @router.patch("/users/{user_id}/status")
