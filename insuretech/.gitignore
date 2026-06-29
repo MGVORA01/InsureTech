@@ -25,4 +25,7 @@ build/
 
 parsed_output/
 cleaned_output/
+section_output/
+metadata_output/
+chunk_output/
 data/
