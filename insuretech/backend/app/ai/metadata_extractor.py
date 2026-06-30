@@ -3,51 +3,18 @@ import re
 from pathlib import Path
 from collections import Counter
 
+from app.ai.insurer_normalizer import CANONICAL_MAP, normalize_insurer_name as canonicalize_insurer
+
 CLEANED_DIR = Path(__file__).resolve().parents[2] / "cleaned_output"
 METADATA_DIR = Path(__file__).resolve().parents[2] / "metadata_output"
 
-KNOWN_INSURER_NAMES = [
-    "SBI General Insurance Company Limited",
-    "ICICI Lombard General Insurance Company Limited",
-    "ICICI Lombard",
-    "HDFC ERGO General Insurance Company Limited",
-    "RAHEJA QBE GENERAL INSURANCE COMPANY LIMITED",
-    "Raheja QBE General Insurance Company Limited",
-    "THE NEW INDIA ASSURANCE COMPANY LIMITED",
-    "The New India Assurance Co. Ltd.",
-    "NATIONAL INSURANCE COMPANY LIMITED",
-    "UNITED INDIA INSURANCE COMPANY LIMITED",
-    "Universal Sompo General Insurance Company Limited",
-    "Universal Sompo",
-    "Liberty General Insurance",
-    "Liberty General Insurance Company Limited",
-    "GENERALI",
-    "IFFCO-TOKIO",
-    "IFFCO TOKIO General Insurance Company Limited",
-    "Tata AIG General Insurance Company Limited",
-    "TATA AIG General Insurance Company Limited",
-    "TATA AIG",
-    "Bajaj Allianz General Insurance Company Limited",
-    "Bajaj General Insurance Company Limited",
-    "Future Generali India Insurance Company Limited",
-    "Future Generali",
-    "Cholamandalam MS General Insurance Company Limited",
-    "Reliance General Insurance Company Limited",
-    "Royal Sundaram General Insurance Company Limited",
-    "Shriram General Insurance Company Limited",
-    "Kotak Mahindra General Insurance Company Limited",
-    "Aditya Birla Health Insurance Company Limited",
-    "ManipalCigna Health Insurance Company Limited",
-    "Niva Bupa Health Insurance Company Limited",
-    "Star Health and Allied Insurance Company Limited",
-    "Liberty Videocon General Insurance Company Limited",
-]
+CANONICAL_VARIANTS = list(CANONICAL_MAP.keys())
 
 UIN_PATTERN = re.compile(r"UIN\s*[:\-]?\s*([A-Z0-9]+)", re.IGNORECASE)
 IRDAN_PATTERN = re.compile(r"IRDAN\d+[A-Z0-9]*", re.IGNORECASE)
 
 
-def normalize_insurer_name(name: str) -> str:
+def clean_insurer_name(name: str) -> str:
     name = name.strip()
     name = re.sub(r"^#\s*", "", name)
     name = re.sub(r"\s{2,}", " ", name)
@@ -84,8 +51,8 @@ def is_likely_insurer_header(line: str) -> bool:
     lower = line.lower()
     if any(kw in lower for kw in INSURER_KEYWORDS):
         return True
-    for name in KNOWN_INSURER_NAMES:
-        if name.lower() in lower or lower in name.lower():
+    for variant in CANONICAL_VARIANTS:
+        if variant in lower or lower in variant:
             return True
     return False
 
@@ -102,34 +69,35 @@ def find_insurer_from_first_lines(pages: list) -> str | None:
 
     counter = Counter(first_lines)
     most_common_line, count = counter.most_common(1)[0]
-    normalized = normalize_insurer_name(most_common_line)
+    cleaned = clean_insurer_name(most_common_line)
 
-    if not is_likely_insurer_header(normalized):
+    if not is_likely_insurer_header(cleaned):
         for line, c in counter.most_common(5):
-            nl = normalize_insurer_name(line)
+            nl = clean_insurer_name(line)
             if is_likely_insurer_header(nl):
-                normalized = nl
+                cleaned = nl
                 break
 
-    exact_matches = [n for n in KNOWN_INSURER_NAMES if n.lower() == normalized.lower()]
-    if exact_matches:
-        return exact_matches[0]
+    result = canonicalize_insurer(cleaned)
+    if result and result != cleaned:
+        return result
 
-    partial_matches = [n for n in KNOWN_INSURER_NAMES if n.lower() in normalized.lower() or normalized.lower() in n.lower()]
-    if partial_matches:
-        return partial_matches[0]
+    lower_cleaned = cleaned.lower()
+    for variant, canonical in CANONICAL_MAP.items():
+        if variant in lower_cleaned or lower_cleaned in variant:
+            return canonical
 
-    if "insurance" in normalized.lower() and ("limited" in normalized.lower() or "ltd" in normalized.lower()):
-        return normalized
+    if "insurance" in cleaned.lower() and ("limited" in cleaned.lower() or "ltd" in cleaned.lower()):
+        return cleaned
 
-    for known in KNOWN_INSURER_NAMES:
-        search_key = known.lower().replace(" ", "").replace(".", "")
-        line_key = normalized.lower().replace(" ", "").replace(".", "")
+    for variant, canonical in CANONICAL_MAP.items():
+        search_key = variant.replace(" ", "").replace(".", "")
+        line_key = lower_cleaned.replace(" ", "").replace(".", "")
         if search_key in line_key or line_key in search_key:
-            return known
+            return canonical
 
-    if is_likely_insurer_header(normalized):
-        return normalized
+    if is_likely_insurer_header(cleaned):
+        return cleaned
 
     return None
 
@@ -137,21 +105,22 @@ def find_insurer_from_first_lines(pages: list) -> str | None:
 def find_insurer_in_text(text: str) -> str | None:
     lower = text.lower()
 
-    for name in sorted(KNOWN_INSURER_NAMES, key=len, reverse=True):
-        search_name = name.lower()
-        if search_name in lower:
-            return name
+    for variant in sorted(CANONICAL_VARIANTS, key=len, reverse=True):
+        if variant in lower:
+            return CANONICAL_MAP[variant]
 
     match = re.search(r"IRDAI\s+Reg\s*[No.]*\s*:\s*\d+[^.]*", text, re.IGNORECASE)
     if match:
         context = text[max(0, match.start() - 150): match.end() + 300]
-        for name in sorted(KNOWN_INSURER_NAMES, key=len, reverse=True):
-            if name.lower() in context.lower():
-                return name
+        context_lower = context.lower()
+        for variant in sorted(CANONICAL_VARIANTS, key=len, reverse=True):
+            if variant in context_lower:
+                return CANONICAL_MAP[variant]
 
     match = re.search(r"(?:^|\n)([A-Z][A-Za-z .]+(?:Insurance|Assurance)\s+(?:Company|Co\.?)\s*(?:Limited|Ltd\.?))", text, re.MULTILINE)
     if match:
-        return match.group(1).strip()
+        raw = match.group(1).strip()
+        return canonicalize_insurer(raw)
 
     return None
 

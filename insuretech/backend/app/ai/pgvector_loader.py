@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from app.core.config import settings
 from app.models import Insurer, InsuranceCategory, Policy, PolicyDocument, DocumentChunk
 from app.ai.embeddings import generate_embeddings_batch
+from app.ai.insurer_normalizer import normalize_insurer_name as canonicalize_insurer
 
 CHUNK_DIR = Path(__file__).resolve().parents[2] / "chunk_output"
 
@@ -18,7 +19,8 @@ def load_all_chunks() -> list[dict]:
             data = json.load(f)
         for chunk in data.get("chunks", []):
             chunk["_insurance_category"] = data.get("insurance_category", "")
-            chunk["_insurer_name"] = data.get("insurer_name", "")
+            raw_insurer = data.get("insurer_name", "")
+            chunk["_insurer_name"] = canonicalize_insurer(raw_insurer)
             chunk["_policy_name"] = data.get("policy_name", "")
             chunk["_document_id_raw"] = data.get("document_id", "")
         all_chunks.extend(data.get("chunks", []))
@@ -162,8 +164,9 @@ async def main():
                         document_metadata={
                             "section_name": chunk.get("section_name", ""),
                             "section_type": chunk.get("section_type", ""),
-                            "insurer": chunk.get("insurer", ""),
+                            "insurer": canonicalize_insurer(chunk.get("insurer", "")),
                             "insurance_category": chunk.get("insurance_category", ""),
+                            "policy_name": chunk.get("_policy_name", ""),
                             "chunk_index": chunk.get("chunk_index", 1),
                             "total_chunks": chunk.get("total_chunks", 1),
                         },
