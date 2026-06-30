@@ -369,7 +369,7 @@ class _ProfilingService:
         answers = await repository.get_answers_for_session(db, session.id)
         answers_dict = {str(a.question_id): a.answer_value for a in answers}
 
-        visible = await self._get_visible_questions(db, segment_name, target, answers_dict, tier=tier)
+        visible = await self._get_visible_questions(db, segment_name, target, tier=tier)
 
         section_index = (
             repository.SECTIONS_ORDER.index(target)
@@ -391,45 +391,14 @@ class _ProfilingService:
         db: AsyncSession,
         segment: str,
         section: str,
-        answers_dict: dict[str, str],
         tier: int | None = None,
     ) -> list:
-        """Resolve the full visible question tree for a section.
+        """Return all questions for a section/segment/tier.
 
-        Fetches top-level and conditional questions in two queries, then
-        resolves conditional chains in memory (BFS).
-
-        Args:
-            tier: If set, only return questions of this tier.
+        Frontend handles conditional visibility via is_conditional,
+        parent_unified_id, and parent_answer_value.
         """
-        top_level = await repository.get_questions_by_section(db, segment, section, tier=tier)
-        all_conditional = await repository.get_conditional_questions_for_section(
-            db, segment, section
-        )
-
-        # (parent_question_id, parent_answer_value) -> [child, ...]
-        lookup: defaultdict[tuple[str, str], list] = defaultdict(list)
-        for cq in all_conditional:
-            lookup[(str(cq.parent_question_id), cq.parent_answer_value)].append(cq)
-
-        visible = list(top_level)
-        queue = list(top_level)
-        seen = {q.id for q in visible}
-
-        while queue:
-            q = queue.pop(0)
-            qid = str(q.id)
-            answer_val = answers_dict.get(qid)
-            if answer_val is None:
-                continue
-            children = lookup.get((qid, answer_val), [])
-            for child in children:
-                if child.id not in seen:
-                    seen.add(child.id)
-                    visible.append(child)
-                    queue.append(child)
-
-        return visible
+        return await repository.get_questions_by_section(db, segment, section, tier=tier)
 
     async def _compute_risk_scores(
         self,

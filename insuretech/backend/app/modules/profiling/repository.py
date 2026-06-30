@@ -38,10 +38,11 @@ async def get_questions_by_section(
     section: str,
     tier: int | None = None,
 ) -> list[Question]:
-    """Fetch active top-level questions for a given section and segment.
+    """Fetch active questions for a given section and segment.
 
-    Only returns non-conditional questions whose ``applicable_segment``
-    matches the provided segment or is ``'both'``.
+    Includes both root and conditional questions. Frontend handles
+    conditional visibility. ``applicable_segment`` must match the
+    provided segment or be ``'both'``.
 
     Args:
         segment: Lowercase segment name (e.g. ``'manufacturing'``).
@@ -54,10 +55,6 @@ async def get_questions_by_section(
     conditions = [
         Question.section == section,
         Question.is_active == True,
-        or_(
-            Question.is_conditional == False,
-            Question.parent_question_id.is_(None),
-        ),
         or_(
             Question.applicable_segment == "both",
             Question.applicable_segment == segment,
