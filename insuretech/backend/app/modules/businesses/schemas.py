@@ -58,6 +58,8 @@ class BusinessResponse(BaseModel):
     year_established: Optional[int] = None
     employee_count: Optional[int] = None
     annual_turnover_range: Optional[str] = None
+    segment: Optional[SegmentOut] = None
+    industry: Optional[IndustryOut] = None
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None

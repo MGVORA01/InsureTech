@@ -68,9 +68,16 @@ async def create_business(
         annual_turnover_range=data.annual_turnover_range,
     )
     db.add(business)
-    await db.commit()
+    await db.flush()
     await db.refresh(business)
-    return business
+
+    # Eagerly load relationships for serialization
+    result = await db.execute(
+        select(BusinessProfile)
+        .options(selectinload(BusinessProfile.industry), selectinload(BusinessProfile.segment))
+        .where(BusinessProfile.id == business.id)
+    )
+    return result.scalar_one()
 
 
 async def get_business_by_user_id(db: AsyncSession, user_id: UUID) -> BusinessProfile | None:

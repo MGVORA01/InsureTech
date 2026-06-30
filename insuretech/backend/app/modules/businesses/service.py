@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictException, NotFoundException
 from app.core.logging import get_logger
-from app.models import User
+from app.models import BusinessProfile, User
 from app.modules.businesses import repository
 from app.modules.businesses.schemas import BusinessResponse, CreateBusinessRequest, IndustryOut, SegmentOut
 from app.shared.response import APIResponse
@@ -49,6 +49,7 @@ class _BusinessService:
             raise ConflictException("Business profile already exists")
 
         business = await repository.create_business(db, user.id, data)
+        await db.commit()
         logger.info("Business profile created for user %s", user.id)
 
         return APIResponse.success_response(
@@ -70,6 +71,21 @@ class _BusinessService:
             "Business profile fetched successfully",
             BusinessResponse.model_validate(business).model_dump(),
         )
+
+    async def get_business_by_user(
+        self,
+        user: User,
+        db: AsyncSession,
+    ) -> BusinessProfile:
+        """Fetch the business ORM for cross-module use (profiling, etc.).
+
+        Returns the ORM instance with ``segment`` and ``industry``
+        relationships eagerly loaded.
+        """
+        business = await repository.get_business_by_user_id(db, user.id)
+        if not business:
+            raise NotFoundException("Business profile not found")
+        return business
 
 
 Service = _BusinessService()
