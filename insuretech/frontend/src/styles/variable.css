@@ -41,6 +41,9 @@
   --color-border-strong: #C7D3E0;
 
   /* ===== Interactive states & overlays ===== */
+  --color-hover: rgba(28, 43, 58, 0.06);
+  --color-selected: rgba(13, 115, 119, 0.08);
+  --color-text-muted: #A4B0C0;
   --focus-ring-secondary: rgba(13, 115, 119, 0.26);
   --focus-ring-secondary-soft: rgba(13, 115, 119, 0.16);
   --focus-ring-secondary-strong: rgba(13, 115, 119, 0.32);
