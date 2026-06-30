@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import AuthModal from '../features/auth-modal/AuthModal'
 import type { AuthModalTab } from '../features/auth-modal/AuthModal'
 import { submitContact } from '../features/contact/contactApi'
+import { ChatPopup } from '../features/chat'
 
 function HomePage() {
   const [scrolled, setScrolled] = useState(false)
@@ -14,6 +14,7 @@ function HomePage() {
   const [contactSending, setContactSending] = useState(false)
   const [contactSent, setContactSent] = useState(false)
   const [contactError, setContactError] = useState<string | null>(null)
+  const [showChat, setShowChat] = useState(false)
 
   useEffect(() => {
     function onScroll() {
@@ -713,7 +714,8 @@ function HomePage() {
                 ))}
               </ul>
 
-              <Link to="/chat"
+              <button
+                onClick={() => setShowChat(true)}
                 className="mt-8 inline-flex items-center gap-2 text-sm font-semibold px-6 py-3.5 rounded-md transition-all duration-200"
                 style={{ background: 'var(--color-cta)', color: 'var(--color-cta-contrast)' }}
               >
@@ -722,7 +724,7 @@ function HomePage() {
                   <line x1="5" y1="12" x2="19" y2="12" />
                   <polyline points="12 5 19 12 12 19" />
                 </svg>
-              </Link>
+              </button>
             </div>
 
             <div className="relative">
@@ -1143,9 +1145,9 @@ function HomePage() {
         </div>
       </footer>
 
-      {/* Fixed bottom-right chat button linking to /chat */}
-      <Link
-        to="/chat"
+      {/* Fixed bottom-right chat button */}
+      <button
+        onClick={() => setShowChat(true)}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 pl-4 pr-5 py-3.5 rounded-full shadow-card transition-all duration-200 hover:-translate-y-0.5"
         style={{ background: 'var(--color-cta)', color: 'var(--color-cta-contrast)' }}
         aria-label="Chat with InsureTech AI Assistant"
@@ -1156,7 +1158,7 @@ function HomePage() {
           <path d="M17 4h4v4" />
         </svg>
         <span className="text-sm font-semibold">Chat with us</span>
-      </Link>
+      </button>
 
       {authModalTab && (
         <AuthModal
@@ -1164,6 +1166,10 @@ function HomePage() {
           initialTab={authModalTab}
           onClose={() => setAuthModalTab(null)}
         />
+      )}
+
+      {showChat && (
+        <ChatPopup onClose={() => setShowChat(false)} />
       )}
     </>
   )

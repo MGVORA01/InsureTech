@@ -28,3 +28,18 @@ class UserListResponse(BaseModel):
 
 class UpdateUserStatusRequest(BaseModel):
     is_active: bool
+
+
+class UploadRequest(BaseModel):
+    file_path: str
+
+
+class KnowledgeDocumentItem(BaseModel):
+    id: str
+    file_name: str
+    file_size: Optional[int] = None
+    chunks_count: int
+    created_at: str
+
+
+

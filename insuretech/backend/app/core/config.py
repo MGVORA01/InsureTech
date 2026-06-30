@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     # ENVIRONMENT: str
     LOG_LEVEL: str
 
+    GROQ_API_KEY: str
+    GROQ_MODEL: str = "llama3-70b-8192"
+    GROQ_TEMPERATURE: float = 0.7
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -1,9 +1,10 @@
 from uuid import UUID
 
+from sqlalchemy import delete as sa_delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import func, select
 
-from app.models import User
+from app.models import CustomerSupportChunk, PolicyDocument, User
 
 
 async def get_user_stats(db) -> dict:
@@ -63,3 +64,40 @@ async def update_user_status(db, user_id: UUID, is_active: bool) -> User | None:
     await db.flush()
     await db.refresh(user)
     return user
+
+
+async def get_knowledge_documents(db) -> list:
+    result = await db.execute(
+        select(
+            PolicyDocument.id,
+            PolicyDocument.file_name,
+            PolicyDocument.file_size,
+            PolicyDocument.created_at,
+            func.count(CustomerSupportChunk.id).label("chunks_count"),
+        )
+        .outerjoin(
+            CustomerSupportChunk,
+            CustomerSupportChunk.document_id == PolicyDocument.id,
+        )
+        .where(PolicyDocument.doc_type == "knowledge_base")
+        .group_by(PolicyDocument.id)
+        .order_by(PolicyDocument.created_at.desc())
+    )
+    return result.all()
+
+
+async def delete_knowledge_document(db, document_id: UUID):
+    stmt = sa_delete(CustomerSupportChunk).where(
+        CustomerSupportChunk.document_id == document_id
+    )
+    await db.execute(stmt)
+
+    result = await db.execute(
+        select(PolicyDocument).where(PolicyDocument.id == document_id)
+    )
+    doc = result.scalar_one_or_none()
+    if doc:
+        await db.delete(doc)
+
+    await db.commit()
+    return doc
