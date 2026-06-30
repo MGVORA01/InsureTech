@@ -33,6 +33,8 @@ class AuthService:
       role_id=role.id
     )
 
+    await db.commit()
+
     return APIResponse.success_response(
       message="User registered successfully",
       data={
@@ -101,6 +103,7 @@ class AuthService:
     new_password_hash = hash(data.new_password)
 
     await Repository.update_user_password(db, current_user.id, new_password_hash)
+    await db.commit()
 
     return APIResponse.success_response(
       message="Password changed successfully",
@@ -130,6 +133,8 @@ class AuthService:
     hashed_password_reset_token = hash(password_reset_token)
 
     await Repository.store_password_reset_token(db, user.id, hashed_password_reset_token)
+
+    await db.commit()
 
     reset_url = (
       f"{settings.FRONTEND_URL}/reset-password"
@@ -189,6 +194,8 @@ class AuthService:
     await Repository.update_user_password(db, user.id, new_password_hash)
 
     await Repository.mark_reset_token_used(db, reset_token)
+
+    await db.commit()
 
     return APIResponse.success_response(
       message="Password changed successfully"

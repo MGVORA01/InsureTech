@@ -38,7 +38,7 @@ async def create_user(db, email, full_name, phone_no, password_hash, role_id):
   )
 
   db.add(user)
-  await db.commit()
+  await db.flush()
   await db.refresh(user)
   return user
 
@@ -51,7 +51,7 @@ async def update_user_password(db, user_id, new_password_hash):
 
   user.password_hash = new_password_hash
   db.add(user)
-  await db.commit()
+  await db.flush()
   await db.refresh(user)
   return user
 
@@ -63,7 +63,7 @@ async def store_password_reset_token(db, user_id, token):
   )
 
   db.add(reset_token)
-  await db.commit()
+  await db.flush()
 
 
 async def get_active_password_reset_token(db, user_id):
@@ -82,5 +82,5 @@ async def mark_reset_token_used(db,reset_token):
       timezone.utc
     )
 
-    await db.commit()
+    await db.flush()
 
