@@ -19,6 +19,7 @@ class Question(Base, TimestampMixin):
     is_conditional = Column(Boolean, nullable=False, server_default=text("false"))
     parent_question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"))
     parent_answer_value = Column(Text)
+    tier = Column(Integer, nullable=False, server_default=text("1"))
     order_index = Column(Integer, nullable=False)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
 
