@@ -3,7 +3,8 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, and_
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -35,6 +36,7 @@ async def get_questions_by_section(
     db: AsyncSession,
     segment: str,
     section: str,
+    tier: int | None = None,
 ) -> list[Question]:
     """Fetch active top-level questions for a given section and segment.
 
@@ -44,16 +46,79 @@ async def get_questions_by_section(
     Args:
         segment: Lowercase segment name (e.g. ``'manufacturing'``).
         section: The wizard section to filter by.
+        tier: Optional tier filter (1 or 2).
 
     Returns:
         List of matching Question ORM instances ordered by ``order_index``.
+    """
+    conditions = [
+        Question.section == section,
+        Question.is_active == True,
+        or_(
+            Question.is_conditional == False,
+            Question.parent_question_id.is_(None),
+        ),
+        or_(
+            Question.applicable_segment == "both",
+            Question.applicable_segment == segment,
+        ),
+    ]
+    if tier is not None:
+        conditions.append(Question.tier == tier)
+
+    result = await db.execute(
+        select(Question).where(and_(*conditions)).order_by(Question.order_index)
+    )
+    return list(result.scalars().all())
+
+
+async def has_completed_session(
+    db: AsyncSession,
+    business_id: UUID,
+) -> bool:
+    """Check whether a business has at least one completed profiling session.
+
+    Args:
+        business_id: UUID of the business profile.
+
+    Returns:
+        True if a completed session exists, False otherwise.
+    """
+    result = await db.execute(
+        select(ProfilingSession.id)
+        .where(
+            ProfilingSession.business_id == business_id,
+            ProfilingSession.status == "completed",
+        )
+        .limit(1)
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def get_conditional_questions_for_section(
+    db: AsyncSession,
+    segment: str,
+    section: str,
+) -> list[Question]:
+    """Fetch ALL active conditional questions for a given section/segment.
+
+    Used by the service layer to resolve conditional chains without N+1
+    queries.
+
+    Args:
+        segment: Lowercase segment name (e.g. ``'manufacturing'``).
+        section: The wizard section.
+
+    Returns:
+        List of conditional Question ORM instances ordered by ``order_index``.
     """
     result = await db.execute(
         select(Question)
         .where(
             Question.section == section,
             Question.is_active == True,
-            Question.is_conditional == False,
+            Question.is_conditional == True,
+            Question.parent_question_id.isnot(None),
             or_(
                 Question.applicable_segment == "both",
                 Question.applicable_segment == segment,
@@ -108,7 +173,7 @@ async def create_session(
         current_section="business_profile",
     )
     db.add(session)
-    await db.commit()
+    await db.flush()
     await db.refresh(session)
     return session
 
@@ -190,7 +255,7 @@ async def save_answer(
         )
         db.add(existing)
 
-    await db.commit()
+    await db.flush()
     await db.refresh(existing)
     return existing
 
@@ -264,6 +329,33 @@ async def get_answer_score_rules_for_session(
     return list(result.scalars().all())
 
 
+async def update_session_section(
+    db: AsyncSession,
+    session_id: UUID,
+    section: str,
+) -> ProfilingSession | None:
+    """Update the current section of a profiling session.
+
+    Args:
+        session_id: UUID of the session.
+        section: The new section name to set.
+
+    Returns:
+        The updated ProfilingSession if found, None otherwise.
+    """
+    result = await db.execute(
+        select(ProfilingSession).where(ProfilingSession.id == session_id)
+    )
+    session = result.scalar_one_or_none()
+
+    if session:
+        session.current_section = section
+        await db.flush()
+        await db.refresh(session)
+
+    return session
+
+
 async def complete_session(
     db: AsyncSession,
     session_id: UUID,
@@ -287,7 +379,7 @@ async def complete_session(
     if session:
         session.status = "completed"
         session.completed_at = datetime.now()
-        await db.commit()
+        await db.flush()
         await db.refresh(session)
 
     return session
@@ -307,7 +399,63 @@ async def save_risk_scores(
     """
     for score in risk_scores:
         db.add(score)
-    await db.commit()
+    await db.flush()
     for score in risk_scores:
         await db.refresh(score)
     return risk_scores
+
+
+async def get_risk_scores_for_session(
+    db: AsyncSession,
+    session_id: UUID,
+) -> list[BusinessRiskScore]:
+    """Fetch computed risk scores for a given session.
+
+    Args:
+        session_id: UUID of the profiling session.
+
+    Returns:
+        List of BusinessRiskScore instances with risk_category loaded.
+    """
+    result = await db.execute(
+        select(BusinessRiskScore)
+        .options(selectinload(BusinessRiskScore.risk_category))
+        .where(BusinessRiskScore.session_id == session_id)
+    )
+    return list(result.scalars().all())
+
+
+async def get_tier2_questions_for_categories(
+    db: AsyncSession,
+    segment: str,
+    category_ids: list[UUID],
+) -> list[Question]:
+    """Fetch tier 2 questions that map to the given risk categories.
+
+    Args:
+        segment: Lowercase segment name.
+        category_ids: List of risk category UUIDs that scored high/critical.
+
+    Returns:
+        List of tier 2 Question instances.
+    """
+    result = await db.execute(
+        select(Question)
+        .distinct()
+        .join(Question.factor_mappings)
+        .join(QuestionFactorMapping.risk_factor)
+        .options(
+            contains_eager(Question.factor_mappings).contains_eager(QuestionFactorMapping.risk_factor),
+        )
+        .where(
+            Question.tier == 2,
+            Question.is_active == True,
+            RiskFactor.risk_category_id.in_(category_ids),
+            or_(
+                Question.applicable_segment == "both",
+                Question.applicable_segment == segment,
+            ),
+        )
+        .order_by(Question.section, Question.order_index)
+    )
+    return list(result.scalars().all())

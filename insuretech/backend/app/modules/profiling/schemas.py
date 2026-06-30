@@ -27,6 +27,7 @@ class QuestionOut(BaseModel):
     is_conditional: bool
     parent_question_id: UUID | None = None
     parent_answer_value: str | None = None
+    tier: int = 1
     order_index: int
     is_active: bool
 
@@ -74,6 +75,14 @@ class ProfilingAnswerCreate(BaseModel):
 
     question_id: UUID
     answer_value: str
+    advance_to_section: str | None = None
+
+
+class ProfilingAnswerBatchCreate(BaseModel):
+    """Request schema for submitting multiple answers."""
+
+    answers: list[ProfilingAnswerCreate]
+    advance_to_section: str | None = None
 
 
 class ProfilingAnswerOut(BaseModel):
@@ -114,3 +123,29 @@ class ProfilingCompleteOut(BaseModel):
 
     session: ProfilingSessionOut
     scores: list[RiskScoreOut]
+
+
+class PreviewScoreOut(BaseModel):
+    """Schema for a single category's preview score (not persisted)."""
+
+    risk_category_name: str
+    score: float
+    risk_level: str
+    factor_breakdown: dict[str, float] | None = None
+    has_tier2_questions: bool = False
+
+
+class PreviewScoresOut(BaseModel):
+    """Schema returned for preview scoring before Tier 2 refinement."""
+
+    scores: list[PreviewScoreOut]
+    has_high_risk: bool
+
+
+class Tier2QuestionOut(BaseModel):
+    """Schema for a Tier 2 refinement question with its context."""
+
+    question: QuestionOut
+    risk_category_name: str
+    factor_name: str
+    current_risk_level: str
