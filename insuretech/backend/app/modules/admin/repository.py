@@ -60,6 +60,6 @@ async def update_user_status(db, user_id: UUID, is_active: bool) -> User | None:
         return None
     user.is_active = is_active
     db.add(user)
-    await db.commit()
+    await db.flush()
     await db.refresh(user)
     return user

@@ -45,6 +45,7 @@ async def update_user_status_service(db, user_id: str, is_active: bool):
     user = await Repository.update_user_status(db, UUID(user_id), is_active)
     if not user:
         raise NotFoundException("User not found")
+    await db.commit()
     return APIResponse.success_response(
         message="User status updated successfully",
         data=_user_to_list_item(user),
