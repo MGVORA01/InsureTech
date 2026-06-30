@@ -10,6 +10,12 @@ import {
   profileApi,
   PROFILE_MESSAGES,
 } from '../features/profile'
+import {
+  ProfilingWizard,
+  ProfilingLauncher,
+  ProfilingResults,
+} from '../features/profiling'
+import type { ProfilingCompleteOut } from '../features/profiling'
 
 type Tab = 'profile' | 'profiling'
 
@@ -51,6 +57,8 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const [profileError, setProfileError] = useState<string | null>(null)
+  const [profilingView, setProfilingView] = useState<'launcher' | 'wizard' | 'results'>('launcher')
+  const [profilingResults, setProfilingResults] = useState<ProfilingCompleteOut | null>(null)
 
   const initials = useMemo(() => getInitials(user?.fullName), [user?.fullName])
   const greeting = useMemo(() => getGreeting(), [])
@@ -150,12 +158,39 @@ export default function DashboardPage() {
       )
     }
 
+    if (profilingView === 'wizard') {
+      return (
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <ProfilingWizard
+            onComplete={(data) => {
+              setProfilingResults(data)
+              setProfilingView('results')
+            }}
+            onCancel={() => setProfilingView('launcher')}
+          />
+        </div>
+      )
+    }
+
+    if (profilingView === 'results' && profilingResults) {
+      return (
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <ProfilingResults
+            data={profilingResults}
+            onRestart={() => {
+              setProfilingResults(null)
+              setProfilingView('launcher')
+            }}
+          />
+        </div>
+      )
+    }
+
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Risk Profiling</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Complete your risk profile to get started with recommendations.
-        </p>
+        <ProfilingLauncher
+          onStartWizard={() => setProfilingView('wizard')}
+        />
       </div>
     )
   }
