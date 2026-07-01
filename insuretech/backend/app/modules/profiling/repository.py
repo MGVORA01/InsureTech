@@ -28,7 +28,6 @@ SECTIONS_ORDER: list[str] = [
     "safety_security",
     "claims_history",
     "transit_logistics",
-    "coverage_structure",
 ]
 
 

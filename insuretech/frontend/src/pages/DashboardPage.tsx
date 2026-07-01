@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useAuth } from '../hooks/useAuth'
 import type { BusinessProfile } from '../features/profile/profile.types'
 import {
   BusinessProfileForm,
@@ -17,16 +16,11 @@ import UserLayout from '../layout/UserLayout'
 import type { Section } from '../components/UserSidebar'
 import BusinessSwitcher from '../components/BusinessSwitcher'
 
-function getGreeting() {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
-}
+
 
 function ProfileSkeleton() {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="p-6" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
       <div className="h-6 w-48 animate-pulse rounded bg-slate-100" />
       <div className="mt-4 h-4 w-full animate-pulse rounded bg-slate-100" />
       <div className="mt-6 grid grid-cols-2 gap-4">
@@ -42,7 +36,7 @@ function ProfileSkeleton() {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+
   const [activeSection, setActiveSection] = useState<Section>('profile')
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([])
   const [businessesLoading, setBusinessesLoading] = useState(true)
@@ -52,7 +46,7 @@ export default function DashboardPage() {
   const [profilingView, setProfilingView] = useState<'launcher' | 'wizard' | 'results'>('launcher')
   const [profilingResults, setProfilingResults] = useState<ProfilingCompleteOut | null>(null)
 
-  const greeting = useMemo(() => getGreeting(), [])
+
 
   const selectedBusiness = useMemo(
     () => businesses.find((b) => b.id === selectedBusinessId) ?? null,
@@ -123,12 +117,12 @@ export default function DashboardPage() {
 
     if (profileError) {
       return (
-        <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-center justify-between px-4 py-3 text-sm" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-risk-medium-bg)', backgroundColor: 'var(--color-risk-medium-bg)', color: 'var(--color-risk-medium)' }}>
           <span>{profileError}</span>
           <button
             type="button"
             onClick={() => setProfileError(null)}
-            className="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-100"
+            className="px-3 py-1.5 text-xs font-semibold transition" style={{ borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-surface-white)', color: 'var(--color-risk-medium)', boxShadow: 'var(--shadow-sm)' }}
           >
             Dismiss
           </button>
@@ -141,11 +135,11 @@ export default function DashboardPage() {
     }
 
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="p-8" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-slate-900">{PROFILE_MESSAGES.title}</h2>
-          <p className="mt-1 text-sm text-slate-500">{PROFILE_MESSAGES.noProfile}</p>
-          <p className="mt-1 text-sm text-slate-500">{PROFILE_MESSAGES.noProfileProfiling}</p>
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>{PROFILE_MESSAGES.title}</h2>
+          <p className="mt-1 text-sm" style={{ color: 'var(--color-text-tertiary)' }}>{PROFILE_MESSAGES.noProfile}</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--color-text-tertiary)' }}>{PROFILE_MESSAGES.noProfileProfiling}</p>
         </div>
         <BusinessProfileForm onSuccess={handleProfileCreated} />
       </div>
@@ -155,10 +149,10 @@ export default function DashboardPage() {
   const renderProfilingTab = () => {
     if (!selectedBusiness) {
       return (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="p-8" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
           <div className="flex flex-col items-center gap-3 py-8 text-center">
             <svg
-              className="h-10 w-10 text-slate-300"
+              className="h-10 w-10" style={{ color: 'var(--color-text-muted)' }}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -169,8 +163,8 @@ export default function DashboardPage() {
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            <h3 className="text-base font-semibold text-slate-500">Profile Required</h3>
-            <p className="text-sm text-slate-400">{PROFILE_MESSAGES.noProfileProfiling}</p>
+            <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-tertiary)' }}>Profile Required</h3>
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{PROFILE_MESSAGES.noProfileProfiling}</p>
           </div>
         </div>
       )
@@ -178,7 +172,7 @@ export default function DashboardPage() {
 
     if (profilingView === 'wizard') {
       return (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="p-8" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
           <ProfilingWizard
             businessId={selectedBusinessId ?? undefined}
             onComplete={(data) => {
@@ -193,7 +187,7 @@ export default function DashboardPage() {
 
     if (profilingView === 'results' && profilingResults) {
       return (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="p-8" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
           <ProfilingResults
             data={profilingResults}
             onRestart={() => {
@@ -206,7 +200,7 @@ export default function DashboardPage() {
     }
 
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="p-8" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
         <ProfilingLauncher
           businessId={selectedBusinessId ?? undefined}
           onStartWizard={() => setProfilingView('wizard')}
@@ -229,17 +223,7 @@ export default function DashboardPage() {
         onDeleteBusiness={handleDeleteBusiness}
       />
 
-      {/* Welcome banner */}
-      <div className="mt-6 overflow-hidden rounded-xl px-6 py-7 text-white shadow-sm sm:px-8" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%)' }}>
-        <h1 className="text-2xl font-bold">
-          {greeting}, {user?.fullName?.split(' ')[0] || 'User'}
-        </h1>
-        <p className="mt-1 text-sm text-white/80">
-          {activeSection === 'profile'
-            ? 'Manage your business profile and keep your information up to date.'
-            : 'Complete a comprehensive risk assessment for your business.'}
-        </p>
-      </div>
+
 
       {/* Section content */}
       <div className="mt-6">
