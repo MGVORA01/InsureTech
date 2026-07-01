@@ -22,6 +22,6 @@ build/
 .DS_Store
 .idea/
 **/pdfs/
-seed-questions.py
-seed-segmentation.py
-questions.json
+seed-question.py
+seed-segments.py
+question.json
