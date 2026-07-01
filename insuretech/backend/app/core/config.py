@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # ENVIRONMENT: str
     LOG_LEVEL: str
 
+    GROQ_API_KEY: str = ""
+    EMBEDDING_MODEL: str = "BAAI/bge-base-en-v1.5"
+
     GROQ_API_KEY: str
     GROQ_MODEL: str = "llama3-70b-8192"
     GROQ_TEMPERATURE: float = 0.7

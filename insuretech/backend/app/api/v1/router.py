@@ -6,6 +6,7 @@ from app.modules.businesses.router import router as businesses_router
 from app.modules.contact.router import router as contact_router
 from app.modules.profiling.router import router as profiling_router
 from app.modules.chat.router import router as chat_router
+from app.modules.rag.router import router as rag_router
 
 
 API_router = APIRouter()
