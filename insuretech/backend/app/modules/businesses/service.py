@@ -127,5 +127,25 @@ class _BusinessService:
             raise NotFoundException("Business profile not found")
         return business
 
+    async def delete_business(
+        self,
+        business_id: UUID,
+        user: User,
+        db: AsyncSession,
+    ) -> APIResponse[dict[str, Any]]:
+        """Soft-delete a business profile (ownership verified)."""
+        business = await repository.get_business_by_id(db, business_id)
+        if not business or business.user_id != user.id:
+            raise NotFoundException("Business profile not found")
+
+        await repository.delete_business(db, business_id)
+        await db.commit()
+        logger.info("Business profile %s deleted by user %s", business_id, user.id)
+
+        return APIResponse.success_response(
+            "Business profile deleted successfully",
+            BusinessResponse.model_validate(business).model_dump(),
+        )
+
 
 Service = _BusinessService()

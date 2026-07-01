@@ -75,3 +75,13 @@ async def get_business_by_id(
 ) -> APIResponse:
     """Fetch a specific business profile by ID (ownership verified)."""
     return await Service.get_my_business_by_id(business_id, current_user, db)
+
+
+@router.delete("/{business_id}", status_code=status.HTTP_200_OK)
+async def delete_business(
+    business_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> APIResponse:
+    """Soft-delete a business profile (ownership verified)."""
+    return await Service.delete_business(business_id, current_user, db)
