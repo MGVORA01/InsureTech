@@ -36,9 +36,6 @@ export default function BusinessProfileForm({ onSuccess }: BusinessProfileFormPr
       business_description: '',
       city: '',
       state: '',
-      address: '',
-      pincode: '',
-      annual_turnover_range: '',
     },
   })
 
@@ -93,13 +90,8 @@ export default function BusinessProfileForm({ onSuccess }: BusinessProfileFormPr
         industry_id: values.industry_id,
         business_name: values.business_name,
         business_description: values.business_description || undefined,
-        city: values.city || undefined,
-        state: values.state || undefined,
-        address: values.address || undefined,
-        pincode: values.pincode || undefined,
-        year_established: values.year_established || undefined,
-        employee_count: values.employee_count || undefined,
-        annual_turnover_range: values.annual_turnover_range || undefined,
+        city: values.city,
+        state: values.state,
       }
 
       const profile = await profileApi.createBusiness(payload)
@@ -215,77 +207,16 @@ export default function BusinessProfileForm({ onSuccess }: BusinessProfileFormPr
       <div className={styles.row}>
         <div className={styles.fieldGroup}>
           <label className={styles.label} htmlFor="city">
-            City <span className={styles.optional}>(optional)</span>
+            City
           </label>
           <input id="city" type="text" className={styles.input} {...register('city')} />
         </div>
         <div className={styles.fieldGroup}>
           <label className={styles.label} htmlFor="state">
-            State <span className={styles.optional}>(optional)</span>
+            State
           </label>
           <input id="state" type="text" className={styles.input} {...register('state')} />
         </div>
-      </div>
-
-      {/* Address */}
-      <div className={styles.fieldGroup}>
-        <label className={styles.label} htmlFor="address">
-          Address <span className={styles.optional}>(optional)</span>
-        </label>
-        <textarea id="address" className={styles.textarea} {...register('address')} />
-      </div>
-
-      {/* Pincode */}
-      <div className={styles.fieldGroup}>
-        <label className={styles.label} htmlFor="pincode">
-          Pincode <span className={styles.optional}>(optional)</span>
-        </label>
-        <input id="pincode" type="text" className={styles.input} {...register('pincode')} />
-      </div>
-
-      {/* Year Established + Employees */}
-      <div className={styles.row}>
-        <div className={styles.fieldGroup}>
-          <label className={styles.label} htmlFor="year_established">
-            Year Established <span className={styles.optional}>(optional)</span>
-          </label>
-          <input
-            id="year_established"
-            type="number"
-            className={styles.input}
-            {...register('year_established')}
-          />
-        </div>
-        <div className={styles.fieldGroup}>
-          <label className={styles.label} htmlFor="employee_count">
-            Employees <span className={styles.optional}>(optional)</span>
-          </label>
-          <input
-            id="employee_count"
-            type="number"
-            className={styles.input}
-            {...register('employee_count')}
-          />
-        </div>
-      </div>
-
-      {/* Turnover Range */}
-      <div className={styles.fieldGroup}>
-        <label className={styles.label} htmlFor="annual_turnover_range">
-          Annual Turnover <span className={styles.optional}>(optional)</span>
-        </label>
-        <select
-          id="annual_turnover_range"
-          className={styles.select}
-          {...register('annual_turnover_range')}
-        >
-          <option value="">Select turnover range</option>
-          {TURNOVER_RANGES.map((range) => (
-            <option key={range.value} value={range.value}>
-              {range.label}
-            </option>
-          ))}
-        </select>
       </div>
 
       {/* Submit Error */}

@@ -64,13 +64,13 @@ export default function DashboardPage() {
   const loadBusinesses = useCallback(async () => {
     setBusinessesLoading(true)
     try {
-      const data = await profileApi.getMyBusinesses()
-      setBusinesses(data)
-      if (data.length > 0 && !selectedBusinessId) {
-        setSelectedBusinessId(data[0].id)
+      const data = await profileApi.getMyBusiness()
+      setBusinesses(data ? [data] : [])
+      if (data && !selectedBusinessId) {
+        setSelectedBusinessId(data.id)
       }
     } catch {
-      // silent
+      // 404 = no business yet
     } finally {
       setBusinessesLoading(false)
     }
