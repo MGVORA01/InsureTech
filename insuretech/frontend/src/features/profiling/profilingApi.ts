@@ -58,15 +58,19 @@ export function getProfilingErrorMessage(error: unknown): string {
 }
 
 export const profilingApi = {
-  async getStatus(): Promise<ProfilingStatus> {
+  async getStatus(businessId?: string): Promise<ProfilingStatus> {
+    const params = businessId ? { business_id: businessId } : undefined
     const response = await baseApi.get<ApiEnvelope<ProfilingStatus>>(
       '/profiling/status',
+      { params },
     )
     return unwrapData<ProfilingStatus>(response)
   },
 
-  async startSession(tier?: number): Promise<SectionQuestionsOut> {
-    const params = tier !== undefined ? { tier } : undefined
+  async startSession(tier?: number, businessId?: string): Promise<SectionQuestionsOut> {
+    const params: Record<string, string | number> = {}
+    if (tier !== undefined) params.tier = tier
+    if (businessId) params.business_id = businessId
     const response = await baseApi.post<ApiEnvelope<SectionQuestionsOut>>(
       '/profiling/start',
       undefined,

@@ -34,10 +34,18 @@ class _ProfilingService:
     # Public API
     # ------------------------------------------------------------------
 
-    async def get_status(self, user: User, db: AsyncSession) -> APIResponse:
+    async def get_status(
+        self,
+        user: User,
+        db: AsyncSession,
+        business_id: UUID | None = None,
+    ) -> APIResponse:
         """Return profiling status for the authenticated user's business."""
         try:
-            business = await BusinessService.get_business_by_user(user, db)
+            if business_id:
+                business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+            else:
+                business = await BusinessService.get_business_by_user(user, db)
         except NotFoundException:
             return APIResponse.success_response(
                 "No business profile found",
@@ -62,13 +70,23 @@ class _ProfilingService:
             },
         )
 
-    async def start_session(self, user: User, db: AsyncSession, tier: int | None = None) -> APIResponse:
+    async def start_session(
+        self,
+        user: User,
+        db: AsyncSession,
+        tier: int | None = None,
+        business_id: UUID | None = None,
+    ) -> APIResponse:
         """Start a new profiling session or resume an existing one.
 
         Args:
             tier: If set, filter questions by tier (1 or 2).
+            business_id: Target business. Falls back to user's first business if omitted.
         """
-        business = await BusinessService.get_business_by_user(user, db)
+        if business_id:
+            business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+        else:
+            business = await BusinessService.get_business_by_user(user, db)
 
         active = await repository.get_active_session(db, business.id)
         if active:
@@ -159,7 +177,7 @@ class _ProfilingService:
 
         for ans_data in data.answers:
             await repository.save_answer(db, session.id, ans_data)
-            
+
         logger.info("Batch answers saved for session %s, count: %d", session.id, len(data.answers))
 
         target = data.advance_to_section or session.current_section
@@ -337,6 +355,8 @@ class _ProfilingService:
     ) -> tuple[ProfilingSession, object]:
         """Fetch a session and its owning business in one go.
 
+        Verifies the user owns the business via ``business.user_id``.
+
         Returns:
             ``(session, business)`` where business has ``segment`` loaded.
         """
@@ -344,9 +364,7 @@ class _ProfilingService:
         if not session:
             raise NotFoundException("Profiling session not found")
 
-        business = await BusinessService.get_business_by_user(user, db)
-        if session.business_id != business.id:
-            raise NotFoundException("Profiling session not found")
+        business = await BusinessService.get_business_by_id_for_user(session.business_id, user, db)
 
         return session, business
 
@@ -400,6 +418,29 @@ class _ProfilingService:
         """
         return await repository.get_questions_by_section(db, segment, section, tier=tier)
 
+    @staticmethod
+    def _rule_matches_answer(rule, answers_dict: dict[str, str]) -> bool:
+        """Check if a scoring rule's answer_value matches the user's answer.
+        
+        For single-select questions the match is exact. For multi-select the
+        stored answer is a delimiter-separated list and the match succeeds if
+        any element equals the rule's ``answer_value``. Both the new ``|||``
+        delimiter and the legacy comma delimiter are tried.
+        """
+        qid = str(rule.question_id)
+        user_answer = answers_dict.get(qid)
+        if not user_answer:
+            return False
+
+        if rule.question.question_type == 'multi_select':
+            for delim in ('|||', ','):
+                parts = [p for p in user_answer.split(delim) if p]
+                if rule.answer_value in parts:
+                    return True
+            return False
+
+        return rule.answer_value == user_answer
+
     async def _compute_risk_scores(
         self,
         db: AsyncSession,
@@ -409,10 +450,14 @@ class _ProfilingService:
         """Compute risk scores by evaluating answer score rules."""
         categories = await repository.get_active_risk_categories(db)
         rules = await repository.get_answer_score_rules_for_session(db, session.id)
+        answers = await repository.get_answers_for_session(db, session.id)
+        answers_dict = {str(a.question_id): a.answer_value for a in answers}
 
         # Factor ID -> list of scores from matching rules
         factor_scores: defaultdict[UUID, list[float]] = defaultdict(list)
         for rule in rules:
+            if not self._rule_matches_answer(rule, answers_dict):
+                continue
             factor_scores[rule.risk_factor_id].append(float(rule.score))
 
         # Factor ID -> average score
@@ -434,6 +479,17 @@ class _ProfilingService:
             factors = category_factor_ids.get(cat.id, [])
             matched = [f for f in factors if f.id in factor_avg]
             if not matched:
+                risk_score_instances.append(
+                    BusinessRiskScore(
+                        business_id=business.id,
+                        session_id=session.id,
+                        risk_category_id=cat.id,
+                        risk_category=cat,
+                        score=0.0,
+                        risk_level="low",
+                        factor_breakdown=None,
+                    )
+                )
                 continue
 
             total_weight = sum(float(f.weight) for f in matched)
@@ -458,6 +514,7 @@ class _ProfilingService:
                     business_id=business.id,
                     session_id=session.id,
                     risk_category_id=cat.id,
+                    risk_category=cat,
                     score=category_score,
                     risk_level=risk_level,
                     factor_breakdown=breakdown,
