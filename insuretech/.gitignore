@@ -29,3 +29,9 @@ section_output/
 metadata_output/
 chunk_output/
 data/
+
+questions.json
+data.zip
+seed-questions.py
+seed-segments.py
+

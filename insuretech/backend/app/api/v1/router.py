@@ -16,5 +16,5 @@ API_router.include_router(auth_router)
 API_router.include_router(businesses_router)
 API_router.include_router(contact_router)
 API_router.include_router(profiling_router)
+API_router.include_router(rag_router)
 API_router.include_router(chat_router)
-
