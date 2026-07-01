@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "llama3-70b-8192"
     GROQ_TEMPERATURE: float = 0.7
 
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

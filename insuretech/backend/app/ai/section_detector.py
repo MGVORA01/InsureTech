@@ -1,7 +1,7 @@
 import json
 import re
 from pathlib import Path
-from app.ai.metadata_extractor import KNOWN_INSURER_NAMES
+from app.ai.insurer_normalizer import CANONICAL_MAP
 
 CLEANED_DIR = Path(__file__).resolve().parents[2] / "cleaned_output"
 METADATA_DIR = Path(__file__).resolve().parents[2] / "metadata_output"
@@ -204,8 +204,8 @@ def _is_insurer_heading(heading: str) -> bool:
     normalized = _normalize_insurer(heading)
     if len(normalized) < 8:
         return False
-    for known in KNOWN_INSURER_NAMES:
-        known_norm = _normalize_insurer(known)
+    for canonical in set(CANONICAL_MAP.values()):
+        known_norm = _normalize_insurer(canonical)
         if normalized == known_norm:
             return True
     return False
