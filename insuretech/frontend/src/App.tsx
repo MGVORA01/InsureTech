@@ -8,6 +8,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AuthModal from './features/auth-modal/AuthModal'
 import DashboardPage from './pages/DashboardPage'
+import RecommendationsPage from './pages/RecommendationsPage'
 import AdminRoute from './Routes/AdminRoute'
 import ProtectedRoute from './Routes/ProtectedRoute'
 import { useSessionCheck } from './hooks/useSessionCheck'
@@ -40,6 +41,7 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/recommendations/:sessionId" element={<RecommendationsPage />} />
         </Route>
 
         <Route element={<AdminRoute />}>

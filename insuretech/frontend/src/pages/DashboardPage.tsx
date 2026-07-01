@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import type { BusinessProfile } from '../features/profile/profile.types'
 import {
@@ -45,6 +46,7 @@ function ProfileSkeleton() {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState<Section>('profile')
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([])
   const [businessesLoading, setBusinessesLoading] = useState(true)
@@ -201,6 +203,9 @@ export default function DashboardPage() {
             onRestart={() => {
               setProfilingResults(null)
               setProfilingView('launcher')
+            }}
+            onViewRecommendations={(sessionId: string) => {
+              navigate(`/recommendations/${sessionId}`)
             }}
           />
         </div>

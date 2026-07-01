@@ -5,6 +5,7 @@ import styles from './ProfilingResults.module.css'
 interface ProfilingResultsProps {
   data: ProfilingCompleteOut
   onRestart: () => void
+  onViewRecommendations?: (sessionId: string) => void
 }
 
 function riskLevelClass(level: string): string {
@@ -16,7 +17,7 @@ function riskLevelClass(level: string): string {
   }
 }
 
-export default function ProfilingResults({ data, onRestart }: ProfilingResultsProps) {
+export default function ProfilingResults({ data, onRestart, onViewRecommendations }: ProfilingResultsProps) {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -77,6 +78,15 @@ export default function ProfilingResults({ data, onRestart }: ProfilingResultsPr
       </div>
 
       <div className={styles.actions}>
+        {onViewRecommendations && (
+          <button
+            type="button"
+            className={styles.recommendBtn}
+            onClick={() => onViewRecommendations(data.session.id)}
+          >
+            View Recommendations
+          </button>
+        )}
         <button type="button" className={styles.restartBtn} onClick={onRestart}>
           Start New Assessment
         </button>
