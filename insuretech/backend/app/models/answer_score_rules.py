@@ -13,6 +13,7 @@ class AnswerScoreRule(Base, TimestampMixin):
     risk_factor_id = Column(UUID(as_uuid=True), ForeignKey("risk_factors.id"), nullable=False)
     answer_value = Column(Text, nullable=False)
     score = Column(Numeric, nullable=False)
+    weight = Column(Numeric, nullable=False, server_default=text("1.0"))
     description = Column(Text)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
 

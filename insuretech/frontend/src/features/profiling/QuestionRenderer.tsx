@@ -271,14 +271,29 @@ export default function QuestionRenderer({
       }
 
       case 'multi_select': {
-        const selected = value ? value.split(',').filter(Boolean) : []
+        const DELIM = '|||'
+        const LEGACY_DELIM = ','
+
+        const parseSelected = (val: string): string[] => {
+          if (!val) return []
+          const pipeParts = val.split(DELIM).filter(Boolean)
+          const hasPipe = val.includes(DELIM)
+          if (hasPipe) return pipeParts
+          if (!val.includes(LEGACY_DELIM)) return pipeParts
+          const commaParts = val.split(LEGACY_DELIM).filter(Boolean)
+          const pipeMatches = pipeParts.filter(p => opts.some(o => o.value === p)).length
+          const commaMatches = commaParts.filter(p => opts.some(o => o.value === p)).length
+          return commaMatches > pipeMatches ? commaParts : pipeParts
+        }
+
+        const selected = parseSelected(value)
         const needsSearch = opts.length > 10
 
         const toggleCheckbox = (optValue: string, checked: boolean) => {
           const next = checked
             ? [...selected, optValue]
             : selected.filter((v) => v !== optValue)
-          onChange(question.id, next.join(','))
+          onChange(question.id, next.join(DELIM))
         }
 
         interface OptionGroup {
@@ -327,7 +342,7 @@ export default function QuestionRenderer({
 
         const handleRadioChange = (optValue: string, groupPrefix: string) => {
           const withoutGroup = selected.filter((v) => !v.startsWith(groupPrefix + ':'))
-          onChange(question.id, [...withoutGroup, optValue].join(','))
+          onChange(question.id, [...withoutGroup, optValue].join(DELIM))
         }
 
         const matchesSearch = (label: string) =>

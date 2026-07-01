@@ -435,18 +435,23 @@ async def get_tier2_questions_for_categories(
     Returns:
         List of tier 2 Question instances.
     """
+    subq = (
+        select(QuestionFactorMapping.question_id)
+        .join(QuestionFactorMapping.risk_factor)
+        .where(RiskFactor.risk_category_id.in_(category_ids))
+        .distinct()
+        .subquery()
+    )
+
     result = await db.execute(
         select(Question)
-        .distinct()
-        .join(Question.factor_mappings)
-        .join(QuestionFactorMapping.risk_factor)
         .options(
-            contains_eager(Question.factor_mappings).contains_eager(QuestionFactorMapping.risk_factor),
+            selectinload(Question.factor_mappings).selectinload(QuestionFactorMapping.risk_factor),
         )
         .where(
+            Question.id.in_(select(subq.c.question_id)),
             Question.tier == 2,
             Question.is_active == True,
-            RiskFactor.risk_category_id.in_(category_ids),
             or_(
                 Question.applicable_segment == "both",
                 Question.applicable_segment == segment,

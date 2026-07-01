@@ -30,6 +30,10 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([])
   const [previewScores, setPreviewScores] = useState<PreviewScoreOut[]>([])
   const [tier2Questions, setTier2Questions] = useState<Tier2QuestionOut[]>([])
+  const uniqueT2Questions = useMemo(
+    () => Array.from(new Map(tier2Questions.map(t => [t.question.id, t.question])).values()),
+    [tier2Questions],
+  )
   const mountedRef = useRef(true)
 
   const getVisibleQuestions = useCallback(
@@ -302,7 +306,7 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
         advance_to_section: SECTIONS_ORDER[0],
       })
       if (!mountedRef.current) return
-      const t2questions = tier2Questions.map(t => t.question)
+      const t2questions = Array.from(new Map(tier2Questions.map(t => [t.question.id, t.question])).values())
       setAllQuestions(t2questions)
       setSection({
         section: 'refinement',
@@ -509,12 +513,12 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
           ))}
         </div>
 
-        {highRiskItems.length > 0 && tier2Questions.length > 0 && (
+        {highRiskItems.length > 0 && uniqueT2Questions.length > 0 && (
           <div className={styles.refinePrompt}>
             <p className={styles.refineText}>
               We found <strong>{highRiskItems.length} area{highRiskItems.length !== 1 ? 's' : ''}</strong> that
               need{highRiskItems.length === 1 ? 's' : ''} closer attention.
-              Answer <strong>{tier2Questions.length} more question{tier2Questions.length !== 1 ? 's' : ''}</strong>
+              Answer <strong>{uniqueT2Questions.length} more question{uniqueT2Questions.length !== 1 ? 's' : ''}</strong>
               {' '}for a more precise assessment.
             </p>
             <div className={styles.refineActions}>
@@ -524,7 +528,7 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
                 onClick={handleStartTier2}
                 disabled={submitting}
               >
-                {submitting ? 'Loading...' : `Refine Assessment (${tier2Questions.length} questions)`}
+                {submitting ? 'Loading...' : `Refine Assessment (${uniqueT2Questions.length} questions)`}
               </button>
               <button
                 type="button"
@@ -558,7 +562,7 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
   }
 
   const renderTier2Wizard = () => {
-    const questions = allQuestions.length > 0 ? allQuestions : tier2Questions.map(t => t.question)
+    const questions = allQuestions.length > 0 ? allQuestions : uniqueT2Questions
     const categories = Array.from(new Set(tier2Questions.map(t => t.risk_category_name)))
 
     return (
