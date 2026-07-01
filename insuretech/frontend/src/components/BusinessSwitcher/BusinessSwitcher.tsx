@@ -67,12 +67,12 @@ export default function BusinessSwitcher({
       <button
         type="button"
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="flex w-full items-center gap-4 rounded-xl border bg-white px-5 py-4 text-left shadow-sm transition hover:shadow-md"
-        style={{ borderColor: 'var(--color-border)' }}
+        className="flex w-full items-center gap-4 border px-5 py-4 text-left transition hover:[box-shadow:var(--shadow-md)]"
+        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}
       >
         <span
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-base font-bold text-white"
-          style={{ backgroundColor: 'var(--color-secondary)' }}
+          className="flex h-12 w-12 shrink-0 items-center justify-center text-base font-bold text-white"
+          style={{ backgroundColor: 'var(--color-secondary)', borderRadius: 'var(--radius-md)' }}
         >
           {selected
             ? selected.business_name.slice(0, 2).toUpperCase()
@@ -93,8 +93,8 @@ export default function BusinessSwitcher({
         <div className="flex items-center gap-2">
           {businesses.length > 1 && (
             <span
-              className="hidden rounded-full px-2.5 py-0.5 text-xs font-semibold sm:inline-block"
-              style={{ backgroundColor: 'var(--overlay-secondary-10, rgba(13,115,119,0.1))', color: 'var(--color-secondary)' }}
+              className="hidden px-2.5 py-0.5 text-xs font-semibold sm:inline-block"
+              style={{ backgroundColor: 'var(--overlay-secondary-10, rgba(13,115,119,0.1))', color: 'var(--color-secondary)', borderRadius: 'var(--radius-xl)' }}
             >
               {businesses.length} businesses
             </span>
@@ -109,8 +109,8 @@ export default function BusinessSwitcher({
       {/* Dropdown */}
       {dropdownOpen && (
         <div
-          className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border bg-white shadow-lg"
-          style={{ borderColor: 'var(--color-border)' }}
+          className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden border shadow-lg"
+          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: 'var(--radius-lg)' }}
         >
           {businesses.length === 0 && (
             <p className="px-4 py-3 text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -124,7 +124,7 @@ export default function BusinessSwitcher({
               <div key={b.id}>
                 {isConfirming ? (
                   <div className="flex items-center gap-2 px-4 py-3">
-                    <span className="text-sm text-red-600">Delete {b.business_name}?</span>
+                    <span className="text-sm" style={{ color: 'var(--color-risk-high)' }}>Delete {b.business_name}?</span>
                     <button
                       type="button"
                       onClick={(e) => {
@@ -132,7 +132,8 @@ export default function BusinessSwitcher({
                         setConfirmingDeleteId(null)
                         onDeleteBusiness?.(b.id)
                       }}
-                      className="rounded bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-red-700"
+                      className="rounded px-2.5 py-1 text-xs font-semibold text-white transition"
+                      style={{ backgroundColor: 'var(--color-risk-high)' }}
                     >
                       Yes
                     </button>
@@ -142,7 +143,8 @@ export default function BusinessSwitcher({
                         e.stopPropagation()
                         setConfirmingDeleteId(null)
                       }}
-                      className="rounded bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
+                      className="rounded px-2.5 py-1 text-xs font-semibold transition hover:[background-color:var(--color-border)]"
+                      style={{ backgroundColor: 'var(--color-surface-alt)', color: 'var(--color-text-primary)' }}
                     >
                       Cancel
                     </button>
@@ -154,14 +156,14 @@ export default function BusinessSwitcher({
                       onBusinessChange(b.id)
                       setDropdownOpen(false)
                     }}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:[background-color:var(--color-hover)]"
                     style={{
                       backgroundColor: isSelected ? 'var(--overlay-secondary-10, rgba(13,115,119,0.06))' : 'transparent',
                     }}
                   >
                     <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
-                      style={{ backgroundColor: 'var(--color-secondary)' }}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center text-sm font-bold text-white"
+                      style={{ backgroundColor: 'var(--color-secondary)', borderRadius: 'var(--radius-md)' }}
                     >
                       {b.business_name.slice(0, 2).toUpperCase()}
                     </span>
@@ -185,7 +187,8 @@ export default function BusinessSwitcher({
                           e.stopPropagation()
                           setConfirmingDeleteId(b.id)
                         }}
-                        className="shrink-0 rounded p-1 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                        className="shrink-0 rounded p-1 transition hover:[background-color:var(--color-risk-high-bg)] hover:[color:var(--color-risk-high)]"
+                        style={{ color: 'var(--color-text-muted)' }}
                         title={`Delete ${b.business_name}`}
                       >
                         <IconTrash className="h-4 w-4" />
@@ -203,12 +206,12 @@ export default function BusinessSwitcher({
                 setDropdownOpen(false)
                 onAddBusiness()
               }}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium transition hover:bg-slate-50"
+              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium transition hover:[background-color:var(--color-hover)]"
               style={{ color: 'var(--color-secondary)' }}
             >
               <span
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border-2 border-dashed"
-                style={{ borderColor: 'var(--color-secondary)', color: 'var(--color-secondary)' }}
+                className="flex h-10 w-10 shrink-0 items-center justify-center"
+                style={{ border: '2px dashed var(--color-secondary)', color: 'var(--color-secondary)', borderRadius: 'var(--radius-md)' }}
               >
                 <IconPlus className="h-5 w-5" />
               </span>
