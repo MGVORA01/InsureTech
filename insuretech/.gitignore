@@ -30,8 +30,6 @@ metadata_output/
 chunk_output/
 data/
 
-questions.json
-data.zip
-seed-questions.py
+seed-question.py
 seed-segments.py
-
+question.json
