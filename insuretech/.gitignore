@@ -22,6 +22,14 @@ build/
 .DS_Store
 .idea/
 **/pdfs/
+
+parsed_output/
+cleaned_output/
+section_output/
+metadata_output/
+chunk_output/
+data/
+
 seed-question.py
 seed-segments.py
 question.json
