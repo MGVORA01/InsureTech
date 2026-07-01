@@ -45,6 +45,7 @@ class _RecommendationService:
                 ).model_dump(),
             )
         scores = await repository.get_business_risk_scores(db, session_id)
+        existing = await self._attach_policies_to_recs(db, existing)
         out = self._build_response(session_id, scores, existing)
         return APIResponse.success_response(
             "Recommendations fetched successfully", out.model_dump()
@@ -183,12 +184,16 @@ class _RecommendationService:
         doc_map: dict[UUID, str | None] | None = None,
         chunk_map: dict[UUID, list[str]] | None = None,
     ) -> RecommendationListOut:
+        score_out = [self._score_to_out(s) for s in scores]
+
+        if doc_map is None and rec_models:
+            doc_map = getattr(rec_models[0], "_doc_map", {})
+        if chunk_map is None and rec_models:
+            chunk_map = getattr(rec_models[0], "_chunk_map", {})
         if doc_map is None:
             doc_map = {}
         if chunk_map is None:
             chunk_map = {}
-
-        score_out = [self._score_to_out(s) for s in scores]
 
         grouped: dict[str, RecommendationOut] = {}
         for rec in rec_models:
@@ -232,6 +237,38 @@ class _RecommendationService:
             scores=score_out,
             recommendations=recommendations,
         )
+
+    async def _attach_policies_to_recs(
+        self,
+        db: AsyncSession,
+        rec_models: list[Recommendation],
+    ) -> list[Recommendation]:
+        """Re-load policies for existing recommendations (not stored in DB)."""
+        ic_ids = list({r.insurance_category_id for r in rec_models if r.insurance_category_id})
+        if not ic_ids:
+            return rec_models
+
+        policies = await repository.get_policies_by_insurance_categories(db, ic_ids)
+        policy_ids = [p.id for p in policies]
+
+        documents = await repository.get_policy_documents(db, policy_ids)
+        doc_map: dict[UUID, str | None] = {}
+        for doc in documents:
+            if doc.policy_id not in doc_map and doc.file_url:
+                doc_map[doc.policy_id] = doc.file_url
+
+        chunks = await repository.get_document_chunks_for_policies(db, policy_ids)
+        chunk_map: dict[UUID, list[str]] = {}
+        for chunk in chunks:
+            chunk_map.setdefault(chunk.policy_id, []).append(chunk.chunk_text)
+
+        for rec in rec_models:
+            matched = [p for p in policies if p.insurance_category_id == rec.insurance_category_id]
+            rec._policies = matched
+            rec._doc_map = doc_map
+            rec._chunk_map = chunk_map
+
+        return rec_models
 
     @staticmethod
     def _score_to_out(score: BusinessRiskScore) -> RiskScoreOut:

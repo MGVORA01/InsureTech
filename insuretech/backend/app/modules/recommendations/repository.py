@@ -89,6 +89,28 @@ async def get_policies_for_insurance_categories(
     return list(result.scalars().all())
 
 
+async def get_policies_by_insurance_categories(
+    db: AsyncSession,
+    insurance_category_ids: list[UUID],
+) -> list[Policy]:
+    """Fetch active policies for given insurance categories."""
+    if not insurance_category_ids:
+        return []
+    result = await db.execute(
+        select(Policy)
+        .options(
+            selectinload(Policy.insurer),
+            selectinload(Policy.insurance_category),
+        )
+        .where(
+            Policy.insurance_category_id.in_(insurance_category_ids),
+            Policy.is_active == True,
+        )
+        .order_by(Policy.policy_name)
+    )
+    return list(result.scalars().all())
+
+
 async def get_policy_documents(
     db: AsyncSession,
     policy_ids: list[UUID],

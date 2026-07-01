@@ -210,6 +210,9 @@ class _ProfilingService:
         if not completed:
             raise NotFoundException("Profiling session not found")
 
+        # Build scores before commit while relationships are still in-memory
+        scores_out = [self._score_to_out(s) for s in saved]
+
         await db.commit()
         logger.info("Session %s completed with %d risk scores", session.id, len(saved))
 
@@ -217,7 +220,7 @@ class _ProfilingService:
             "Profiling completed successfully",
             ProfilingCompleteOut(
                 session=ProfilingSessionOut.model_validate(completed),
-                scores=[self._score_to_out(s) for s in saved],
+                scores=scores_out,
             ).model_dump(),
         )
 

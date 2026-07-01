@@ -1,67 +1,82 @@
 :root {
-  /* ===== Brand ===== */
-  --color-primary: #1A3A5C;
-  --color-primary-dark: #102A45;
-  --color-primary-light: #2C5078;
+  /* ===== Brand (Mastercard-inspired) ===== */
+  --color-primary: #141413;       /* Ink Black — warm near-black for CTAs, headlines, footer */
+  --color-primary-dark: #000000;
+  --color-primary-light: #262627; /* Charcoal */
 
-  --color-secondary: #0D7377;
-  --color-secondary-dark: #095457;
-  --color-secondary-light: #4FA8AB;
+  --color-secondary: #3860BE;     /* Link Blue — deep dusty blue for links & callouts */
+  --color-secondary-dark: #2A4C99;
+  --color-secondary: #CF4500; /* Signal Orange (for consent/legal only) */
+  --color-secondary-dark: #9A3A0A; /* Clay Brown */
+  --color-secondary-light: #F37338; /* Light Signal Orange (decorative) */
 
-  --color-cta: #E07B39;
-  --color-cta-hover: #C9652A;
-  --color-cta-contrast: #FFFFFF;
+  --color-cta: #141413; /* Primary buttons are Ink Black */
+  --color-cta-hover: #262627;
+  --color-cta-contrast: #F3F0EE; /* Canvas Cream text on Ink Black button */
 
-  /* ===== Risk status (shared across themes) ===== */
-  --color-risk-low: #1A7B4B;
-  --color-risk-low-bg: #E1F0E7;
+  /* ===== Risk status (Keeping semantic colors but muting them slightly) ===== */
+  --color-risk-low: #059669;
+  --color-risk-low-bg: rgba(5, 150, 105, 0.1);
 
-  --color-risk-medium: #C97B2E;
-  --color-risk-medium-bg: #F8E9DA;
+  --color-risk-medium: #D97706;
+  --color-risk-medium-bg: rgba(217, 119, 6, 0.1);
 
-  --color-risk-high: #C0392B;
-  --color-risk-high-bg: #F8E1DF;
+  --color-risk-high: #DC2626;
+  --color-risk-high-bg: rgba(220, 38, 38, 0.1);
 
-  --color-risk-critical: #8B0000;
-  --color-risk-critical-bg: #F2DADA;
+  --color-risk-critical: #991B1B;
+  --color-risk-critical-bg: rgba(153, 27, 27, 0.1);
 
   /* ===== Surfaces ===== */
-  --color-background: #F7F9FC;
-  --color-surface: #FFFFFF;
-  --color-surface-alt: #EDF1F6;
+  --color-background: #F3F0EE; /* Canvas Cream */
+  --color-surface: #FCFBFA; /* Lifted Cream */
+  --color-surface-alt: #FFFFFF; /* Pure White */
 
   /* ===== Text ===== */
-  --color-text-primary: #1C2B3A;
-  --color-text-secondary: #6B7C93;
-  --color-text-tertiary: #A4B0C0;
-  --color-text-on-primary: #FFFFFF;
+  --color-text-primary: #141413; /* Ink Black */
+  --color-text-secondary: #696969; /* Slate Gray */
+  --color-text-tertiary: #D1CDC7; /* Dust Taupe */
+  --color-text-on-primary: #F3F0EE; /* Cream on Ink */
 
   /* ===== Borders ===== */
-  --color-border: #E1E6ED;
-  --color-border-strong: #C7D3E0;
+  --color-border: #D1CDC7; /* Dust Taupe */
+  --color-border-strong: #696969; /* Slate Gray */
 
   /* ===== Interactive states & overlays ===== */
-  --color-hover: rgba(28, 43, 58, 0.06);
-  --color-selected: rgba(13, 115, 119, 0.08);
-  --color-text-muted: #A4B0C0;
-  --focus-ring-secondary: rgba(13, 115, 119, 0.26);
-  --focus-ring-secondary-soft: rgba(13, 115, 119, 0.16);
-  --focus-ring-secondary-strong: rgba(13, 115, 119, 0.32);
-  --focus-ring-danger: rgba(192, 57, 43, 0.14);
-  --shadow-cta: 0 10px 20px rgba(224, 123, 57, 0.2);
+  --color-hover: rgba(20, 20, 19, 0.04);
+  --color-selected: rgba(20, 20, 19, 0.08);
+  --color-text-muted: #696969;
+  --focus-ring-secondary: rgba(207, 69, 0, 0.3);
+  --focus-ring-secondary-soft: rgba(207, 69, 0, 0.15);
+  --focus-ring-secondary-strong: rgba(207, 69, 0, 0.5);
+  --focus-ring-danger: rgba(220, 38, 38, 0.2);
+  --shadow-cta: 0 4px 24px rgba(20, 20, 19, 0.15);
 
-  --auth-brand-gradient-start: rgba(16, 42, 69, 0.96);
-  --auth-brand-gradient-end: rgba(13, 115, 119, 0.9);
-  --auth-brand-border: rgba(255, 255, 255, 0.26);
-  --auth-brand-border-soft: rgba(255, 255, 255, 0.18);
-  --auth-brand-text: rgba(255, 255, 255, 0.86);
-  --auth-brand-text-muted: rgba(255, 255, 255, 0.78);
-  --auth-brand-text-subtle: rgba(255, 255, 255, 0.82);
-  --auth-brand-surface: rgba(255, 255, 255, 0.08);
+  --auth-brand-gradient-start: #141413;
+  --auth-brand-gradient-end: #141413;
+  --auth-brand-border: rgba(255, 255, 255, 0.2);
+  --auth-brand-border-soft: rgba(255, 255, 255, 0.1);
+  --auth-brand-text: #FFFFFF;
+  --auth-brand-text-muted: #D1CDC7;
+  --auth-brand-text-subtle: #F3F0EE;
+  --auth-brand-surface: rgba(255, 255, 255, 0.05);
 
-  /* ===== Radii & elevation (optional, shared) ===== */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --shadow-card: 0 1px 3px rgba(28, 43, 58, 0.08);
+  /* ===== Radii (Mastercard Scale) ===== */
+  --radius-sm: 6px;
+  --radius-md: 20px; /* Primary Buttons */
+  --radius-lg: 24px; /* Consent Pills */
+  --radius-xl: 40px; /* Stadium Cards / Hero Media */
+  --radius-full: 999px; /* Floating Nav / Circular Portraits */
+
+  /* ===== Elevation (Soft atmospheric cushioning) ===== */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 4px 24px rgba(0, 0, 0, 0.04); /* Level 1 - Floating Nav */
+  --shadow-md: 0 12px 36px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.08); /* Level 2 - Halo */
+  --shadow-xl: 0 70px 110px rgba(0, 0, 0, 0.15); /* Level 3 - Dramatic */
+
+  /* ===== Transitions ===== */
+  --transition-fast: 150ms ease-out;
+  --transition-base: 250ms ease-out;
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
