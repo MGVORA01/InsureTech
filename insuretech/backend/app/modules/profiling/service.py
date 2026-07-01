@@ -34,10 +34,18 @@ class _ProfilingService:
     # Public API
     # ------------------------------------------------------------------
 
-    async def get_status(self, user: User, db: AsyncSession) -> APIResponse:
+    async def get_status(
+        self,
+        user: User,
+        db: AsyncSession,
+        business_id: UUID | None = None,
+    ) -> APIResponse:
         """Return profiling status for the authenticated user's business."""
         try:
-            business = await BusinessService.get_business_by_user(user, db)
+            if business_id:
+                business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+            else:
+                business = await BusinessService.get_business_by_user(user, db)
         except NotFoundException:
             return APIResponse.success_response(
                 "No business profile found",
@@ -62,13 +70,23 @@ class _ProfilingService:
             },
         )
 
-    async def start_session(self, user: User, db: AsyncSession, tier: int | None = None) -> APIResponse:
+    async def start_session(
+        self,
+        user: User,
+        db: AsyncSession,
+        tier: int | None = None,
+        business_id: UUID | None = None,
+    ) -> APIResponse:
         """Start a new profiling session or resume an existing one.
 
         Args:
             tier: If set, filter questions by tier (1 or 2).
+            business_id: Target business. Falls back to user's first business if omitted.
         """
-        business = await BusinessService.get_business_by_user(user, db)
+        if business_id:
+            business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+        else:
+            business = await BusinessService.get_business_by_user(user, db)
 
         active = await repository.get_active_session(db, business.id)
         if active:
@@ -159,7 +177,7 @@ class _ProfilingService:
 
         for ans_data in data.answers:
             await repository.save_answer(db, session.id, ans_data)
-            
+
         logger.info("Batch answers saved for session %s, count: %d", session.id, len(data.answers))
 
         target = data.advance_to_section or session.current_section
@@ -337,6 +355,8 @@ class _ProfilingService:
     ) -> tuple[ProfilingSession, object]:
         """Fetch a session and its owning business in one go.
 
+        Verifies the user owns the business via ``business.user_id``.
+
         Returns:
             ``(session, business)`` where business has ``segment`` loaded.
         """
@@ -344,9 +364,7 @@ class _ProfilingService:
         if not session:
             raise NotFoundException("Profiling session not found")
 
-        business = await BusinessService.get_business_by_user(user, db)
-        if session.business_id != business.id:
-            raise NotFoundException("Profiling session not found")
+        business = await BusinessService.get_business_by_id_for_user(session.business_id, user, db)
 
         return session, business
 

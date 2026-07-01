@@ -103,6 +103,21 @@ export default function DashboardPage() {
     })
   }
 
+  const handleDeleteBusiness = async (businessId: string) => {
+    try {
+      await profileApi.deleteBusiness(businessId)
+      setBusinesses((prev) => prev.filter((b) => b.id !== businessId))
+      if (selectedBusinessId === businessId) {
+        setSelectedBusinessId((prev) => {
+          const remaining = businesses.filter((b) => b.id !== businessId)
+          return remaining.length > 0 ? remaining[0].id : null
+        })
+      }
+    } catch {
+      setProfileError(PROFILE_MESSAGES.deleteError)
+    }
+  }
+
   const renderProfileTab = () => {
     if (businessesLoading) {
       return <ProfileSkeleton />
@@ -213,6 +228,7 @@ export default function DashboardPage() {
         selectedBusinessId={selectedBusinessId}
         onBusinessChange={handleBusinessChange}
         onAddBusiness={handleAddBusiness}
+        onDeleteBusiness={handleDeleteBusiness}
       />
 
       {/* Welcome banner */}

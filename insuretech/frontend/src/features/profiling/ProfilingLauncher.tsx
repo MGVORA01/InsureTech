@@ -6,9 +6,10 @@ import styles from './ProfilingLauncher.module.css'
 
 interface ProfilingLauncherProps {
   onStartWizard: () => void
+  businessId?: string
 }
 
-export default function ProfilingLauncher({ onStartWizard }: ProfilingLauncherProps) {
+export default function ProfilingLauncher({ onStartWizard, businessId }: ProfilingLauncherProps) {
   const [status, setStatus] = useState<ProfilingStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -17,14 +18,14 @@ export default function ProfilingLauncher({ onStartWizard }: ProfilingLauncherPr
     setLoading(true)
     setError(null)
     try {
-      const result = await profilingApi.getStatus()
+      const result = await profilingApi.getStatus(businessId)
       setStatus(result)
     } catch (err) {
       setError(getProfilingErrorMessage(err))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [businessId])
 
   useEffect(() => {
     fetchStatus()

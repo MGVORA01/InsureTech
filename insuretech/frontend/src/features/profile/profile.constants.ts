@@ -3,6 +3,8 @@ export const PROFILE_ENDPOINTS = {
   industries: '/businesses/industries',
   businesses: '/businesses',
   myBusiness: '/businesses/me',
+  myBusinesses: '/businesses',
+  deleteBusiness: (id: string) => `/businesses/${id}`,
 } as const
 
 export const TURNOVER_RANGES = [
@@ -22,8 +24,11 @@ export const PROFILE_VALIDATION = {
 export const PROFILE_MESSAGES = {
   title: 'Business Profile',
   createSuccess: 'Business profile created successfully',
+  deleteSuccess: 'Business profile deleted successfully',
+  deleteConfirm: 'Are you sure you want to delete this business profile? This action cannot be undone.',
   fetchError: 'Failed to load business profile',
   createError: 'Failed to create business profile',
+  deleteError: 'Failed to delete business profile',
   loadSegmentsError: 'Failed to load segments',
   loadIndustriesError: 'Failed to load industries',
   noProfile: 'You have not created a business profile yet.',

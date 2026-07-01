@@ -24,9 +24,13 @@ router = APIRouter(
 async def get_profiling_status(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    business_id: Annotated[UUID | None, Query()] = None,
 ) -> APIResponse:
-    """Return profiling status for the authenticated user's business."""
-    return await Service.get_status(current_user, db)
+    """Return profiling status for a business.
+
+    Omit ``business_id`` to use the user's first business profile.
+    """
+    return await Service.get_status(current_user, db, business_id=business_id)
 
 
 @router.post("/start", status_code=status.HTTP_200_OK)
@@ -34,13 +38,15 @@ async def start_profiling(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     tier: Annotated[int | None, Query()] = None,
+    business_id: Annotated[UUID | None, Query()] = None,
 ) -> APIResponse:
     """Start a new profiling wizard session or resume an active one.
 
+    Omit ``business_id`` to target the user's first business profile.
     Use ``?tier=1`` for core assessment questions (default).
     Use ``?tier=2`` for precision refinement questions.
     """
-    return await Service.start_session(current_user, db, tier=tier)
+    return await Service.start_session(current_user, db, tier=tier, business_id=business_id)
 
 
 @router.get("/session/{session_id}", status_code=status.HTTP_200_OK)
