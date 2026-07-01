@@ -30,14 +30,14 @@
 .progressBar {
   height: 0.5rem;
   background: var(--color-surface-alt);
-  border-radius: 999px;
+  border-radius: var(--radius-xl);
   overflow: hidden;
 }
 
 .progressFill {
   height: 100%;
   background: var(--color-primary);
-  border-radius: 999px;
+  border-radius: var(--radius-xl);
   transition: width 0.3s ease;
 }
 
@@ -183,7 +183,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-radius: 999px;
+  border-radius: var(--radius-xl);
   background: var(--color-secondary);
   color: white;
 }
@@ -207,16 +207,18 @@
 }
 
 .scoreGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
 .scoreCard {
   display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   padding: 1rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -229,21 +231,27 @@
 }
 
 .scoreCardName {
-  font-size: 0.8125rem;
+  flex: 1;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .scoreCardLevel {
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-xl);
+  text-transform: uppercase;
 }
 
 .scoreCardValue {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--color-text-primary);
+  min-width: 4rem;
+  text-align: right;
 }
 
 .scoreCardTag {
@@ -252,15 +260,23 @@
   font-weight: 600;
 }
 
+.levelCritical {
+  background: var(--color-risk-high-bg);
+  color: var(--color-risk-high);
+}
+
 .levelHigh {
+  background: var(--color-risk-high-bg);
   color: var(--color-risk-high);
 }
 
 .levelMedium {
+  background: var(--color-risk-medium-bg);
   color: var(--color-risk-medium);
 }
 
 .levelLow {
+  background: var(--color-risk-low-bg);
   color: var(--color-risk-low);
 }
 
@@ -347,7 +363,7 @@
   padding: 0.2rem 0.5rem;
   font-size: 0.6875rem;
   font-weight: 600;
-  border-radius: 999px;
+  border-radius: var(--radius-xl);
   background: var(--color-risk-high-bg);
   color: var(--color-risk-high);
 }

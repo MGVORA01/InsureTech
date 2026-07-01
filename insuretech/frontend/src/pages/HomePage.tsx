@@ -1,6 +1,6 @@
   import { useEffect, useRef, useState } from 'react'
-  import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+
+
 import { ChatPopup } from '../features/chat'
 import AuthModal from '../features/auth-modal/AuthModal'
   import type { AuthModalTab } from '../features/auth-modal/AuthModal'
@@ -10,57 +10,7 @@ import AuthModal from '../features/auth-modal/AuthModal'
   // Inter for body copy (clean, highly readable).
   const FONT_HEADING = "'Poppins', 'Inter', sans-serif"
   
-  /**
-   * Reveal — a small reusable scroll-triggered fade/slide-up wrapper.
-   * Wrap any block of content in it to animate it in once it scrolls into view.
-   */
-  function Reveal({
-    children,
-    className = '',
-    delay = 0,
-    y = 24,
-    style,
-  }: {
-    children: ReactNode
-    className?: string
-    delay?: number
-    y?: number
-    style?: React.CSSProperties
-  }) {
-    const ref = useRef<HTMLDivElement>(null)
-    const [visible, setVisible] = useState(false)
-  
-    useEffect(() => {
-      const node = ref.current
-      if (!node) return
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            setVisible(true)
-            observer.disconnect()
-          }
-        },
-        { threshold: 0.15 }
-      )
-      observer.observe(node)
-      return () => observer.disconnect()
-    }, [])
-  
-    return (
-      <div
-        ref={ref}
-        className={className}
-        style={{
-          opacity: visible ? 1 : 0,
-          transform: visible ? 'translateY(0)' : `translateY(${y}px)`,
-          transition: `opacity 0.7s ease-out ${delay}ms, transform 0.7s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
-          ...style,
-        }}
-      >
-        {children}
-      </div>
-    )
-  }
+
   
   function HomePage() {
     const [scrolled, setScrolled] = useState(false)

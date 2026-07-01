@@ -13,8 +13,7 @@ export const SECTIONS_ORDER = [
   'machinery_operations',
   'safety_security',
   'claims_history',
-  'transit_logistics',
-  'coverage_structure',
+  'transit_logistics'
 ] as const
 
 export const SECTION_LABELS: Record<string, string> = {
@@ -24,8 +23,7 @@ export const SECTION_LABELS: Record<string, string> = {
   machinery_operations: 'Machinery & Operations',
   safety_security: 'Safety & Security',
   claims_history: 'Claims History',
-  transit_logistics: 'Transit & Logistics',
-  coverage_structure: 'Coverage Structure',
+  transit_logistics: 'Transit & Logistics'
 }
 
 export const PROFILING_MESSAGES = {

@@ -209,12 +209,6 @@ function formatBytes(bytes: number | null) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function formatDate(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-}
-
 // ---- navigation sections --------------------------------------------------
 
 const NAV_SECTIONS = [
@@ -274,7 +268,7 @@ function Banner({
   onDismiss,
 }: {
   tone: 'success' | 'error' | 'warning'
-  icon: (props: React.SVGProps<SVGSVGElement>) => JSX.Element
+  icon: (props: React.SVGProps<SVGSVGElement>) => React.ReactNode
   children: React.ReactNode
   onDismiss?: () => void
 }) {
@@ -328,8 +322,8 @@ function SidebarContent({
           InsureTech
         </span>
         <span
-          className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold"
-          style={{ backgroundColor: 'var(--color-secondary)', color: '#fff' }}
+          className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold"
+          style={{ borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-secondary)', color: '#fff' }}
         >
           <IconShield className="h-3 w-3" />
           Admin
@@ -347,9 +341,9 @@ function SidebarContent({
               key={id}
               onClick={() => onNavigate(id)}
               aria-current={active ? 'true' : undefined}
-              className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 ${
+              className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 ${
                 active ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
+              }`} style={{ borderRadius: 'var(--radius-md)' }}
             >
               <Icon className="h-4 w-4 shrink-0" />
               {label}
@@ -362,7 +356,7 @@ function SidebarContent({
         </p>
         <Link
           to="/admin/users"
-          className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium transition hover:bg-slate-100 hover:text-slate-900" style={{ borderRadius: 'var(--radius-md)', color: 'var(--color-text-tertiary)' }}
         >
           <IconUsers className="h-4 w-4 shrink-0" />
           Manage Users
@@ -630,14 +624,14 @@ function AdminDashboardPage() {
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
       {/* ===== MOBILE TOP BAR ============================================= */}
       <header
-        className="fixed inset-x-0 top-0 z-40 flex items-center justify-between border-b bg-white/90 px-4 py-3 backdrop-blur-md lg:hidden"
-        style={{ borderColor: 'var(--color-border)' }}
+        className="fixed inset-x-0 top-0 z-40 flex items-center justify-between border-b px-4 py-3 backdrop-blur-md lg:hidden"
+        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
       >
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
           aria-label="Open navigation"
-          className="rounded-md p-2 text-slate-600 transition hover:bg-slate-100"
+          className="p-2 transition hover:bg-slate-100" style={{ borderRadius: 'var(--radius-md)', color: 'var(--color-text-tertiary)' }}
         >
           <IconMenu className="h-5 w-5" />
         </button>
@@ -662,12 +656,12 @@ function AdminDashboardPage() {
       {drawerOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-72 bg-white shadow-xl">
+          <aside className="absolute inset-y-0 left-0 w-72" style={{ backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-xl)' }}>
             <button
               type="button"
               onClick={() => setDrawerOpen(false)}
               aria-label="Close navigation"
-              className="absolute right-3 top-3 rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100"
+              className="absolute right-3 top-3 p-1.5 transition hover:bg-slate-100" style={{ borderRadius: 'var(--radius-md)', color: 'var(--color-text-tertiary)' }}
             >
               <IconX className="h-4 w-4" />
             </button>
@@ -684,8 +678,8 @@ function AdminDashboardPage() {
 
       {/* ===== DESKTOP SIDEBAR ============================================= */}
       <aside
-        className="sticky top-0 hidden h-screen w-64 shrink-0 border-r bg-white lg:flex"
-        style={{ borderColor: 'var(--color-border)' }}
+        className="sticky top-0 hidden h-screen w-64 shrink-0 border-r lg:flex"
+        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
       >
         <SidebarContent
           activeSection={activeSection}
@@ -710,8 +704,8 @@ function AdminDashboardPage() {
           <section id="dashboard">
             {/* Welcome Banner */}
             <div
-              className="relative overflow-hidden rounded-2xl px-8 py-12 text-white shadow-md"
-              style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)' }}
+              className="relative overflow-hidden px-8 py-12 text-white"
+              style={{ borderRadius: 'var(--radius-lg)', background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)', boxShadow: 'var(--shadow-md)' }}
             >
               <span className="absolute -bottom-8 -right-8 opacity-[0.07]">
                 <svg width="200" height="200" viewBox="0 0 24 24" fill="white">
@@ -772,18 +766,18 @@ function AdminDashboardPage() {
             <div className="mt-8 grid gap-5 sm:grid-cols-3">
               {statsLoading
                 ? Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="rounded-xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
+                    <div key={i} className="p-6" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
                       <SkeletonBlock className="h-5 w-24" />
                       <SkeletonBlock className="mt-3 h-8 w-16" />
                     </div>
                   ))
-                : statCards.map((card, i) => {
+                : statCards.map((card) => {
                     const Icon = card.icon
                     return (
                       <div
                         key={card.label}
-                        className="group relative overflow-hidden rounded-xl border bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-                        style={{ borderColor: 'var(--color-border)' }}
+                        className="group relative overflow-hidden p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+                        style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}
                       >
                         {/* Colored top accent bar */}
                         <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: card.borderColor }} />
@@ -809,8 +803,8 @@ function AdminDashboardPage() {
             {/* Quick link to Manage Users */}
             <Link
               to="/admin/users"
-              className="mt-6 flex items-center justify-between rounded-xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-              style={{ borderColor: 'var(--color-border)' }}
+              className="mt-6 flex items-center justify-between p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+              style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}
             >
               <div className="flex items-center gap-4">
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--color-secondary)', color: '#fff' }}>
@@ -833,9 +827,9 @@ function AdminDashboardPage() {
           <div className="mt-10 grid gap-6 lg:grid-cols-5">
             {/* Upload — takes 2 columns */}
             <section id="upload-pdf" ref={uploadReveal.ref} className={`lg:col-span-2 ${revealClass(uploadReveal.visible)}`}>
-              <div className="rounded-xl border bg-white p-6 shadow-sm h-full" style={{ borderColor: 'var(--color-border)' }}>
+              <div className="p-6 h-full" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--color-secondary)', color: '#fff' }}>
+                  <span className="flex h-10 w-10 items-center justify-center" style={{ borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--color-secondary)', color: '#fff' }}>
                     <IconUpload className="h-5 w-5" />
                   </span>
                   <div>
@@ -850,7 +844,7 @@ function AdminDashboardPage() {
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={(e) => { e.preventDefault(); setIsDragging(false); validateAndSetFile(e.dataTransfer.files?.[0] ?? null) }}
-                    className="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed px-4 py-5 text-sm transition"
+                    className="flex cursor-pointer items-center gap-3 border-2 border-dashed px-4 py-5 text-sm transition"
                     style={{
                       borderColor: isDragging ? 'var(--color-secondary)' : 'var(--color-border-strong)',
                       backgroundColor: isDragging ? 'var(--overlay-secondary-10, rgba(13,115,119,0.1))' : 'var(--color-surface-alt)',
@@ -879,8 +873,8 @@ function AdminDashboardPage() {
                   type="button"
                   disabled={!uploadFile || uploading}
                   onClick={handleUpload}
-                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ backgroundColor: 'var(--color-secondary)' }}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--color-secondary)' }}
                 >
                   {uploading ? (
                     <>
@@ -914,10 +908,10 @@ function AdminDashboardPage() {
 
             {/* Documents summary card — takes 3 columns */}
             <section id="documents" ref={documentsReveal.ref} className={`lg:col-span-3 ${revealClass(documentsReveal.visible)}`}>
-              <div className="rounded-xl border bg-white p-6 shadow-sm h-full" style={{ borderColor: 'var(--color-border)' }}>
+              <div className="p-6 h-full" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}>
+                    <span className="flex h-10 w-10 items-center justify-center" style={{ borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--color-primary)', color: '#fff' }}>
                       <IconFileText className="h-5 w-5" />
                     </span>
                     <div>
@@ -931,8 +925,8 @@ function AdminDashboardPage() {
                     type="button"
                     onClick={fetchDocuments}
                     disabled={documentsLoading}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition hover:bg-slate-50 disabled:opacity-50"
-                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+                    className="inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold transition hover:bg-slate-50 disabled:opacity-50"
+                    style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
                   >
                     <IconRefresh className={`h-3 w-3 ${documentsLoading ? 'animate-spin' : ''}`} />
                     Refresh
@@ -960,8 +954,8 @@ function AdminDashboardPage() {
                     {documents.slice(0, 6).map((doc) => (
                       <div
                         key={doc.id}
-                        className="flex items-center justify-between rounded-lg border px-3 py-2.5 transition hover:bg-[var(--color-surface-alt)]"
-                        style={{ borderColor: 'var(--color-border)' }}
+                        className="flex items-center justify-between px-3 py-2.5 transition hover:bg-[var(--color-surface-alt)]"
+                        style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <IconFileText className="h-4 w-4 shrink-0" style={{ color: 'var(--color-text-tertiary)' }} />
@@ -995,7 +989,7 @@ function AdminDashboardPage() {
           {/*  PROFILE SECTION                                                */}
           {/* ================================================================ */}
           <section id="profile" ref={profileReveal.ref} className={`mt-6 ${revealClass(profileReveal.visible)}`}>
-            <div className="rounded-xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="p-6" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
               <div className="flex items-center gap-3">
                 <LogoIcon className="h-9 w-9" />
                 <div>
@@ -1045,7 +1039,7 @@ function AdminDashboardPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-doc-title"
-            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            className="w-full max-w-sm p-6" style={{ borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-xl)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">

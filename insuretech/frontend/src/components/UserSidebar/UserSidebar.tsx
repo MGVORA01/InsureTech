@@ -2,7 +2,7 @@ import { useAuth } from '../../hooks/useAuth'
 
 function LogoIcon() {
   return (
-    <span className="flex h-8 w-8 items-center justify-center rounded-sm" style={{ background: 'var(--color-secondary)' }}>
+    <span className="flex h-8 w-8 items-center justify-center" style={{ background: 'var(--color-secondary)', borderRadius: 'var(--radius-sm)' }}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
         <path d="M12 2L3 6V11C3 16.5 6.8 20.7 12 22C17.2 20.7 21 16.5 21 11V6L12 2Z" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
         <path d="M9 12L11 14L15.5 9.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -56,10 +56,11 @@ function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition"
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition"
       style={{
         backgroundColor: active ? 'var(--overlay-secondary-10, rgba(13,115,119,0.1))' : 'transparent',
         color: active ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
+        borderRadius: 'var(--radius-md)',
       }}
     >
       <Icon className="h-5 w-5 shrink-0" />
@@ -162,7 +163,7 @@ export function UserSidebar({
 
 export function UserDesktopSidebar({ children }: { children: React.ReactNode }) {
   return (
-    <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r" style={{ backgroundColor: '#fff', borderColor: 'var(--color-border)' }}>
+    <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
       {children}
     </aside>
   )
@@ -171,10 +172,10 @@ export function UserDesktopSidebar({ children }: { children: React.ReactNode }) 
 export function UserMobileTopBar({ onOpenDrawer, onLogout }: { onOpenDrawer: () => void; onLogout: () => void }) {
   return (
     <div
-      className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b bg-white/90 px-4 py-3 backdrop-blur-md lg:hidden"
-      style={{ borderColor: 'var(--color-border)' }}
+      className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b px-4 py-3 backdrop-blur-md lg:hidden"
+      style={{ backgroundColor: 'var(--overlay-surface-80)', borderColor: 'var(--color-border)' }}
     >
-      <button type="button" onClick={onOpenDrawer} className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100">
+      <button type="button" onClick={onOpenDrawer} className="rounded-md p-1.5 transition hover:[background-color:var(--color-hover)]" style={{ color: 'var(--color-text-tertiary)' }}>
         <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="3" y1="6" x2="21" y2="6" />
           <line x1="3" y1="12" x2="21" y2="12" />
@@ -188,7 +189,8 @@ export function UserMobileTopBar({ onOpenDrawer, onLogout }: { onOpenDrawer: () 
       <button
         type="button"
         onClick={onLogout}
-        className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100"
+        className="rounded-md p-1.5 transition hover:[background-color:var(--color-hover)]"
+        style={{ color: 'var(--color-text-tertiary)' }}
       >
         <IconLogOut className="h-5 w-5" />
       </button>
@@ -205,10 +207,11 @@ export function UserMobileDrawer({ open, onClose, children }: { open: boolean; o
       )}
       {/* Drawer */}
       <div
-        className="fixed bottom-0 left-0 top-0 z-50 w-64 transform border-r bg-white shadow-xl transition-transform duration-200 lg:hidden"
+        className="fixed bottom-0 left-0 top-0 z-50 w-64 transform border-r shadow-xl transition-transform duration-200 lg:hidden"
         style={{
           transform: open ? 'translateX(0)' : 'translateX(-100%)',
           borderColor: 'var(--color-border)',
+          backgroundColor: 'var(--color-surface)',
         }}
       >
         {children}
