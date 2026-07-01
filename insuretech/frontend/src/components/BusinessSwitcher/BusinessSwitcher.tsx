@@ -18,11 +18,24 @@ function IconPlus(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function IconTrash(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  )
+}
+
 interface BusinessSwitcherProps {
   businesses: BusinessProfile[]
   selectedBusinessId: string | null
   onBusinessChange: (businessId: string) => void
   onAddBusiness: () => void
+  onDeleteBusiness?: (businessId: string) => void
 }
 
 export default function BusinessSwitcher({
@@ -30,8 +43,10 @@ export default function BusinessSwitcher({
   selectedBusinessId,
   onBusinessChange,
   onAddBusiness,
+  onDeleteBusiness,
 }: BusinessSwitcherProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -104,39 +119,81 @@ export default function BusinessSwitcher({
           )}
           {businesses.map((b) => {
             const isSelected = b.id === selectedBusinessId
+            const isConfirming = confirmingDeleteId === b.id
             return (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => {
-                  onBusinessChange(b.id)
-                  setDropdownOpen(false)
-                }}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50"
-                style={{
-                  backgroundColor: isSelected ? 'var(--overlay-secondary-10, rgba(13,115,119,0.06))' : 'transparent',
-                }}
-              >
-                <span
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
-                  style={{ backgroundColor: 'var(--color-secondary)' }}
-                >
-                  {b.business_name.slice(0, 2).toUpperCase()}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                    {b.business_name}
-                  </p>
-                  <p className="truncate text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
-                    {[b.segment?.name, b.industry?.name].filter(Boolean).join(' · ') || 'No segment'}
-                  </p>
-                </div>
-                {isSelected && (
-                  <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="var(--color-secondary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+              <div key={b.id}>
+                {isConfirming ? (
+                  <div className="flex items-center gap-2 px-4 py-3">
+                    <span className="text-sm text-red-600">Delete {b.business_name}?</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConfirmingDeleteId(null)
+                        onDeleteBusiness?.(b.id)
+                      }}
+                      className="rounded bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-red-700"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConfirmingDeleteId(null)
+                      }}
+                      className="rounded bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onBusinessChange(b.id)
+                      setDropdownOpen(false)
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50"
+                    style={{
+                      backgroundColor: isSelected ? 'var(--overlay-secondary-10, rgba(13,115,119,0.06))' : 'transparent',
+                    }}
+                  >
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
+                      style={{ backgroundColor: 'var(--color-secondary)' }}
+                    >
+                      {b.business_name.slice(0, 2).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                        {b.business_name}
+                      </p>
+                      <p className="truncate text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+                        {[b.segment?.name, b.industry?.name].filter(Boolean).join(' · ') || 'No segment'}
+                      </p>
+                    </div>
+                    {isSelected && (
+                      <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="var(--color-secondary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                    {onDeleteBusiness && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setConfirmingDeleteId(b.id)
+                        }}
+                        className="shrink-0 rounded p-1 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                        title={`Delete ${b.business_name}`}
+                      >
+                        <IconTrash className="h-4 w-4" />
+                      </button>
+                    )}
+                  </button>
                 )}
-              </button>
+              </div>
             )
           })}
           <div className="border-t" style={{ borderColor: 'var(--color-border)' }}>

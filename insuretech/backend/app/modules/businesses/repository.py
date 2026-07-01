@@ -97,6 +97,24 @@ async def get_business_by_user_id(db: AsyncSession, user_id: UUID) -> BusinessPr
     return result.scalar_one_or_none()
 
 
+async def get_businesses_by_user_id(db: AsyncSession, user_id: UUID) -> list[BusinessProfile]:
+    """Fetch all active business profiles for a user.
+
+    Args:
+        user_id: UUID of the user.
+
+    Returns:
+        List of active BusinessProfile instances.
+    """
+    result = await db.execute(
+        select(BusinessProfile)
+        .options(selectinload(BusinessProfile.industry), selectinload(BusinessProfile.segment))
+        .where(BusinessProfile.user_id == user_id, BusinessProfile.is_active == True)
+        .order_by(BusinessProfile.created_at)
+    )
+    return list(result.scalars().all())
+
+
 async def get_business_by_id(db: AsyncSession, business_id: UUID) -> BusinessProfile | None:
     """Fetch an active business profile by its ID.
 
@@ -112,3 +130,24 @@ async def get_business_by_id(db: AsyncSession, business_id: UUID) -> BusinessPro
         .where(BusinessProfile.id == business_id, BusinessProfile.is_active == True)
     )
     return result.scalar_one_or_none()
+
+
+async def delete_business(db: AsyncSession, business_id: UUID) -> BusinessProfile | None:
+    """Soft-delete a business profile by setting is_active to False.
+
+    Args:
+        business_id: UUID of the business profile to delete.
+
+    Returns:
+        The updated BusinessProfile instance if found, None otherwise.
+    """
+    result = await db.execute(
+        select(BusinessProfile)
+        .where(BusinessProfile.id == business_id, BusinessProfile.is_active == True)
+    )
+    business = result.scalar_one_or_none()
+    if business:
+        business.is_active = False
+        await db.flush()
+        await db.refresh(business)
+    return business

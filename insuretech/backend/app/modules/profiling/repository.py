@@ -309,7 +309,6 @@ async def get_answer_score_rules_for_session(
         select(ProfilingAnswer.question_id)
         .distinct()
         .where(ProfilingAnswer.session_id == session_id)
-        .scalar_subquery()
     )
 
     result = await db.execute(
