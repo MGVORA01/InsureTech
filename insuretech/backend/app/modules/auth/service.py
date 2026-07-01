@@ -33,6 +33,8 @@ class AuthService:
       role_id=role.id
     )
 
+    await db.commit()
+
     return APIResponse.success_response(
       message="User registered successfully",
       data={
@@ -72,12 +74,18 @@ class AuthService:
     set_auth_cookies(
       response,
       access_token,
-      refresh_token
+      refresh_token,
+      remember_me=data.remember_me
     )
 
     return APIResponse.success_response(
       message="User logged in successfully",
-      data=None
+      data={
+        "id": str(user.id),
+        "full_name": user.full_name,
+        "email": user.email,
+        "role": user.role.name
+      }
     )
 
 
@@ -95,6 +103,7 @@ class AuthService:
     new_password_hash = hash(data.new_password)
 
     await Repository.update_user_password(db, current_user.id, new_password_hash)
+    await db.commit()
 
     return APIResponse.success_response(
       message="Password changed successfully",
@@ -124,6 +133,8 @@ class AuthService:
     hashed_password_reset_token = hash(password_reset_token)
 
     await Repository.store_password_reset_token(db, user.id, hashed_password_reset_token)
+
+    await db.commit()
 
     reset_url = (
       f"{settings.FRONTEND_URL}/reset-password"
@@ -184,6 +195,8 @@ class AuthService:
 
     await Repository.mark_reset_token_used(db, reset_token)
 
+    await db.commit()
+
     return APIResponse.success_response(
       message="Password changed successfully"
     )
@@ -226,7 +239,23 @@ class AuthService:
 
     return APIResponse.success_response(
       message="Token refreshed",
-      data=None
+      data={
+        "id": str(user.id),
+        "full_name": user.full_name,
+        "email": user.email,
+        "role": user.role.name
+      }
+    )
+
+  async def get_current_user_me_service(self, current_user):
+    return APIResponse.success_response(
+      message="User fetched successfully",
+      data={
+        "id": str(current_user.id),
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+        "role": current_user.role.name
+      }
     )
 
   async def logout_service(self,response):

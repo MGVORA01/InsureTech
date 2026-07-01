@@ -21,3 +21,20 @@ build/
 # OS files
 .DS_Store
 .idea/
+**/pdfs/
+
+# Dev artifacts
+.antigravitycli/
+cleanup_seed.py
+seed_meta.py
+master_seed_clean.json
+parsed_output/
+cleaned_output/
+section_output/
+metadata_output/
+chunk_output/
+data/
+
+seed-question.py
+seed-segments.py
+question.json
