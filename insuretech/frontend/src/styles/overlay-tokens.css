@@ -1,13 +1,6 @@
-/* Additional translucent overlay tokens used by the Home page and the
-   Auth modal overlay. These are additive — they do not modify or replace
-   anything in styles/variable.css — and exist so Tailwind utility classes
-   can reference a stable color value via var() instead of relying on
-   comma-based rgba() arbitrary values, which this build pipeline does not
-   reliably extract. */
-
 :root {
-  --overlay-primary-dark-55: rgba(16, 42, 69, 0.55);
-  --overlay-secondary-10: rgba(13, 115, 119, 0.1);
-  --overlay-surface-80: rgba(255, 255, 255, 0.8);
-  --overlay-on-primary-80: rgba(255, 255, 255, 0.8);
+  --overlay-primary-dark-55: rgba(20, 20, 19, 0.55);
+  --overlay-secondary-10: rgba(56, 96, 190, 0.1);
+  --overlay-surface-80: rgba(252, 251, 250, 0.8);
+  --overlay-on-primary-80: rgba(243, 240, 238, 0.8);
 }

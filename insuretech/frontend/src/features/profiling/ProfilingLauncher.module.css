@@ -21,7 +21,7 @@
   width: 3.5rem;
   height: 3.5rem;
   border-radius: 50%;
-  background: var(--color-primary-light, #2C5078);
+  background: var(--color-primary-light);
   color: white;
 }
 

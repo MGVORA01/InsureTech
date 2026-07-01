@@ -101,7 +101,7 @@
       setLoading(true)
       setError(false)
       try {
-        const params: Record<string, string | number> = { page, limit }
+        const params: Record<string, string | number | boolean> = { page, limit }
         if (filterActive === 'true') params.is_active = true
         else if (filterActive === 'false') params.is_active = false
         const res = await baseApi.get('/admin/users', { params })
@@ -138,7 +138,7 @@
     }
 
     const totalPages = data ? Math.ceil(data.total / limit) : 0
-    const sidebarProps = { user, onLogout: handleLogout, onAfterNavigate: () => setDrawerOpen(false) }
+
 
     return (
       <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
