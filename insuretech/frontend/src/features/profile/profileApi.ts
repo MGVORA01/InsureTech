@@ -84,4 +84,11 @@ export const profileApi = {
     )
     return unwrapData<BusinessProfile>(response)
   },
+
+  async getMyBusinesses(): Promise<BusinessProfile[]> {
+    const response = await baseApi.get<ApiEnvelope<BusinessProfile[]>>(
+      PROFILE_ENDPOINTS.myBusinesses,
+    )
+    return unwrapData<BusinessProfile[]>(response)
+  },
 }

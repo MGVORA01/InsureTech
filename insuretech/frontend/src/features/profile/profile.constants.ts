@@ -3,6 +3,7 @@ export const PROFILE_ENDPOINTS = {
   industries: '/businesses/industries',
   businesses: '/businesses',
   myBusiness: '/businesses/me',
+  myBusinesses: '/businesses',
 } as const
 
 export const TURNOVER_RANGES = [

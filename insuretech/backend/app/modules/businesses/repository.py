@@ -97,6 +97,24 @@ async def get_business_by_user_id(db: AsyncSession, user_id: UUID) -> BusinessPr
     return result.scalar_one_or_none()
 
 
+async def get_businesses_by_user_id(db: AsyncSession, user_id: UUID) -> list[BusinessProfile]:
+    """Fetch all active business profiles for a user.
+
+    Args:
+        user_id: UUID of the user.
+
+    Returns:
+        List of active BusinessProfile instances.
+    """
+    result = await db.execute(
+        select(BusinessProfile)
+        .options(selectinload(BusinessProfile.industry), selectinload(BusinessProfile.segment))
+        .where(BusinessProfile.user_id == user_id, BusinessProfile.is_active == True)
+        .order_by(BusinessProfile.created_at)
+    )
+    return list(result.scalars().all())
+
+
 async def get_business_by_id(db: AsyncSession, business_id: UUID) -> BusinessProfile | None:
     """Fetch an active business profile by its ID.
 

@@ -309,7 +309,6 @@ async def get_answer_score_rules_for_session(
         select(ProfilingAnswer.question_id)
         .distinct()
         .where(ProfilingAnswer.session_id == session_id)
-        .scalar_subquery()
     )
 
     result = await db.execute(
@@ -319,7 +318,7 @@ async def get_answer_score_rules_for_session(
             selectinload(AnswerScoreRule.risk_factor),
         )
         .where(
-            AnswerScoreRule.question_id.in_(select(answered_qids)),
+            AnswerScoreRule.question_id.in_(answered_qids),
             AnswerScoreRule.is_active == True,
         )
     )

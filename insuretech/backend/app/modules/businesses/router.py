@@ -49,10 +49,29 @@ async def create_business(
     return await Service.create_business(data, current_user, db)
 
 
+@router.get("", status_code=status.HTTP_200_OK)
+async def get_my_businesses(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> APIResponse:
+    """Fetch all business profiles for the authenticated user."""
+    return await Service.get_my_businesses(current_user, db)
+
+
 @router.get("/me", status_code=status.HTTP_200_OK)
 async def get_my_business(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> APIResponse:
-    """Fetch the authenticated user's business profile."""
+    """Fetch the authenticated user's first/primary business profile."""
     return await Service.get_my_business(current_user, db)
+
+
+@router.get("/{business_id}", status_code=status.HTTP_200_OK)
+async def get_business_by_id(
+    business_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> APIResponse:
+    """Fetch a specific business profile by ID (ownership verified)."""
+    return await Service.get_my_business_by_id(business_id, current_user, db)
