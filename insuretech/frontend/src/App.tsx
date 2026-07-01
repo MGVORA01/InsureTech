@@ -6,6 +6,9 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminUsersPage from './pages/AdminUsersPage'
+import AdminPoliciesPage from './pages/AdminPoliciesPage'
+import AdminInsurersPage from './pages/AdminInsurersPage'
+import AdminCategoriesPage from './pages/AdminCategoriesPage'
 import AuthModal from './features/auth-modal/AuthModal'
 import DashboardPage from './pages/DashboardPage'
 import AdminRoute from './Routes/AdminRoute'
@@ -45,6 +48,9 @@ function App() {
         <Route element={<AdminRoute />}>
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/policies" element={<AdminPoliciesPage />} />
+          <Route path="/admin/insurers" element={<AdminInsurersPage />} />
+          <Route path="/admin/categories" element={<AdminCategoriesPage />} />
         </Route>
       </Routes>
 
