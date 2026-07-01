@@ -23,6 +23,11 @@ build/
 .idea/
 **/pdfs/
 
+# Dev artifacts
+.antigravitycli/
+cleanup_seed.py
+seed_meta.py
+master_seed_clean.json
 parsed_output/
 cleaned_output/
 section_output/
