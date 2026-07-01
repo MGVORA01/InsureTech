@@ -18,6 +18,13 @@ interface ProfilingWizardProps {
   businessId?: string
 }
 
+const RISK_WEIGHTS: Record<string, number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+}
+
 export default function ProfilingWizard({ onComplete, onCancel, businessId }: ProfilingWizardProps) {
   const [phase, setPhase] = useState<ProfilingPhase>('tier1')
   const [section, setSection] = useState<SectionQuestionsOut | null>(null)
@@ -197,12 +204,12 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
 
     try {
       if (visibleQuestions.length > 0) {
-        const lastAnswered = Object.keys(answers).find(
-          qid => visibleQuestions.some(q => q.id === qid),
-        )
-        await profilingApi.submitAnswer(sessionId, {
-          question_id: lastAnswered || visibleQuestions[0]?.id,
-          answer_value: answers[lastAnswered || visibleQuestions[0]?.id] ?? '',
+        const answersBatch = visibleQuestions.map(q => ({
+          question_id: q.id,
+          answer_value: answers[q.id] ?? ''
+        }))
+        await profilingApi.submitAnswersBatch(sessionId, {
+          answers: answersBatch,
           advance_to_section: nextSection,
         })
       }
@@ -225,9 +232,12 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
     setLoading(true)
     try {
       if (visibleQuestions.length > 0) {
-        await profilingApi.submitAnswer(sessionId, {
-          question_id: visibleQuestions[0]?.id,
-          answer_value: answers[visibleQuestions[0]?.id] ?? '',
+        const answersBatch = visibleQuestions.map(q => ({
+          question_id: q.id,
+          answer_value: answers[q.id] ?? ''
+        }))
+        await profilingApi.submitAnswersBatch(sessionId, {
+          answers: answersBatch,
           advance_to_section: prevSection,
         })
       }
@@ -248,12 +258,12 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
     try {
       // Save the last section's answers before previewing
       if (visibleQuestions.length > 0) {
-        const lastAnswered = Object.keys(answers).find(
-          qid => visibleQuestions.some(q => q.id === qid),
-        )
-        await profilingApi.submitAnswer(sessionId, {
-          question_id: lastAnswered || visibleQuestions[0]?.id,
-          answer_value: answers[lastAnswered || visibleQuestions[0]?.id] ?? '',
+        const answersBatch = visibleQuestions.map(q => ({
+          question_id: q.id,
+          answer_value: answers[q.id] ?? ''
+        }))
+        await profilingApi.submitAnswersBatch(sessionId, {
+          answers: answersBatch,
         })
       }
 
@@ -300,11 +310,7 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
     setSubmitting(true)
     setError(null)
     try {
-      await profilingApi.submitAnswer(sessionId, {
-        question_id: visibleQuestions[0]?.id,
-        answer_value: answers[visibleQuestions[0]?.id] ?? '',
-        advance_to_section: SECTIONS_ORDER[0],
-      })
+
       if (!mountedRef.current) return
       const t2questions = Array.from(new Map(tier2Questions.map(t => [t.question.id, t.question])).values())
       setAllQuestions(t2questions)
@@ -404,7 +410,9 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
           </div>
         </div>
 
-        <div className={styles.tierBadge}>Core Assessment</div>
+        <div className={styles.sectionTitle}>
+          {SECTION_LABELS[section.section]}
+        </div>
 
         {error && (
           <div className={styles.errorBanner}>
@@ -468,8 +476,11 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
   }
 
   const renderPreview = () => {
-    const highRiskItems = previewScores.filter(s => s.risk_level === 'high' || s.risk_level === 'critical')
-    const lowRiskItems = previewScores.filter(s => s.risk_level !== 'high' && s.risk_level !== 'critical')
+    const filteredScores = previewScores
+      .filter(s => s.score > 0.2)
+      .sort((a, b) => (RISK_WEIGHTS[b.risk_level] || 0) - (RISK_WEIGHTS[a.risk_level] || 0))
+
+    const hasHighRisk = filteredScores.some(s => s.risk_level === 'high' || s.risk_level === 'critical')
 
     return (
       <div className={styles.container}>
@@ -489,35 +500,35 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
           </div>
         )}
 
-        <div className={styles.scoreGrid}>
-          {highRiskItems.map(s => (
-            <div key={s.risk_category_name} className={`${styles.scoreCard} ${styles.scoreCardHigh}`}>
-              <span className={styles.scoreCardName}>{s.risk_category_name}</span>
-              <span className={`${styles.scoreCardLevel} ${styles.levelHigh}`}>
-                {s.risk_level.toUpperCase()}
-              </span>
-              <span className={styles.scoreCardValue}>{s.score.toFixed(1)}</span>
-              {s.has_tier2_questions && (
-                <span className={styles.scoreCardTag}>Refinement available</span>
-              )}
-            </div>
-          ))}
-          {lowRiskItems.map(s => (
-            <div key={s.risk_category_name} className={styles.scoreCard}>
-              <span className={styles.scoreCardName}>{s.risk_category_name}</span>
-              <span className={`${styles.scoreCardLevel} ${styles[`level${s.risk_level.charAt(0).toUpperCase() + s.risk_level.slice(1)}` as keyof typeof styles] || ''}`}>
-                {s.risk_level.toUpperCase()}
-              </span>
-              <span className={styles.scoreCardValue}>{s.score.toFixed(1)}</span>
-            </div>
-          ))}
-        </div>
+        {filteredScores.length > 0 ? (
+          <div className={styles.scoreGrid}>
+            {filteredScores.map(s => (
+              <div
+                key={s.risk_category_name}
+                className={`${styles.scoreCard} ${s.risk_level === 'high' || s.risk_level === 'critical' ? styles.scoreCardHigh : ''}`}
+              >
+                <span className={styles.scoreCardName}>{s.risk_category_name}</span>
+                <span className={`${styles.scoreCardLevel} ${styles[`level${s.risk_level.charAt(0).toUpperCase() + s.risk_level.slice(1)}` as keyof typeof styles] || ''}`}>
+                  {s.risk_level.toUpperCase()}
+                </span>
+                <span className={styles.scoreCardValue}>{Math.round(s.score * 100)}%</span>
+                {s.has_tier2_questions && (
+                  <span className={styles.scoreCardTag}>Refinement available</span>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.previewSubtitle} style={{ marginBottom: '1.5rem' }}>
+            Excellent! All your risk categories are below 20%. No significant risks detected.
+          </p>
+        )}
 
-        {highRiskItems.length > 0 && uniqueT2Questions.length > 0 && (
+        {hasHighRisk && uniqueT2Questions.length > 0 && (
           <div className={styles.refinePrompt}>
             <p className={styles.refineText}>
-              We found <strong>{highRiskItems.length} area{highRiskItems.length !== 1 ? 's' : ''}</strong> that
-              need{highRiskItems.length === 1 ? 's' : ''} closer attention.
+              We found <strong>areas</strong> that
+              need closer attention.
               Answer <strong>{uniqueT2Questions.length} more question{uniqueT2Questions.length !== 1 ? 's' : ''}</strong>
               {' '}for a more precise assessment.
             </p>
@@ -542,10 +553,10 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
           </div>
         )}
 
-        {highRiskItems.length === 0 && (
+        {!hasHighRisk && (
           <div className={styles.refinePrompt}>
             <p className={styles.refineText}>
-              All risk categories are at a Low level. Your recommendations are ready.
+              All risk categories are at a Low or Medium level. Your recommendations are ready.
             </p>
             <button
               type="button"
