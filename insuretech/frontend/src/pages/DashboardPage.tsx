@@ -1,11 +1,9 @@
-import axios from 'axios'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import type { BusinessProfile } from '../features/profile/profile.types'
 import {
   BusinessProfileForm,
   ProfileCard,
-  getProfileErrorMessage,
   profileApi,
   PROFILE_MESSAGES,
 } from '../features/profile'
@@ -64,10 +62,10 @@ export default function DashboardPage() {
   const loadBusinesses = useCallback(async () => {
     setBusinessesLoading(true)
     try {
-      const data = await profileApi.getMyBusiness()
-      setBusinesses(data ? [data] : [])
-      if (data && !selectedBusinessId) {
-        setSelectedBusinessId(data.id)
+      const data = await profileApi.getMyBusinesses()
+      setBusinesses(data)
+      if (data.length > 0 && !selectedBusinessId) {
+        setSelectedBusinessId(data[0].id)
       }
     } catch {
       // 404 = no business yet
@@ -108,7 +106,7 @@ export default function DashboardPage() {
       await profileApi.deleteBusiness(businessId)
       setBusinesses((prev) => prev.filter((b) => b.id !== businessId))
       if (selectedBusinessId === businessId) {
-        setSelectedBusinessId((prev) => {
+        setSelectedBusinessId(() => {
           const remaining = businesses.filter((b) => b.id !== businessId)
           return remaining.length > 0 ? remaining[0].id : null
         })

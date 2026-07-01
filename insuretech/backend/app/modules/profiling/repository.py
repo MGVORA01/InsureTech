@@ -396,8 +396,6 @@ async def save_risk_scores(
     for score in risk_scores:
         db.add(score)
     await db.flush()
-    for score in risk_scores:
-        await db.refresh(score)
     return risk_scores
 
 
