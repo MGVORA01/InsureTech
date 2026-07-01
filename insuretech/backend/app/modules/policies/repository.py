@@ -86,7 +86,11 @@ async def get_policies(
     category_id: str | None = None,
     search: str | None = None,
 ) -> tuple[list[Policy], int]:
-    query = select(Policy).where(Policy.is_active == True)
+    query = (
+        select(Policy)
+        .where(Policy.is_active == True)
+        .options(selectinload(Policy.insurer), selectinload(Policy.insurance_category))
+    )
     count_query = select(func.count(Policy.id)).where(Policy.is_active == True)
 
     if insurer_id:
@@ -110,7 +114,11 @@ async def get_policy_by_id(db: AsyncSession, policy_id: str) -> Policy | None:
     result = await db.execute(
         select(Policy)
         .where(Policy.id == policy_id, Policy.is_active == True)
-        .options(selectinload(Policy.documents))
+        .options(
+            selectinload(Policy.insurer),
+            selectinload(Policy.insurance_category),
+            selectinload(Policy.documents),
+        )
     )
     return result.scalar_one_or_none()
 
@@ -146,6 +154,7 @@ async def create_document(
     file_url: str,
     doc_type: str = "policy_wording",
     file_size: int | None = None,
+    version: int = 1,
 ) -> PolicyDocument:
     doc = PolicyDocument(
         policy_id=policy_id,
@@ -154,10 +163,28 @@ async def create_document(
         file_name=file_name,
         file_url=file_url,
         file_size=file_size,
+        version=version,
     )
     db.add(doc)
     await db.flush()
     return doc
+
+
+async def get_active_documents_for_policy(db: AsyncSession, policy_id: str) -> list[PolicyDocument]:
+    result = await db.execute(
+        select(PolicyDocument)
+        .where(PolicyDocument.policy_id == policy_id, PolicyDocument.is_active == True)
+        .order_by(PolicyDocument.version)
+    )
+    return list(result.scalars().all())
+
+
+async def get_document_count_for_policy(db: AsyncSession, policy_id: str) -> int:
+    result = await db.execute(
+        select(func.count(PolicyDocument.id))
+        .where(PolicyDocument.policy_id == policy_id, PolicyDocument.is_active == True)
+    )
+    return result.scalar() or 0
 
 
 async def delete_document_chunks(db: AsyncSession, document_id: str):
@@ -165,6 +192,38 @@ async def delete_document_chunks(db: AsyncSession, document_id: str):
         delete(DocumentChunk).where(DocumentChunk.document_id == document_id)
     )
     await db.flush()
+
+
+async def delete_chunks_for_policy(db: AsyncSession, policy_id: str):
+    await db.execute(
+        delete(DocumentChunk).where(DocumentChunk.policy_id == policy_id)
+    )
+    await db.flush()
+
+
+async def soft_delete_documents_for_policy(db: AsyncSession, policy_id: str):
+    await db.execute(
+        update(PolicyDocument)
+        .where(PolicyDocument.policy_id == policy_id)
+        .values(is_active=False)
+    )
+    await db.flush()
+
+
+async def get_policy_count_for_insurer(db: AsyncSession, insurer_id: str) -> int:
+    result = await db.execute(
+        select(func.count(Policy.id))
+        .where(Policy.insurer_id == insurer_id, Policy.is_active == True)
+    )
+    return result.scalar() or 0
+
+
+async def get_policy_count_for_category(db: AsyncSession, category_id: str) -> int:
+    result = await db.execute(
+        select(func.count(Policy.id))
+        .where(Policy.insurance_category_id == category_id, Policy.is_active == True)
+    )
+    return result.scalar() or 0
 
 
 async def insert_chunk(db: AsyncSession, policy_id: str, document_id: str, chunk_index: int, chunk_text: str, embedding: list[float], metadata: dict):

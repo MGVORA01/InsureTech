@@ -23,6 +23,8 @@ async def ingest_single_pdf(
     insurance_category: str,
     insurer_id: str,
     document_id_raw: str | None = None,
+    document_version: int = 1,
+    file_url: str = "",
 ) -> tuple[str, int]:
     doc_id = document_id_raw or Path(file_name).stem
     tmp_path = None
@@ -90,9 +92,10 @@ async def ingest_single_pdf(
             policy_id=policy_id,
             insurer_id=insurer_id,
             file_name=file_name,
-            file_url="",
+            file_url=file_url,
             doc_type="policy_wording",
             file_size=len(pdf_bytes),
+            version=document_version,
         )
 
         canonical_insurer = canonicalize_insurer(insurer_name) or insurer_name

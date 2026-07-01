@@ -82,7 +82,9 @@ class PolicyDocumentResponse(BaseModel):
 class PolicyDetailResponse(BaseModel):
     id: str
     insurer_id: str
+    insurer_name: str
     insurance_category_id: str
+    insurance_category_name: str
     policy_name: str
     policy_number: str | None = None
     min_sum_insured: Decimal | None = None
@@ -96,10 +98,13 @@ class PolicyDetailResponse(BaseModel):
 class PolicyListResponse(BaseModel):
     id: str
     insurer_id: str
+    insurer_name: str
     insurance_category_id: str
+    insurance_category_name: str
     policy_name: str
     policy_number: str | None = None
     is_active: bool = True
+    documents_count: int = 0
 
 
 class PaginatedPolicyResponse(BaseModel):
