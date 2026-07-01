@@ -22,3 +22,9 @@ build/
 .DS_Store
 .idea/
 **/pdfs/
+
+# Dev artifacts
+.antigravitycli/
+cleanup_seed.py
+seed_meta.py
+master_seed_clean.json
