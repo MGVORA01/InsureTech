@@ -34,7 +34,9 @@ section_output/
 metadata_output/
 chunk_output/
 data/
+data.zip
+backfill_cloudinary.py
+backend/question.json
+backend/seed-question.py
+backend/seed-segments.py
 
-seed-question.py
-seed-segments.py
-question.json
