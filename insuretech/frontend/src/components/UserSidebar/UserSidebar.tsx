@@ -34,6 +34,14 @@ function IconShield(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function IconMessageSquare(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+
 function IconLogOut(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -69,7 +77,7 @@ function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
   )
 }
 
-export type Section = 'profile' | 'profiling'
+export type Section = 'profile' | 'profiling' | 'feedback'
 
 interface UserSidebarProps {
   activeSection: Section
@@ -99,6 +107,7 @@ export function UserSidebar({
   const navItems = [
     { section: 'profile' as Section, icon: IconBuilding, label: 'Business Profile' },
     { section: 'profiling' as Section, icon: IconShield, label: 'Risk Profiling' },
+    { section: 'feedback' as Section, icon: IconMessageSquare, label: 'Feedback' },
   ]
 
   return (

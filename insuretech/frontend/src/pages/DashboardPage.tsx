@@ -13,6 +13,10 @@ import {
   profilingApi,
 } from '../features/profiling'
 import type { ProfilingCompleteOut } from '../features/profiling'
+import {
+  FeedbackForm,
+  FeedbackList,
+} from '../features/feedback'
 import UserLayout from '../layout/UserLayout'
 import type { Section } from '../components/UserSidebar'
 import BusinessSwitcher from '../components/BusinessSwitcher'
@@ -46,6 +50,7 @@ export default function DashboardPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [profilingView, setProfilingView] = useState<'loading' | 'launcher' | 'wizard' | 'results'>('loading')
   const [profilingResults, setProfilingResults] = useState<ProfilingCompleteOut | null>(null)
+  const [feedbackRefreshKey, setFeedbackRefreshKey] = useState(0)
 
 
 
@@ -246,6 +251,25 @@ export default function DashboardPage() {
     )
   }
 
+  const renderFeedbackTab = () => {
+    return (
+      <div className="flex flex-col gap-10" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
+        <div className="p-8 pb-0">
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Feedback</h2>
+          <p className="mt-1 text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+            We'd love to know how your assessment experience was.
+          </p>
+        </div>
+        <div className="px-8">
+          <FeedbackForm onSuccess={() => setFeedbackRefreshKey((k) => k + 1)} />
+        </div>
+        <div className="border-t px-8 py-8" style={{ borderColor: 'var(--color-border)' }}>
+          <FeedbackList key={feedbackRefreshKey} />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <UserLayout
       activeSection={activeSection}
@@ -264,7 +288,9 @@ export default function DashboardPage() {
 
       {/* Section content */}
       <div className="mt-6">
-        {activeSection === 'profile' ? renderProfileTab() : renderProfilingTab()}
+        {activeSection === 'profile' && renderProfileTab()}
+        {activeSection === 'profiling' && renderProfilingTab()}
+        {activeSection === 'feedback' && renderFeedbackTab()}
       </div>
     </UserLayout>
   )
