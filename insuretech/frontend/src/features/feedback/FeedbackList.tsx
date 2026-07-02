@@ -4,6 +4,10 @@ import type { FeedbackResponse } from './feedback.types'
 import { FEEDBACK_MESSAGES } from './feedback.constants'
 import styles from './FeedbackList.module.css'
 
+interface FeedbackListProps {
+  businessId?: string
+}
+
 function formatDate(iso: string): string {
   const d = new Date(iso)
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -13,7 +17,7 @@ function stars(n: number): string {
   return '★'.repeat(n) + '☆'.repeat(5 - n)
 }
 
-export default function FeedbackList() {
+export default function FeedbackList({ businessId }: FeedbackListProps) {
   const [feedbacks, setFeedbacks] = useState<FeedbackResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +26,7 @@ export default function FeedbackList() {
     setLoading(true)
     setError(null)
     try {
-      const data = await feedbackApi.getMyFeedbacks()
+      const data = await feedbackApi.getBusinessFeedbacks(businessId)
       setFeedbacks(data)
     } catch (err) {
       setError(getFeedbackErrorMessage(err))
@@ -33,7 +37,7 @@ export default function FeedbackList() {
 
   useEffect(() => {
     fetchFeedbacks()
-  }, [])
+  }, [businessId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (

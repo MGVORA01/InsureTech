@@ -4,12 +4,13 @@ import { RECOMMENDATION_OPTIONS, FEEDBACK_MESSAGES } from './feedback.constants'
 import styles from './FeedbackForm.module.css'
 
 interface FeedbackFormProps {
+  businessId?: string
   onSuccess?: () => void
 }
 
 const STAR_LABELS = ['', 'Terrible', 'Poor', 'Okay', 'Good', 'Great']
 
-export default function FeedbackForm({ onSuccess }: FeedbackFormProps) {
+export default function FeedbackForm({ businessId, onSuccess }: FeedbackFormProps) {
   const [rating, setRating] = useState(0)
   const [hoveredStar, setHoveredStar] = useState(0)
   const [recommendationsHelpful, setRecommendationsHelpful] = useState<string>('')
@@ -31,7 +32,7 @@ export default function FeedbackForm({ onSuccess }: FeedbackFormProps) {
         rating,
         recommendations_helpful: (recommendationsHelpful || undefined) as any,
         message: message.trim(),
-      })
+      }, businessId)
       setRating(0)
       setRecommendationsHelpful('')
       setMessage('')
@@ -59,10 +60,7 @@ export default function FeedbackForm({ onSuccess }: FeedbackFormProps) {
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      <p className={styles.intro}>We'd love to know how your assessment experience was.</p>
-
       {error && <div className={styles.errorBanner}>{error}</div>}
-
       {/* Star rating */}
       <div className={styles.field}>
         <label className={styles.label}>How would you rate your experience?</label>

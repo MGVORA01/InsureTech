@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import type { BusinessProfile } from '../features/profile/profile.types'
 import {
   BusinessProfileForm,
@@ -42,7 +43,21 @@ function ProfileSkeleton() {
 
 export default function DashboardPage() {
 
-  const [activeSection, setActiveSection] = useState<Section>('profile')
+  const { section } = useParams<{ section: string }>()
+  const navigate = useNavigate()
+
+  const activeSection: Section = section === 'profiling' ? 'profiling'
+    : section === 'feedback' ? 'feedback'
+    : 'profile'
+
+  const handleSectionChange = useCallback((newSection: Section) => {
+    if (newSection === 'profile') {
+      navigate('/dashboard')
+    } else {
+      navigate(`/dashboard/${newSection}`)
+    }
+  }, [navigate])
+
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([])
   const [businessesLoading, setBusinessesLoading] = useState(true)
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null)
@@ -114,7 +129,7 @@ export default function DashboardPage() {
   const handleAddBusiness = () => {
     setSelectedBusinessId(null)
     setShowAddForm(true)
-    setActiveSection('profile')
+    navigate('/dashboard')
   }
 
   const handleProfileCreated = (newProfile: BusinessProfile) => {
@@ -261,10 +276,13 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="px-8">
-          <FeedbackForm onSuccess={() => setFeedbackRefreshKey((k) => k + 1)} />
+          <FeedbackForm
+            businessId={selectedBusinessId ?? undefined}
+            onSuccess={() => setFeedbackRefreshKey((k) => k + 1)}
+          />
         </div>
         <div className="border-t px-8 py-8" style={{ borderColor: 'var(--color-border)' }}>
-          <FeedbackList key={feedbackRefreshKey} />
+          <FeedbackList key={`${feedbackRefreshKey}-${selectedBusinessId}`} businessId={selectedBusinessId ?? undefined} />
         </div>
       </div>
     )
@@ -273,7 +291,7 @@ export default function DashboardPage() {
   return (
     <UserLayout
       activeSection={activeSection}
-      onSectionChange={setActiveSection}
+      onSectionChange={handleSectionChange}
     >
       {/* Business Switcher — prominent card at the top */}
       <BusinessSwitcher

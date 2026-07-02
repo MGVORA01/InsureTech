@@ -43,6 +43,7 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/dashboard/:section" element={<DashboardPage />} />
         </Route>
 
         <Route element={<AdminRoute />}>

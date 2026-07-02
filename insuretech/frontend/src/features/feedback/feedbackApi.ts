@@ -38,13 +38,15 @@ export function getFeedbackErrorMessage(error: unknown): string {
 }
 
 export const feedbackApi = {
-  async createFeedback(payload: CreateFeedbackPayload): Promise<FeedbackResponse> {
-    const response = await baseApi.post<ApiEnvelope<FeedbackResponse>>('/feedback', payload)
+  async createFeedback(payload: CreateFeedbackPayload, businessId?: string): Promise<FeedbackResponse> {
+    const params = businessId ? { business_id: businessId } : undefined
+    const response = await baseApi.post<ApiEnvelope<FeedbackResponse>>('/feedback', payload, { params })
     return unwrapData<FeedbackResponse>(response)
   },
 
-  async getMyFeedbacks(): Promise<FeedbackResponse[]> {
-    const response = await baseApi.get<ApiEnvelope<FeedbackResponse[]>>('/feedback')
+  async getBusinessFeedbacks(businessId?: string): Promise<FeedbackResponse[]> {
+    const params = businessId ? { business_id: businessId } : undefined
+    const response = await baseApi.get<ApiEnvelope<FeedbackResponse[]>>('/feedback', { params })
     return unwrapData<FeedbackResponse[]>(response)
   },
 }

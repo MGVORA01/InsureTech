@@ -7,6 +7,7 @@ export interface CreateFeedbackPayload {
 export interface FeedbackResponse {
   id: string
   user_id: string
+  business_id: string
   message: string
   rating: number
   recommendations_helpful: string | null
