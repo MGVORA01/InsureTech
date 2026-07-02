@@ -16,6 +16,7 @@ class CreateFeedbackRequest(BaseModel):
 class FeedbackResponse(BaseModel):
     id: UUID
     user_id: UUID
+    business_id: UUID
     message: str
     rating: int
     recommendations_helpful: Optional[str] = None

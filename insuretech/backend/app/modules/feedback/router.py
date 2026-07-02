@@ -1,6 +1,7 @@
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
@@ -22,13 +23,15 @@ async def submit_feedback(
     data: CreateFeedbackRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    business_id: Annotated[UUID | None, Query()] = None,
 ) -> APIResponse:
-    return await Service.submit_feedback(data, current_user, db)
+    return await Service.submit_feedback(data, current_user, db, business_id=business_id)
 
 
 @router.get("", status_code=status.HTTP_200_OK)
-async def list_my_feedbacks(
+async def list_business_feedbacks(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    business_id: Annotated[UUID | None, Query()] = None,
 ) -> APIResponse:
-    return await Service.list_my_feedbacks(current_user, db)
+    return await Service.list_business_feedbacks(current_user, db, business_id=business_id)

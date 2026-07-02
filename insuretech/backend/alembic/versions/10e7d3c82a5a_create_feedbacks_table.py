@@ -24,6 +24,7 @@ def upgrade() -> None:
         "feedbacks",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False),
+        sa.Column("business_id", UUID(as_uuid=True), sa.ForeignKey("business_profiles.id"), nullable=False),
         sa.Column("message", sa.Text, nullable=False),
         sa.Column("rating", sa.Integer, nullable=False),
         sa.Column("recommendations_helpful", sa.String(50), nullable=True),
