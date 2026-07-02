@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -139,8 +139,75 @@ async def get_document_chunks_for_policies(
         return []
     result = await db.execute(
         select(DocumentChunk)
+        .options(selectinload(DocumentChunk.document))
         .where(DocumentChunk.policy_id.in_(policy_ids))
         .order_by(DocumentChunk.policy_id, DocumentChunk.chunk_index)
+    )
+    return list(result.scalars().all())
+
+
+async def get_candidate_chunks_for_risk_categories(
+    db: AsyncSession,
+    risk_category_ids: list[UUID],
+    segment: str,
+    text_patterns: list[str],
+    limit: int = 500,
+) -> list[DocumentChunk]:
+    """Fetch chunks connected to high-risk categories or matching risk language."""
+    if not risk_category_ids and not text_patterns:
+        return []
+
+    filters = []
+    if risk_category_ids:
+        filters.append(InsuranceCategory.risk_category_id.in_(risk_category_ids))
+    for pattern in text_patterns:
+        filters.append(DocumentChunk.chunk_text.ilike(f"%{pattern}%"))
+        filters.append(DocumentChunk.document_metadata["section_name"].astext.ilike(f"%{pattern}%"))
+        filters.append(DocumentChunk.document_metadata["insurance_category"].astext.ilike(f"%{pattern}%"))
+
+    result = await db.execute(
+        select(DocumentChunk)
+        .join(DocumentChunk.policy)
+        .join(Policy.insurance_category)
+        .options(
+            selectinload(DocumentChunk.policy).selectinload(Policy.insurer),
+            selectinload(DocumentChunk.policy)
+            .selectinload(Policy.insurance_category)
+            .selectinload(InsuranceCategory.risk_category),
+            selectinload(DocumentChunk.document),
+        )
+        .where(
+            Policy.is_active == True,
+            or_(
+                Policy.target_segment.is_(None),
+                Policy.target_segment == segment,
+                Policy.target_segment == "both",
+            ),
+            or_(*filters),
+        )
+        .order_by(DocumentChunk.policy_id, DocumentChunk.chunk_index)
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def get_policies_by_ids(
+    db: AsyncSession,
+    policy_ids: list[UUID],
+) -> list[Policy]:
+    """Fetch exact active policies by id with display relationships loaded."""
+    if not policy_ids:
+        return []
+    result = await db.execute(
+        select(Policy)
+        .options(
+            selectinload(Policy.insurer),
+            selectinload(Policy.insurance_category).selectinload(InsuranceCategory.risk_category),
+        )
+        .where(
+            Policy.id.in_(policy_ids),
+            Policy.is_active == True,
+        )
     )
     return list(result.scalars().all())
 
@@ -176,3 +243,18 @@ async def save_recommendations(
     for rec in recommendations:
         await db.refresh(rec)
     return recommendations
+
+
+async def deactivate_recommendations_for_session(
+    db: AsyncSession,
+    session_id: UUID,
+) -> None:
+    """Deactivate previously generated recommendations for a session."""
+    await db.execute(
+        update(Recommendation)
+        .where(
+            Recommendation.session_id == session_id,
+            Recommendation.is_active == True,
+        )
+        .values(is_active=False)
+    )

@@ -12,12 +12,33 @@ export interface PolicyOut {
   coverage_highlights: string[]
 }
 
+export interface SupportingChunkOut {
+  chunk_id: string
+  section_name: string | null
+  section_type: string | null
+  chunk_text: string
+  matched_risk_categories: string[]
+}
+
 export interface RecommendationOut {
   priority: 'critical' | 'high' | 'medium' | 'low'
   risk_category_name: string
   risk_score: number
   risk_level: string
   policies: PolicyOut[]
+  company_name: string | null
+  policy_id: string | null
+  policy_name: string | null
+  recommendation_score: number | null
+  coverage_match_count: number
+  coverage_match_total: number
+  matched_risk_categories: string[]
+  why_recommended: string | null
+  coverage_summary: string | null
+  key_benefits: string[]
+  important_limitations: string[]
+  coverage_highlights: string[]
+  supporting_chunks: SupportingChunkOut[]
 }
 
 export interface RiskScoreOut {
