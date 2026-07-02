@@ -67,12 +67,17 @@ export default function BusinessSwitcher({
       <button
         type="button"
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="flex w-full items-center gap-4 border px-5 py-4 text-left transition"
-        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: '0 1px 3px rgba(20,20,19,0.04), 0 4px 24px rgba(20,20,19,0.04)' }}
+        className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-all duration-200 hover:shadow-sm"
+        style={{ 
+          backgroundColor: '#FFFFFF', 
+          borderRadius: '18px', 
+          boxShadow: '0 14px 40px rgba(20,20,19,0.045)',
+          border: '1px solid rgba(0,0,0,0.04)'
+        }}
       >
         <span
-          className="flex h-12 w-12 shrink-0 items-center justify-center text-base font-bold text-white"
-          style={{ backgroundColor: 'var(--color-secondary)', borderRadius: 'var(--radius-md)' }}
+          className="flex h-14 w-14 shrink-0 items-center justify-center text-base font-bold text-white transition-transform duration-200 group-hover:scale-105"
+          style={{ backgroundColor: '#CF4500', borderRadius: '16px' }}
         >
           {selected
             ? selected.business_name.slice(0, 2).toUpperCase()
@@ -80,28 +85,28 @@ export default function BusinessSwitcher({
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+          <p className="truncate text-[18px] font-bold tracking-tight" style={{ color: '#111827' }}>
             {selected?.business_name || 'No business selected'}
           </p>
-          <p className="truncate text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+          <p className="truncate text-[14px] font-semibold mt-1" style={{ color: '#6B7280' }}>
             {selected
               ? [selected.segment?.name, selected.industry?.name].filter(Boolean).join(' · ')
               : 'Create a business profile to get started'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {businesses.length > 1 && (
             <span
-              className="hidden px-2.5 py-0.5 text-xs font-semibold sm:inline-block"
-              style={{ backgroundColor: 'var(--overlay-secondary-10, rgba(13,115,119,0.1))', color: 'var(--color-secondary)', borderRadius: 'var(--radius-xl)' }}
+              className="hidden px-2.5 py-1 text-[11px] font-bold sm:inline-block"
+              style={{ backgroundColor: 'rgba(207, 69, 0, 0.08)', color: '#CF4500', borderRadius: '999px' }}
             >
               {businesses.length} businesses
             </span>
           )}
           <IconChevronDown
-            className={`h-5 w-5 shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
-            style={{ color: 'var(--color-text-tertiary)' }}
+            className={`h-6 w-6 shrink-0 transition-transform duration-250 ease-out ${dropdownOpen ? 'rotate-180' : ''}`}
+            style={{ color: '#9CA3AF' }}
           />
         </div>
       </button>
@@ -158,7 +163,7 @@ export default function BusinessSwitcher({
                     }}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:[background-color:var(--color-hover)]"
                     style={{
-                      backgroundColor: isSelected ? 'var(--overlay-secondary-10, rgba(13,115,119,0.06))' : 'transparent',
+                      backgroundColor: isSelected ? 'var(--overlay-secondary-10, rgba(207,69,0,0.06))' : 'transparent',
                     }}
                   >
                     <span

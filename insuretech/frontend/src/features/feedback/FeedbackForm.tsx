@@ -60,7 +60,6 @@ export default function FeedbackForm({ businessId, onSuccess }: FeedbackFormProp
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      {error && <div className={styles.errorBanner}>{error}</div>}
       {/* Star rating */}
       <div className={styles.field}>
         <label className={styles.label}>How would you rate your experience?</label>
@@ -129,6 +128,7 @@ export default function FeedbackForm({ businessId, onSuccess }: FeedbackFormProp
       >
         {submitting ? FEEDBACK_MESSAGES.submittingButton : FEEDBACK_MESSAGES.submitButton}
       </button>
+      {error && <div className={styles.errorBanner}>{error}</div>}
     </form>
   )
 }

@@ -64,22 +64,18 @@ function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition"
+      className={`flex w-full items-center gap-3 px-4 py-3 text-[14px] font-semibold transition-all duration-200 ease-out ${
+        active ? 'shadow-sm' : 'hover:bg-black/5 hover:translate-x-0.5'
+      }`}
       style={{
-        backgroundColor: active ? 'rgba(207, 69, 0, 0.06)' : 'transparent',
-        color: active ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
-        borderRadius: 'var(--radius-md)',
+        backgroundColor: active ? 'rgba(207, 69, 0, 0.08)' : 'transparent',
+        color: active ? '#CF4500' : 'var(--color-text-secondary)',
+        borderRadius: '14px',
         position: 'relative',
       }}
     >
-      {active && (
-        <span
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full"
-          style={{ backgroundColor: 'var(--color-secondary)' }}
-        />
-      )}
       <Icon className="h-5 w-5 shrink-0" />
-      {label}
+      <span className={active ? 'font-semibold' : ''}>{label}</span>
     </button>
   )
 }
@@ -112,7 +108,7 @@ export function UserSidebar({
     : 'U'
 
   const navItems = [
-    { section: 'profile' as Section, icon: IconBuilding, label: 'Business Profile' },
+    { section: 'profile' as Section, icon: IconBuilding, label: 'Dashboard' },
     { section: 'profiling' as Section, icon: IconShield, label: 'Risk Profiling' },
     { section: 'feedback' as Section, icon: IconMessageSquare, label: 'Feedback' },
   ]
