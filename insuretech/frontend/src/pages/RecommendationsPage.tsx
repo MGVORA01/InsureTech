@@ -10,6 +10,7 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import { generateRecommendations } from '../features/recommendations/recommendationsApi'
 import type { RecommendationListOut, RecommendationOut, RiskScoreOut } from '../features/recommendations/recommendations.types'
+import { downloadRiskAdvisoryReport, generateRiskAdvisoryReport } from '../features/reports/reportsApi'
 
 type Status = 'loading' | 'empty' | 'error' | 'ready'
 type ApiError = { response?: { data?: { error?: string } }; message?: string }
@@ -154,6 +155,7 @@ export default function RecommendationsPage() {
   const [data, setData] = useState<RecommendationListOut | null>(null)
   const [status, setStatus] = useState<Status>('loading')
   const [errorMsg, setErrorMsg] = useState('')
+  const [reportLoading, setReportLoading] = useState(false)
 
   const loadRecommendations = useCallback(async () => {
     if (!sessionId) {
@@ -181,6 +183,21 @@ export default function RecommendationsPage() {
 
   const topRisks = useMemo(() => highestRisks(data?.scores ?? []), [data?.scores])
   const topRecommendations = data?.recommendations.slice(0, 5) ?? []
+
+  async function handleDownloadReport() {
+    if (!sessionId || reportLoading) return
+    setReportLoading(true)
+    setErrorMsg('')
+    try {
+      const report = await generateRiskAdvisoryReport(sessionId)
+      await downloadRiskAdvisoryReport(report)
+    } catch (err: unknown) {
+      const apiError = err as ApiError
+      setErrorMsg(apiError?.response?.data?.error || apiError?.message || 'Failed to generate report.')
+    } finally {
+      setReportLoading(false)
+    }
+  }
 
   if (status === 'loading') return <LoadingView />
 
@@ -238,6 +255,13 @@ export default function RecommendationsPage() {
                 Compare Policies
               </button>
               <button
+                onClick={handleDownloadReport}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-emerald-700 px-4 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!topRecommendations.length || reportLoading}
+              >
+                {reportLoading ? 'Generating...' : 'Download Report'}
+              </button>
+              <button
                 onClick={loadRecommendations}
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800"
               >
@@ -260,6 +284,23 @@ export default function RecommendationsPage() {
                 </div>
               )
             })}
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-emerald-950">Risk advisory report</h2>
+              <p className="mt-1 text-sm text-emerald-800">
+                Download a complete report with risk factors and recommended policies.
+              </p>
+            </div>
+            <button
+              onClick={handleDownloadReport}
+              className="inline-flex h-11 items-center justify-center rounded-md bg-emerald-700 px-5 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!topRecommendations.length || reportLoading}
+              type="button"
+            >
+              {reportLoading ? 'Generating...' : 'Download Report'}
+            </button>
           </div>
         </section>
 
