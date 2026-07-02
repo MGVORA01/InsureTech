@@ -1,5 +1,7 @@
+import json
 from uuid import UUID
 
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_providers import generate_response
@@ -10,11 +12,11 @@ from app.models import User
 from app.modules.businesses.repository import get_business_by_id
 from app.modules.policy_comparison.provider import Provider
 from app.modules.policy_comparison.prompts import (
-    CHAT_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
     build_chat_messages,
     build_user_prompt,
 )
+from app.modules.policy_comparison import repository
 from app.modules.policy_comparison.repository import get_policy_with_relations
 from app.modules.policy_comparison.schemas import (
     CompareChatRequest,
@@ -26,7 +28,21 @@ from app.modules.policy_comparison.schemas import (
 
 logger = get_logger(__name__)
 
-COMPARISON_SECTIONS = ["coverage", "exclusions", "claims", "financial", "conditions"]
+COMPARISON_SECTIONS = [
+    ("What is Covered", "what is covered covered benefits insured events coverage scope", "coverage"),
+    ("Coverage", "coverage benefits insured events scope of cover", "coverage"),
+    ("Exclusions", "exclusions not covered exceptions limitations", "exclusions"),
+    ("Claims Process", "claims process notice settlement documents", "claims"),
+    ("Conditions", "policy conditions duties obligations", "conditions"),
+]
+ADVANTAGE_TERMS = (
+    "cover", "indemnify", "benefit", "extension", "reinstatement",
+    "defence costs", "loss of profit", "in-built", "pay",
+)
+LIMITATION_TERMS = (
+    "exclusion", "deductible", "excess", "condition", "limit",
+    "not cover", "not payable", "warranty", "waiting period",
+)
 LLM_MODEL = "llama-3.3-70b-versatile"
 
 
@@ -54,6 +70,350 @@ class ComparisonService:
         if profile.user_id != user.id:
             raise NotFoundException("Business profile not found")
 
+    @staticmethod
+    def _policy_id_from_recommendation(rec) -> UUID | None:
+        try:
+            payload = json.loads(rec.reason_text)
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(payload, dict) or not payload.get("policy_id"):
+            return None
+        try:
+            return UUID(payload["policy_id"])
+        except (TypeError, ValueError):
+            return None
+
+    async def _verify_session_scope(
+        self,
+        db: AsyncSession,
+        request: CompareRequest | CompareChatRequest,
+    ) -> None:
+        if not request.session_id:
+            return
+
+        business_id = await repository.get_session_business_id(db, request.session_id)
+        if business_id != request.business_profile_id:
+            raise BadRequestException("Selected session does not match this business")
+
+        recs = await repository.get_active_recommendations_for_session(
+            db,
+            request.session_id,
+        )
+        recommended_policy_ids = {
+            policy_id
+            for rec in recs
+            if (policy_id := self._policy_id_from_recommendation(rec)) is not None
+        }
+        if recs and not recommended_policy_ids:
+            logger.warning(
+                "Could not recover policy ids from recommendation payloads for session %s",
+                request.session_id,
+            )
+            return
+        selected = {request.policy_id_a, request.policy_id_b}
+        if not selected.issubset(recommended_policy_ids):
+            raise BadRequestException(
+                "Selected policies must be from this recommendation session"
+            )
+
+    @staticmethod
+    def _shorten_text(text: str, limit: int = 900) -> str:
+        cleaned = " ".join((text or "").split())
+        if len(cleaned) <= limit:
+            return cleaned
+        return cleaned[:limit].rsplit(" ", 1)[0] + "..."
+
+    def _extract_points_from_text(
+        self,
+        text: str,
+        terms: tuple[str, ...] | None = None,
+        limit: int = 3,
+        max_length: int = 180,
+    ) -> list[str]:
+        cleaned = " ".join((text or "").split())
+        if not cleaned:
+            return []
+
+        candidates = []
+        for part in cleaned.replace(";", ". ").split(". "):
+            sentence = part.strip(" .:-•\t")
+            if len(sentence) < 24 or sentence.count("|") >= 3:
+                continue
+            lower = sentence.lower()
+            if terms and not any(term in lower for term in terms):
+                continue
+            candidates.append(self._shorten_text(sentence, max_length))
+            if len(candidates) >= limit:
+                break
+        if not candidates and not terms:
+            candidates.append(self._shorten_text(cleaned, max_length))
+        return list(dict.fromkeys(candidates))[:limit]
+
+    def _format_pointwise_value(self, chunks: list[dict]) -> str:
+        if not chunks:
+            return "Information not available in the selected policies."
+
+        points = []
+        for chunk in chunks[:2]:
+            meta = chunk.get("metadata", {})
+            section_name = meta.get("section_name") or "Retrieved section"
+            extracted = self._extract_points_from_text(chunk.get("text", ""), limit=2)
+            for item in extracted:
+                points.append(f"{section_name}: {item}")
+                if len(points) >= 3:
+                    return "\n".join(points)
+        return "\n".join(points) if points else "Information not available in the selected policies."
+
+    def _format_retrieved_value(self, chunks: list[dict]) -> str:
+        if not chunks:
+            return "Information not available in the selected policies."
+
+        return self._format_pointwise_value(chunks)
+
+    def _format_evidence(
+        self,
+        section_name: str,
+        policy_a_chunks: list[dict],
+        policy_b_chunks: list[dict],
+    ) -> str:
+        evidence_parts = []
+        if policy_a_chunks:
+            meta = policy_a_chunks[0].get("metadata", {})
+            evidence_parts.append(
+                f"Policy A evidence ({meta.get('section_name') or section_name}): "
+                f"{self._shorten_text(policy_a_chunks[0].get('text', ''), 350)}"
+            )
+        if policy_b_chunks:
+            meta = policy_b_chunks[0].get("metadata", {})
+            evidence_parts.append(
+                f"Policy B evidence ({meta.get('section_name') or section_name}): "
+                f"{self._shorten_text(policy_b_chunks[0].get('text', ''), 350)}"
+            )
+        return "\n\n".join(evidence_parts) or "Information not available in the selected policies."
+
+    def _chunks_to_compare_response(
+        self,
+        policy_a_name: str,
+        policy_b_name: str,
+        section_chunks: dict[str, dict[str, list[dict]]],
+    ) -> CompareResponse:
+        unavailable = "Information not available in the selected policies."
+        comparisons = []
+        missing_information = []
+
+        for section_name, chunks_by_policy in section_chunks.items():
+            policy_a_chunks = chunks_by_policy.get("A", [])
+            policy_b_chunks = chunks_by_policy.get("B", [])
+            has_a = bool(policy_a_chunks)
+            has_b = bool(policy_b_chunks)
+            if not has_a:
+                missing_information.append(f"{section_name}: Policy A")
+            if not has_b:
+                missing_information.append(f"{section_name}: Policy B")
+
+            comparisons.append(
+                {
+                    "category": section_name,
+                    "policy_a_value": self._format_retrieved_value(policy_a_chunks),
+                    "policy_b_value": self._format_retrieved_value(policy_b_chunks),
+                    "stronger": "insufficient_evidence",
+                    "evidence": self._format_evidence(
+                        section_name,
+                        policy_a_chunks,
+                        policy_b_chunks,
+                    ),
+                    "confidence": "medium" if has_a and has_b else "low",
+                }
+            )
+
+        available_sections = [
+            section
+            for section, chunks_by_policy in section_chunks.items()
+            if chunks_by_policy.get("A") or chunks_by_policy.get("B")
+        ]
+        if available_sections:
+            executive_summary = (
+                f"Retrieved policy wording was found for {policy_a_name} and "
+                f"{policy_b_name} across: {', '.join(available_sections[:6])}. "
+                "The comparison below shows only text retrieved from the selected "
+                "policy documents."
+            )
+        else:
+            executive_summary = (
+                f"No relevant document chunks were found for {policy_a_name} and "
+                f"{policy_b_name}."
+            )
+
+        coverage_chunks_a = section_chunks.get("Coverage", {}).get("A", [])
+        coverage_chunks_b = section_chunks.get("Coverage", {}).get("B", [])
+        gap_chunks_a = section_chunks.get("Coverage Gap Analysis", {}).get("A", [])
+        gap_chunks_b = section_chunks.get("Coverage Gap Analysis", {}).get("B", [])
+        risk_chunks_a = section_chunks.get("Business Risk Alignment", {}).get("A", [])
+        risk_chunks_b = section_chunks.get("Business Risk Alignment", {}).get("B", [])
+
+        all_chunks_a = [
+            chunk
+            for chunks_by_policy in section_chunks.values()
+            for chunk in chunks_by_policy.get("A", [])
+        ]
+        all_chunks_b = [
+            chunk
+            for chunks_by_policy in section_chunks.values()
+            for chunk in chunks_by_policy.get("B", [])
+        ]
+
+        return CompareResponse(
+            executive_summary=executive_summary,
+            comparisons=comparisons,
+            coverage_gap_analysis=(
+                self._format_evidence("Coverage Gap Analysis", gap_chunks_a, gap_chunks_b)
+                if gap_chunks_a or gap_chunks_b
+                else self._format_evidence("Coverage", coverage_chunks_a, coverage_chunks_b)
+            ),
+            business_risk_alignment=(
+                self._format_evidence("Business Risk Alignment", risk_chunks_a, risk_chunks_b)
+                if risk_chunks_a or risk_chunks_b
+                else unavailable
+            ),
+            advantages_a=self._extract_policy_points(all_chunks_a, ADVANTAGE_TERMS),
+            advantages_b=self._extract_policy_points(all_chunks_b, ADVANTAGE_TERMS),
+            limitations_a=self._extract_policy_points(all_chunks_a, LIMITATION_TERMS),
+            limitations_b=self._extract_policy_points(all_chunks_b, LIMITATION_TERMS),
+            overall_recommendation=(
+                "Review the retrieved evidence section by section. No overall winner "
+                "is selected unless the selected policy documents provide explicit "
+                "supporting wording."
+            ),
+            missing_information=missing_information,
+            overall_confidence="medium" if available_sections else "low",
+        )
+
+    def _compact_chunks_for_prompt(self, chunks: list[dict], limit: int = 550) -> str:
+        if not chunks:
+            return "Information not available in the selected policies."
+
+        entries = []
+        for chunk in chunks[:1]:
+            meta = chunk.get("metadata", {})
+            section_name = meta.get("section_name") or "Retrieved section"
+            entries.append(
+                f"{section_name}: {self._shorten_text(chunk.get('text', ''), limit)}"
+            )
+        return "\n".join(entries)
+
+    def _extract_policy_points(
+        self,
+        chunks: list[dict],
+        terms: tuple[str, ...],
+        limit: int = 4,
+    ) -> list[str]:
+        points = []
+        for chunk in chunks:
+            points.extend(
+                self._extract_points_from_text(
+                    chunk.get("text", ""),
+                    terms=terms,
+                    limit=2,
+                    max_length=150,
+                )
+            )
+            if len(points) >= limit:
+                break
+        deduped = list(dict.fromkeys(points))[:limit]
+        return deduped or ["Information not available in the selected policies."]
+
+    def _normalize_compare_response(
+        self,
+        response: CompareResponse,
+        section_chunks: dict[str, dict[str, list[dict]]],
+    ) -> CompareResponse:
+        all_chunks_a = [
+            chunk
+            for chunks_by_policy in section_chunks.values()
+            for chunk in chunks_by_policy.get("A", [])
+        ]
+        all_chunks_b = [
+            chunk
+            for chunks_by_policy in section_chunks.values()
+            for chunk in chunks_by_policy.get("B", [])
+        ]
+        if not response.advantages_a:
+            response.advantages_a = self._extract_policy_points(
+                all_chunks_a,
+                ADVANTAGE_TERMS,
+            )
+        if not response.advantages_b:
+            response.advantages_b = self._extract_policy_points(
+                all_chunks_b,
+                ADVANTAGE_TERMS,
+            )
+        if not response.limitations_a:
+            response.limitations_a = self._extract_policy_points(
+                all_chunks_a,
+                LIMITATION_TERMS,
+            )
+        if not response.limitations_b:
+            response.limitations_b = self._extract_policy_points(
+                all_chunks_b,
+                LIMITATION_TERMS,
+            )
+        for item in response.comparisons:
+            item.policy_a_value = "\n".join(
+                self._extract_points_from_text(item.policy_a_value, limit=3)
+            ) or item.policy_a_value
+            item.policy_b_value = "\n".join(
+                self._extract_points_from_text(item.policy_b_value, limit=3)
+            ) or item.policy_b_value
+        return response
+
+    def _build_compact_prompt_sections(
+        self,
+        section_chunks: dict[str, dict[str, list[dict]]],
+    ) -> dict[str, str]:
+        prompt_sections: dict[str, str] = {}
+        for section_name, chunks_by_policy in section_chunks.items():
+            policy_a_text = self._compact_chunks_for_prompt(chunks_by_policy.get("A", []))
+            policy_b_text = self._compact_chunks_for_prompt(chunks_by_policy.get("B", []))
+            prompt_sections[section_name] = (
+                f"[Policy A]\n{policy_a_text}\n\n[Policy B]\n{policy_b_text}"
+            )
+        return prompt_sections
+
+    async def _retrieve_section_for_policy(
+        self,
+        db: AsyncSession,
+        policy_id: UUID,
+        query: str,
+        section_type: str | None,
+        top_k: int = 2,
+    ) -> list[dict]:
+        try:
+            chunks = await retrieve_chunks(
+                db=db,
+                query=query,
+                policy_ids=[policy_id],
+                section_type=section_type,
+                top_k=top_k,
+            )
+            if chunks or section_type is None:
+                return chunks
+
+            return await retrieve_chunks(
+                db=db,
+                query=query,
+                policy_ids=[policy_id],
+                section_type=None,
+                top_k=top_k,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Chunk retrieval failed for policy=%s section=%s: %s",
+                policy_id,
+                section_type,
+                exc,
+            )
+            return []
+
     async def compare(
         self,
         db: AsyncSession,
@@ -72,61 +432,79 @@ class ComparisonService:
             raise BadRequestException("Cannot compare a policy with itself")
 
         await self._verify_business_ownership(db, user, request.business_profile_id)
+        await self._verify_session_scope(db, request)
 
         logger.info(
             "Comparing policies: user=%s business=%s policy_a=%s policy_b=%s",
             user.id, request.business_profile_id, policy_a.policy_name, policy_b.policy_name,
         )
 
-        context = await Provider.get_context(db, request.business_profile_id)
-        context_text = Provider.format_context_for_prompt(context)
-
-        policy_ids_str = [str(request.policy_id_a), str(request.policy_id_b)]
-        section_chunks: dict[str, str] = {}
-
-        for section in COMPARISON_SECTIONS:
-            chunks = await retrieve_chunks(
-                db=db,
-                query=section,
-                policy_ids=policy_ids_str,
-                section_type=section,
-                top_k=3,
+        try:
+            context = await Provider.get_context(
+                db,
+                request.business_profile_id,
+                session_id=request.session_id,
             )
-            if chunks:
-                parts = []
-                for c in chunks:
-                    meta = c.get("metadata", {})
-                    policy_label = "A" if c["policy_id"] == str(request.policy_id_a) else "B"
-                    parts.append(
-                        f"[Policy {policy_label}] Section: {meta.get('section_name', 'N/A')}\n{c['text']}"
-                    )
-                section_chunks[section] = "\n\n".join(parts)
-            else:
-                section_chunks[section] = f"No {section} information found in the retrieved policy sections for either policy."
+            context_text = Provider.format_context_for_prompt(context)
+        except Exception as exc:
+            logger.warning("Business context lookup failed for comparison: %s", exc)
+            context_text = "Business context unavailable."
+
+        section_chunks: dict[str, dict[str, list[dict]]] = {}
+
+        for section_name, query, section_type in COMPARISON_SECTIONS:
+            policy_a_chunks = await self._retrieve_section_for_policy(
+                db=db,
+                policy_id=request.policy_id_a,
+                query=query,
+                section_type=section_type,
+            )
+            policy_b_chunks = await self._retrieve_section_for_policy(
+                db=db,
+                policy_id=request.policy_id_b,
+                query=query,
+                section_type=section_type,
+            )
+            section_chunks[section_name] = {
+                "A": policy_a_chunks,
+                "B": policy_b_chunks,
+            }
 
         policy_a_name = f"{policy_a.policy_name}"
         policy_a_insurer = policy_a.insurer.name if policy_a.insurer else "Unknown"
         policy_b_name = f"{policy_b.policy_name}"
         policy_b_insurer = policy_b.insurer.name if policy_b.insurer else "Unknown"
 
+        prompt_sections = self._build_compact_prompt_sections(section_chunks)
         user_prompt = build_user_prompt(
             business_context=context_text,
             policy_a_name=policy_a_name,
             policy_a_insurer=policy_a_insurer,
             policy_b_name=policy_b_name,
             policy_b_insurer=policy_b_insurer,
+            section_chunks=prompt_sections,
+        )
+
+        try:
+            llm_response = generate_response(
+                system_prompt=SYSTEM_PROMPT,
+                user_prompt=user_prompt,
+                model=LLM_MODEL,
+                temperature=0.05,
+            )
+            clean = self._strip_json_fences(llm_response)
+            parsed = CompareResponse.model_validate_json(clean)
+            return self._normalize_compare_response(parsed, section_chunks)
+        except (ValidationError, ValueError) as exc:
+            logger.warning("Comparison LLM response could not be parsed: %s", exc)
+        except Exception as exc:
+            logger.warning("Groq comparison generation failed, using retrieved chunks: %s", exc)
+
+        return self._chunks_to_compare_response(
+            policy_a_name=policy_a_name,
+            policy_b_name=policy_b_name,
             section_chunks=section_chunks,
         )
-
-        llm_response = generate_response(
-            system_prompt=SYSTEM_PROMPT,
-            user_prompt=user_prompt,
-            model=LLM_MODEL,
-            temperature=0.1,
-        )
-
-        clean = self._strip_json_fences(llm_response)
-        return CompareResponse.model_validate_json(clean)
 
     async def chat(
         self,
@@ -146,6 +524,7 @@ class ComparisonService:
             raise BadRequestException("Cannot compare a policy with itself")
 
         await self._verify_business_ownership(db, user, request.business_profile_id)
+        await self._verify_session_scope(db, request)
 
         logger.info(
             "Comparison chat: user=%s business=%s query=%s policy_a=%s policy_b=%s",
@@ -153,21 +532,30 @@ class ComparisonService:
             policy_a.policy_name, policy_b.policy_name,
         )
 
-        context = await Provider.get_context(db, request.business_profile_id)
+        context = await Provider.get_context(
+            db,
+            request.business_profile_id,
+            session_id=request.session_id,
+        )
         business_profile_text = Provider.format_context_for_prompt(context)
 
-        policy_ids_str = [str(request.policy_id_a), str(request.policy_id_b)]
-
-        chunks = await retrieve_chunks(
-            db=db,
-            query=request.query,
-            policy_ids=policy_ids_str,
-            top_k=request.top_k,
-        )
+        try:
+            chunks = await retrieve_chunks(
+                db=db,
+                query=request.query,
+                policy_ids=[request.policy_id_a, request.policy_id_b],
+                top_k=request.top_k,
+            )
+        except Exception as exc:
+            logger.warning("Comparison chat retrieval failed: %s", exc)
+            return CompareChatResponse(
+                answer="Information not available in the selected policies.",
+                sources=[],
+            )
 
         if not chunks:
             return CompareChatResponse(
-                answer="No relevant policy information found for your question.",
+                answer="Information not available in the selected policies.",
                 sources=[],
             )
 
@@ -180,11 +568,11 @@ class ComparisonService:
             context_parts.append(
                 f"[Policy {policy_label}] {policy_a.policy_name if policy_label == 'A' else policy_b.policy_name} "
                 f"| Insurer: {policy_a.insurer.name if policy_label == 'A' else policy_b.insurer.name}"
-                f" | Section: {section_name}\n{c['text']}"
+                f" | Section: {section_name}\n{self._shorten_text(c['text'], 900)}"
             )
             sources.append(SourceRef(
                 policy_label=policy_label,
-                text=c["text"],
+                text=self._shorten_text(c["text"], 500),
                 section_name=section_name,
             ))
 
@@ -206,13 +594,17 @@ class ComparisonService:
             history=request.history,
         )
 
-        answer = generate_response(
-            system_prompt="",
-            user_prompt="",
-            model=LLM_MODEL,
-            temperature=0.1,
-            messages=messages,
-        )
+        try:
+            answer = generate_response(
+                system_prompt="",
+                user_prompt="",
+                model=LLM_MODEL,
+                temperature=0.05,
+                messages=messages,
+            )
+        except Exception as exc:
+            logger.warning("Comparison chat generation failed: %s", exc)
+            answer = self._format_pointwise_value(chunks)
 
         return CompareChatResponse(
             answer=answer,

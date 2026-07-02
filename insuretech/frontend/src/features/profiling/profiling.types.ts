@@ -24,6 +24,7 @@ export interface Tier2QuestionOut {
   risk_category_name: string
   factor_name: string
   current_risk_level: string
+  answer_value: string | null
 }
 
 export interface PreviewScoreOut {
@@ -67,7 +68,7 @@ export interface SectionQuestionsOut {
 export interface RiskScoreOut {
   risk_category_name: string
   score: number
-  risk_level: 'low' | 'medium' | 'high'
+  risk_level: 'low' | 'medium' | 'high' | 'critical'
   factor_breakdown: Record<string, number> | null
 }
 
@@ -80,6 +81,7 @@ export interface ProfilingStatus {
   profiling_completed: boolean
   has_active_session: boolean
   session: ProfilingSessionOut | null
+  latest_completed_session: ProfilingSessionOut | null
 }
 
 export interface SubmitAnswerPayload {

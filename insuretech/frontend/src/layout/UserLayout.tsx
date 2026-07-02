@@ -13,12 +13,14 @@ interface UserLayoutProps {
   activeSection: Section
   onSectionChange: (section: Section) => void
   children: React.ReactNode
+  contentClassName?: string
 }
 
 export default function UserLayout({
   activeSection,
   onSectionChange,
   children,
+  contentClassName = 'mx-auto max-w-5xl px-6 py-8',
 }: UserLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const { logout } = useAuth()
@@ -49,6 +51,7 @@ export default function UserLayout({
             onSectionChange(section)
             setDrawerOpen(false)
           }}
+          onAfterNavigate={() => setDrawerOpen(false)}
         />
       </UserMobileDrawer>
 
@@ -62,7 +65,7 @@ export default function UserLayout({
 
       {/* Main content */}
       <main className="flex-1 overflow-auto pt-14 lg:pt-0">
-        <div className="mx-auto max-w-5xl px-6 py-8">
+        <div className={contentClassName}>
           {children}
         </div>
       </main>

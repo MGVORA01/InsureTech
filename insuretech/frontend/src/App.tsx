@@ -14,6 +14,7 @@ import AuthModal from './features/auth-modal/AuthModal'
 import DashboardPage from './pages/DashboardPage'
 import RecommendationsPage from './pages/RecommendationsPage'
 import PolicyComparisonPage from './pages/PolicyComparisonPage'
+import ChatPage from './pages/ChatPage'
 import AdminRoute from './Routes/AdminRoute'
 import ProtectedRoute from './Routes/ProtectedRoute'
 import { useSessionCheck } from './hooks/useSessionCheck'
@@ -48,6 +49,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/recommendations/:sessionId" element={<RecommendationsPage />} />
           <Route path="/recommendations/:sessionId/compare" element={<PolicyComparisonPage />} />
+          <Route path="/chat" element={<ChatPage />} />
         </Route>
 
         <Route element={<AdminRoute />}>
