@@ -40,7 +40,6 @@ export default function QuestionRenderer({
   }
 
   const opts = question.options ?? []
-
   const renderInput = () => {
     switch (question.question_type) {
       case 'text':
