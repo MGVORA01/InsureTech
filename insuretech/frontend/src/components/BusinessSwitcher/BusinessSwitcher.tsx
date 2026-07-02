@@ -67,8 +67,8 @@ export default function BusinessSwitcher({
       <button
         type="button"
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="flex w-full items-center gap-4 border px-5 py-4 text-left transition hover:[box-shadow:var(--shadow-md)]"
-        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}
+        className="flex w-full items-center gap-4 border px-5 py-4 text-left transition"
+        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: '0 1px 3px rgba(20,20,19,0.04), 0 4px 24px rgba(20,20,19,0.04)' }}
       >
         <span
           className="flex h-12 w-12 shrink-0 items-center justify-center text-base font-bold text-white"

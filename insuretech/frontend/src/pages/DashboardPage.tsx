@@ -26,17 +26,137 @@ import BusinessSwitcher from '../components/BusinessSwitcher'
 
 function ProfileSkeleton() {
   return (
-    <div className="p-6" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
-      <div className="h-6 w-48 animate-pulse rounded bg-slate-100" />
-      <div className="mt-4 h-4 w-full animate-pulse rounded bg-slate-100" />
-      <div className="mt-6 grid grid-cols-2 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i}>
-            <div className="h-3 w-16 animate-pulse rounded bg-slate-100" />
-            <div className="mt-1 h-4 w-24 animate-pulse rounded bg-slate-100" />
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="rounded-xl border p-4" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+            <div className="mb-2 h-5 w-16 animate-pulse rounded bg-slate-100" />
+            <div className="h-3 w-20 animate-pulse rounded bg-slate-100" />
           </div>
         ))}
       </div>
+      <div className="rounded-xl" style={{ backgroundColor: 'var(--color-surface)', boxShadow: '0 1px 3px rgba(20,20,19,0.04), 0 4px 24px rgba(20,20,19,0.04)' }}>
+        <div className="flex items-center gap-4 p-7">
+          <div className="h-14 w-14 animate-pulse rounded-xl bg-slate-100" />
+          <div className="flex-1">
+            <div className="h-6 w-48 animate-pulse rounded bg-slate-100" />
+            <div className="mt-2 h-4 w-36 animate-pulse rounded bg-slate-100" />
+          </div>
+        </div>
+        <div className="mx-8 mb-6 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
+        <div className="mb-4 px-8">
+          <div className="h-3 w-32 animate-pulse rounded bg-slate-100" />
+        </div>
+        <div className="grid grid-cols-2 gap-5 px-8 pb-8">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="h-8 w-8 animate-pulse rounded bg-slate-100" />
+              <div>
+                <div className="mb-1 h-3 w-12 animate-pulse rounded bg-slate-100" />
+                <div className="h-4 w-20 animate-pulse rounded bg-slate-100" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function OverviewCards({ profile }: { profile: BusinessProfile }) {
+  const profileFields = [
+    profile.segment, profile.industry, profile.city, profile.state,
+    profile.pincode, profile.year_established, profile.employee_count,
+    profile.annual_turnover_range,
+  ]
+  const filled = profileFields.filter(Boolean).length
+  const completionPct = Math.round((filled / profileFields.length) * 100)
+
+  const cards = [
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      ),
+      label: 'Business Status',
+      value: profile.is_active ? 'Active' : 'Inactive',
+      color: profile.is_active ? 'var(--color-risk-low)' : 'var(--color-risk-medium)',
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+          <path d="M9 22v-4h6v4" />
+          <line x1="8" y1="6" x2="10" y2="6" />
+          <line x1="8" y1="10" x2="10" y2="10" />
+          <line x1="8" y1="14" x2="10" y2="14" />
+          <line x1="14" y1="6" x2="16" y2="6" />
+          <line x1="14" y1="10" x2="16" y2="10" />
+          <line x1="14" y1="14" x2="16" y2="14" />
+        </svg>
+      ),
+      label: 'Segment',
+      value: profile.segment?.name ?? '\u2014',
+      color: 'var(--color-text-primary)',
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+        </svg>
+      ),
+      label: 'Industry',
+      value: profile.industry?.name ?? '\u2014',
+      color: 'var(--color-text-primary)',
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="12" y1="1" x2="12" y2="23" />
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
+      ),
+      label: 'Profile Completion',
+      value: `${completionPct}%`,
+      color: completionPct >= 80 ? 'var(--color-risk-low)' : completionPct >= 50 ? 'var(--color-risk-medium)' : 'var(--color-risk-high)',
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      ),
+      label: 'Employees',
+      value: profile.employee_count ? `${profile.employee_count}` : '\u2014',
+      color: 'var(--color-text-primary)',
+    },
+  ]
+
+  return (
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+      {cards.map((card) => (
+        <div
+          key={card.label}
+          className="flex flex-col gap-2 rounded-xl border p-4 transition hover:[box-shadow:var(--shadow-md)]"
+          style={{
+            backgroundColor: 'var(--color-surface)',
+            borderColor: 'var(--color-border)',
+          }}
+        >
+          <div className="flex items-center gap-2" style={{ color: card.color }}>
+            {card.icon}
+            <span className="text-lg font-semibold tracking-tight">{card.value}</span>
+          </div>
+          <p className="text-xs font-medium" style={{ color: 'var(--color-text-tertiary)' }}>{card.label}</p>
+        </div>
+      ))}
     </div>
   )
 }
@@ -177,7 +297,12 @@ export default function DashboardPage() {
     }
 
     if (selectedBusiness && !showAddForm) {
-      return <ProfileCard profile={selectedBusiness} />
+      return (
+        <div className="flex flex-col gap-6">
+          <OverviewCards profile={selectedBusiness} />
+          <ProfileCard profile={selectedBusiness} />
+        </div>
+      )
     }
 
     return (

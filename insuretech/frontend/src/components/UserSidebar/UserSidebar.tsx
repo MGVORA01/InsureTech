@@ -66,11 +66,18 @@ function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
       onClick={onClick}
       className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition"
       style={{
-        backgroundColor: active ? 'var(--overlay-secondary-10, rgba(13,115,119,0.1))' : 'transparent',
+        backgroundColor: active ? 'rgba(207, 69, 0, 0.06)' : 'transparent',
         color: active ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
         borderRadius: 'var(--radius-md)',
+        position: 'relative',
       }}
     >
+      {active && (
+        <span
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full"
+          style={{ backgroundColor: 'var(--color-secondary)' }}
+        />
+      )}
       <Icon className="h-5 w-5 shrink-0" />
       {label}
     </button>
