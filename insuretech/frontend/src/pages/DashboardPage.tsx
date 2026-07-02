@@ -16,6 +16,7 @@ import type { ProfilingCompleteOut } from '../features/profiling'
 import UserLayout from '../layout/UserLayout'
 import type { Section } from '../components/UserSidebar'
 import BusinessSwitcher from '../components/BusinessSwitcher'
+import { ComparisonView } from '../features/comparison'
 
 
 
@@ -148,6 +149,41 @@ export default function DashboardPage() {
     )
   }
 
+  const renderComparisonTab = () => {
+    if (!selectedBusiness) {
+      return (
+        <div className="p-8" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <svg
+              className="h-10 w-10" style={{ color: 'var(--color-text-muted)' }}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 20V10" />
+              <path d="M18 20V4" />
+              <path d="M6 20v-4" />
+              <path d="M2 20h20" />
+              <path d="M12 10l4-6" />
+              <path d="M12 10l-4-6" />
+            </svg>
+            <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-tertiary)' }}>Profile Required</h3>
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Please create a business profile first to compare policies.</p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)', padding: '1.5rem' }}>
+        <ComparisonView businessProfileId={selectedBusinessId!} />
+      </div>
+    )
+  }
+
   const renderProfilingTab = () => {
     if (!selectedBusiness) {
       return (
@@ -230,7 +266,7 @@ export default function DashboardPage() {
 
       {/* Section content */}
       <div className="mt-6">
-        {activeSection === 'profile' ? renderProfileTab() : renderProfilingTab()}
+        {activeSection === 'profile' ? renderProfileTab() : activeSection === 'comparison' ? renderComparisonTab() : renderProfilingTab()}
       </div>
     </UserLayout>
   )

@@ -34,7 +34,10 @@ section_output/
 metadata_output/
 chunk_output/
 data/
+data.zip
+backfill_cloudinary.py
 
-seed-question.py
+seed-questions.py
 seed-segments.py
-question.json
+questions.json
+master_seed_final.json
