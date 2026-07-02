@@ -36,8 +36,7 @@ chunk_output/
 data/
 data.zip
 backfill_cloudinary.py
+backend/question.json
+backend/seed-question.py
+backend/seed-segments.py
 
-seed-questions.py
-seed-segments.py
-questions.json
-master_seed_final.json
