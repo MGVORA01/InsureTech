@@ -10,6 +10,9 @@ class RagQueryRequest(BaseModel):
         None, description="Optional section type filter (e.g., 'exclusions', 'coverage')"
     )
     top_k: int = Field(5, ge=1, le=20, description="Number of top chunks to retrieve")
+    policy_ids: list[str] | None = Field(
+        None, description="Filter by specific policy UUIDs. None = search all."
+    )
 
 
 class ChunkResult(BaseModel):
