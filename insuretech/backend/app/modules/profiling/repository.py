@@ -291,6 +291,30 @@ async def get_active_risk_categories(db: AsyncSession) -> list[RiskCategory]:
     return list(result.scalars().all())
 
 
+async def get_latest_completed_session(
+    db: AsyncSession,
+    business_id: UUID,
+) -> ProfilingSession | None:
+    """Fetch the most recently completed profiling session for a business.
+
+    Args:
+        business_id: UUID of the business profile.
+
+    Returns:
+        The latest completed ProfilingSession if found, None otherwise.
+    """
+    result = await db.execute(
+        select(ProfilingSession)
+        .where(
+            ProfilingSession.business_id == business_id,
+            ProfilingSession.status == "completed",
+        )
+        .order_by(ProfilingSession.completed_at.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 async def get_answer_score_rules_for_session(
     db: AsyncSession,
     session_id: UUID,

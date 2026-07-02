@@ -130,6 +130,20 @@ export const profilingApi = {
     return unwrapData<Tier2QuestionsResponse>(response)
   },
 
+  async getBusinessResults(businessId: string): Promise<ProfilingCompleteOut | null> {
+    try {
+      const response = await baseApi.get<ApiEnvelope<ProfilingCompleteOut>>(
+        `/profiling/business/${businessId}/results`,
+      )
+      return unwrapData<ProfilingCompleteOut>(response)
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        return null
+      }
+      throw err
+    }
+  },
+
   async completeSession(
     sessionId: string,
   ): Promise<ProfilingCompleteOut> {

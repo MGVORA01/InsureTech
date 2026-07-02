@@ -10,6 +10,7 @@ import {
   ProfilingWizard,
   ProfilingLauncher,
   ProfilingResults,
+  profilingApi,
 } from '../features/profiling'
 import type { ProfilingCompleteOut } from '../features/profiling'
 import UserLayout from '../layout/UserLayout'
@@ -43,7 +44,7 @@ export default function DashboardPage() {
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [profilingView, setProfilingView] = useState<'launcher' | 'wizard' | 'results'>('launcher')
+  const [profilingView, setProfilingView] = useState<'loading' | 'launcher' | 'wizard' | 'results'>('loading')
   const [profilingResults, setProfilingResults] = useState<ProfilingCompleteOut | null>(null)
 
 
@@ -72,9 +73,34 @@ export default function DashboardPage() {
     loadBusinesses()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (activeSection !== 'profiling' || !selectedBusinessId) return
+    if (profilingView !== 'loading') return
+
+    let cancelled = false
+
+    const resolveView = async () => {
+      try {
+        const results = await profilingApi.getBusinessResults(selectedBusinessId)
+        if (cancelled) return
+        if (results) {
+          setProfilingResults(results)
+          setProfilingView('results')
+        } else {
+          setProfilingView('launcher')
+        }
+      } catch {
+        if (!cancelled) setProfilingView('launcher')
+      }
+    }
+
+    resolveView()
+    return () => { cancelled = true }
+  }, [activeSection, selectedBusinessId, profilingView])
+
   const handleBusinessChange = (businessId: string) => {
     setSelectedBusinessId(businessId)
-    setProfilingView('launcher')
+    setProfilingView('loading')
     setProfilingResults(null)
     setShowAddForm(false)
     setProfileError(null)
@@ -170,6 +196,17 @@ export default function DashboardPage() {
       )
     }
 
+    if (profilingView === 'loading') {
+      return (
+        <div className="flex items-center justify-center py-16" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-2" style={{ borderColor: 'var(--color-text-muted)', borderTopColor: 'transparent' }} />
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Checking profiling status...</p>
+          </div>
+        </div>
+      )
+    }
+
     if (profilingView === 'wizard') {
       return (
         <div className="p-8" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
@@ -188,12 +225,12 @@ export default function DashboardPage() {
     if (profilingView === 'results' && profilingResults) {
       return (
         <div className="p-8" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
-          <ProfilingResults
-            data={profilingResults}
-            onRestart={() => {
-              setProfilingResults(null)
-              setProfilingView('launcher')
-            }}
+            <ProfilingResults
+              data={profilingResults}
+              onRestart={() => {
+                setProfilingResults(null)
+                setProfilingView('wizard')
+              }}
           />
         </div>
       )

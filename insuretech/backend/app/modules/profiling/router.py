@@ -104,6 +104,20 @@ async def preview_scores(
     return await Service.preview_scores(session_id, current_user, db)
 
 
+@router.get("/business/{business_id}/results", status_code=status.HTTP_200_OK)
+async def get_business_results(
+    business_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> APIResponse:
+    """Return completed profiling results for a business.
+
+    Returns session info + scores. Returns 404 if no completed
+    profiling session exists for this business.
+    """
+    return await Service.get_business_results(business_id, current_user, db)
+
+
 @router.post("/session/{session_id}/tier2-questions", status_code=status.HTTP_200_OK)
 async def get_tier2_questions(
     session_id: UUID,
