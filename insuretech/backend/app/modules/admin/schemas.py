@@ -6,6 +6,9 @@ class AdminDashboardStats(BaseModel):
     total_users: int
     active_users: int
     inactive_users: int
+    total_policies: int
+    total_insurers: int
+    total_categories: int
 
 
 class UserListItem(BaseModel):
@@ -40,6 +43,5 @@ class KnowledgeDocumentItem(BaseModel):
     file_size: Optional[int] = None
     chunks_count: int
     created_at: str
-
 
 

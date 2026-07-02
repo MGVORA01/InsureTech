@@ -4,7 +4,14 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import func, select
 
-from app.models import CustomerSupportChunk, PolicyDocument, User
+from app.models import (
+    CustomerSupportChunk,
+    InsuranceCategory,
+    Insurer,
+    Policy,
+    PolicyDocument,
+    User,
+)
 
 
 async def get_user_stats(db) -> dict:
@@ -15,10 +22,16 @@ async def get_user_stats(db) -> dict:
     inactive = await db.execute(
         select(func.count(User.id)).where(User.is_active == False)
     )
+    policies = await db.execute(select(func.count(Policy.id)))
+    insurers = await db.execute(select(func.count(Insurer.id)))
+    categories = await db.execute(select(func.count(InsuranceCategory.id)))
     return {
         "total_users": total.scalar(),
         "active_users": active.scalar(),
         "inactive_users": inactive.scalar(),
+        "total_policies": policies.scalar(),
+        "total_insurers": insurers.scalar(),
+        "total_categories": categories.scalar(),
     }
 
 
