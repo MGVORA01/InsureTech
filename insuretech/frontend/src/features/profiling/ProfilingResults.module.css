@@ -157,3 +157,19 @@
   background: var(--color-primary);
   color: var(--color-text-on-primary);
 }
+
+.recommendBtn {
+  padding: 0.625rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-on-primary);
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.recommendBtn:hover {
+  opacity: 0.9;
+}

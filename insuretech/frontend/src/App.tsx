@@ -1,4 +1,5 @@
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import type { Location } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -11,6 +12,8 @@ import AdminInsurersPage from './pages/AdminInsurersPage'
 import AdminCategoriesPage from './pages/AdminCategoriesPage'
 import AuthModal from './features/auth-modal/AuthModal'
 import DashboardPage from './pages/DashboardPage'
+import RecommendationsPage from './pages/RecommendationsPage'
+import PolicyComparisonPage from './pages/PolicyComparisonPage'
 import AdminRoute from './Routes/AdminRoute'
 import ProtectedRoute from './Routes/ProtectedRoute'
 import { useSessionCheck } from './hooks/useSessionCheck'
@@ -18,7 +21,7 @@ import { useSessionCheck } from './hooks/useSessionCheck'
 function App() {
   const location = useLocation()
   const navigate = useNavigate()
-  const state = (location.state as any) || {}
+  const state = (location.state as { backgroundLocation?: Location } | null) || {}
   const background = state.backgroundLocation
   const { checking } = useSessionCheck()
 
@@ -44,6 +47,8 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/dashboard/:section" element={<DashboardPage />} />
+          <Route path="/recommendations/:sessionId" element={<RecommendationsPage />} />
+          <Route path="/recommendations/:sessionId/compare" element={<PolicyComparisonPage />} />
         </Route>
 
         <Route element={<AdminRoute />}>

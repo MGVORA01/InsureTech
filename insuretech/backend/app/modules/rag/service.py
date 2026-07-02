@@ -37,6 +37,7 @@ class RAGService:
             insurance_categories=request.insurance_categories,
             top_k=request.top_k,
             section_type=request.section_type,
+            policy_ids=request.policy_ids,
         )
 
         if not chunks:
