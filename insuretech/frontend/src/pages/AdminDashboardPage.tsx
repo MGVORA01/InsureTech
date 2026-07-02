@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import baseApi from '../api/baseApi'
+import {
+  AdminDesktopSidebar,
+  AdminMobileDrawer,
+  AdminMobileTopBar,
+  AdminSidebar,
+} from '../components/AdminSidebar'
 import { useAuth } from '../hooks/useAuth'
 
 interface DashboardStats {
   total_users: number
   active_users: number
   inactive_users: number
+  total_policies: number
+  total_insurers: number
+  total_categories: number
 }
 
 interface UploadResult {
@@ -38,24 +47,6 @@ function LogoIcon({ className }: { className?: string }) {
         <path d="M9 12L11 14L15.5 9.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </span>
-  )
-}
-
-function IconShield(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M12 2 4 5v6c0 5 3.5 8.5 8 11 4.5-2.5 8-6 8-11V5l-8-3Z" />
-    </svg>
-  )
-}
-
-function IconLogOut(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <path d="M16 17l5-5-5-5" />
-      <path d="M21 12H9" />
-    </svg>
   )
 }
 
@@ -110,6 +101,27 @@ function IconUsers(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function IconBuilding(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="4" y="2" width="16" height="20" rx="2" />
+      <path d="M9 22v-4h6v4" />
+      <path d="M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01" />
+    </svg>
+  )
+}
+
+function IconGrid(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+    </svg>
+  )
+}
+
 function IconUserCheck(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -126,34 +138,6 @@ function IconUserX(props: React.SVGProps<SVGSVGElement>) {
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="m17 8 5 5M22 8l-5 5" />
-    </svg>
-  )
-}
-
-function IconUser(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  )
-}
-
-function IconHome(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
-      <path d="M9 22V12h6v10" />
-    </svg>
-  )
-}
-
-function IconMenu(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <line x1="4" y1="7" x2="20" y2="7" />
-      <line x1="4" y1="12" x2="20" y2="12" />
-      <line x1="4" y1="17" x2="20" y2="17" />
     </svg>
   )
 }
@@ -208,15 +192,6 @@ function formatBytes(bytes: number | null) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
-
-// ---- navigation sections --------------------------------------------------
-
-const NAV_SECTIONS = [
-  { id: 'dashboard', label: 'Dashboard', icon: IconHome },
-  { id: 'upload-pdf', label: 'Upload PDF', icon: IconUpload },
-  { id: 'documents', label: 'Documents', icon: IconFileText },
-  { id: 'profile', label: 'Profile', icon: IconUser },
-] as const
 
 // ---- scroll-reveal hook ----------------------------------------------------
 // Sections fade/slide into place the first time they enter the viewport, so the
@@ -299,101 +274,6 @@ function SkeletonBlock({ className }: { className?: string }) {
   return <div className={`animate-pulse rounded ${className ?? ''}`} style={{ backgroundColor: 'var(--color-surface-alt)' }} />
 }
 
-// ---- sidebar content (shared between desktop rail and mobile drawer) ------
-
-function SidebarContent({
-  activeSection,
-  onNavigate,
-  user,
-  initials,
-  onLogout,
-}: {
-  activeSection: string
-  onNavigate: (id: string) => void
-  user: { fullName?: string; email?: string; role?: string } | null | undefined
-  initials: string
-  onLogout: () => void
-}) {
-  return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <LogoIcon />
-        <span className="text-lg font-bold tracking-tight" style={{ color: 'var(--color-primary)' }}>
-          InsureTech
-        </span>
-        <span
-          className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold"
-          style={{ borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-secondary)', color: '#fff' }}
-        >
-          <IconShield className="h-3 w-3" />
-          Admin
-        </span>
-      </div>
-
-      <nav className="flex-1 space-y-1 px-3" aria-label="Dashboard sections">
-        <p className="px-2 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-text-tertiary)' }}>
-          Overview
-        </p>
-        {NAV_SECTIONS.map(({ id, label, icon: Icon }) => {
-          const active = activeSection === id
-          return (
-            <button
-              key={id}
-              onClick={() => onNavigate(id)}
-              aria-current={active ? 'true' : undefined}
-              className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 ${
-                active ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`} style={{ borderRadius: 'var(--radius-md)' }}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </button>
-          )
-        })}
-
-        <p className="px-2 pb-1.5 pt-4 text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-text-tertiary)' }}>
-          Administration
-        </p>
-        <Link
-          to="/admin/users"
-          className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium transition hover:bg-slate-100 hover:text-slate-900" style={{ borderRadius: 'var(--radius-md)', color: 'var(--color-text-tertiary)' }}
-        >
-          <IconUsers className="h-4 w-4 shrink-0" />
-          Manage Users
-        </Link>
-      </nav>
-
-      <div className="mt-auto border-t px-3 py-4" style={{ borderColor: 'var(--color-border)' }}>
-        <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-            style={{ backgroundColor: 'var(--color-secondary)' }}
-          >
-            {initials}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-              {user?.fullName || 'Admin'}
-            </p>
-            <p className="truncate text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
-              {user?.email || '—'}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onLogout}
-          type="button"
-          className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-          style={{ backgroundColor: 'var(--color-risk-high)' }}
-        >
-          <IconLogOut className="h-4 w-4" />
-          Logout
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // ---- component ------------------------------------------------------------
 
 function AdminDashboardPage() {
@@ -412,7 +292,6 @@ function AdminDashboardPage() {
   const [documentsError, setDocumentsError] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<KnowledgeDocument | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [activeSection, setActiveSection] = useState('dashboard')
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -421,27 +300,6 @@ function AdminDashboardPage() {
   useEffect(() => {
     if (!user) loadCurrentUser()
   }, [user, loadCurrentUser])
-
-  // ---- IntersectionObserver for active nav --------------------------------
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id)
-          }
-        }
-      },
-      { rootMargin: '-80px 0px -60% 0px' }
-    )
-
-    for (const { id } of NAV_SECTIONS) {
-      const el = document.getElementById(id)
-      if (el) observer.observe(el)
-    }
-
-    return () => observer.disconnect()
-  }, [documents])
 
   // ---- mobile drawer: lock scroll + escape-to-close -----------------------
   useEffect(() => {
@@ -574,16 +432,9 @@ function AdminDashboardPage() {
     }
   }
 
-  const scrollTo = (id: string) => {
-    setDrawerOpen(false)
-    const el = document.getElementById(id)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
   const initials = useMemo(() => getInitials(user?.fullName), [user?.fullName])
   const greeting = useMemo(() => getGreeting(), [])
   const firstName = user?.fullName?.split(' ')[0] || 'Admin'
-  const activeLabel = NAV_SECTIONS.find((s) => s.id === activeSection)?.label ?? 'Dashboard'
 
   const statCards = [
     {
@@ -613,6 +464,33 @@ function AdminDashboardPage() {
       iconColor: 'text-red-500',
       valueColor: 'text-red-500',
     },
+    {
+      label: 'Total Policies',
+      value: stats?.total_policies,
+      icon: IconFileText,
+      borderColor: '#2563eb',
+      iconBg: 'bg-blue-50',
+      iconColor: 'text-blue-600',
+      valueColor: 'text-blue-600',
+    },
+    {
+      label: 'Total Insurance',
+      value: stats?.total_insurers,
+      icon: IconBuilding,
+      borderColor: '#7c3aed',
+      iconBg: 'bg-violet-50',
+      iconColor: 'text-violet-600',
+      valueColor: 'text-violet-600',
+    },
+    {
+      label: 'Total Categories',
+      value: stats?.total_categories,
+      icon: IconGrid,
+      borderColor: '#f59e0b',
+      iconBg: 'bg-amber-50',
+      iconColor: 'text-amber-600',
+      valueColor: 'text-amber-600',
+    },
   ]
 
   // reveal hooks — one per section that appears below the first fold
@@ -622,80 +500,22 @@ function AdminDashboardPage() {
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
-      {/* ===== MOBILE TOP BAR ============================================= */}
-      <header
-        className="fixed inset-x-0 top-0 z-40 flex items-center justify-between border-b px-4 py-3 backdrop-blur-md lg:hidden"
-        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
-      >
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          aria-label="Open navigation"
-          className="p-2 transition hover:bg-slate-100" style={{ borderRadius: 'var(--radius-md)', color: 'var(--color-text-tertiary)' }}
-        >
-          <IconMenu className="h-5 w-5" />
-        </button>
-        <div className="flex items-center gap-2">
-          <LogoIcon className="h-7 w-7" />
-          <span className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
-            InsureTech
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={handleLogout}
-          aria-label="Logout"
-          className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold text-white"
-          style={{ backgroundColor: 'var(--color-risk-high)' }}
-        >
-          <IconLogOut className="h-3.5 w-3.5" />
-        </button>
-      </header>
+      <AdminMobileTopBar onOpenDrawer={() => setDrawerOpen(true)} onLogout={handleLogout} />
 
-      {/* ===== MOBILE DRAWER + BACKDROP =================================== */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-72" style={{ backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-xl)' }}>
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(false)}
-              aria-label="Close navigation"
-              className="absolute right-3 top-3 p-1.5 transition hover:bg-slate-100" style={{ borderRadius: 'var(--radius-md)', color: 'var(--color-text-tertiary)' }}
-            >
-              <IconX className="h-4 w-4" />
-            </button>
-            <SidebarContent
-              activeSection={activeSection}
-              onNavigate={scrollTo}
-              user={user}
-              initials={initials}
-              onLogout={handleLogout}
-            />
-          </aside>
-        </div>
-      )}
+      <AdminMobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <AdminSidebar onAfterNavigate={() => setDrawerOpen(false)} />
+      </AdminMobileDrawer>
 
-      {/* ===== DESKTOP SIDEBAR ============================================= */}
-      <aside
-        className="sticky top-0 hidden h-screen w-64 shrink-0 border-r lg:flex"
-        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
-      >
-        <SidebarContent
-          activeSection={activeSection}
-          onNavigate={scrollTo}
-          user={user}
-          initials={initials}
-          onLogout={handleLogout}
-        />
-      </aside>
+      <AdminDesktopSidebar>
+        <AdminSidebar />
+      </AdminDesktopSidebar>
 
       {/* ===== MAIN ======================================================= */}
       <main className="min-w-0 flex-1 pt-14 lg:pt-0">
         <div className="mx-auto max-w-6xl px-6 py-8 lg:py-10">
           {/* breadcrumb */}
           <p className="mb-4 hidden text-xs font-semibold uppercase tracking-widest lg:block" style={{ color: 'var(--color-text-tertiary)' }}>
-            {activeLabel}
+            Dashboard
           </p>
 
           {/* ================================================================ */}
@@ -763,9 +583,9 @@ function AdminDashboardPage() {
             )}
 
             {/* Stats Cards */}
-            <div className="mt-8 grid gap-5 sm:grid-cols-3">
+            <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {statsLoading
-                ? Array.from({ length: 3 }).map((_, i) => (
+                ? Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="p-6" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
                       <SkeletonBlock className="h-5 w-24" />
                       <SkeletonBlock className="mt-3 h-8 w-16" />
@@ -799,26 +619,6 @@ function AdminDashboardPage() {
                     )
                   })}
             </div>
-
-            {/* Quick link to Manage Users */}
-            <Link
-              to="/admin/users"
-              className="mt-6 flex items-center justify-between p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-              style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}
-            >
-              <div className="flex items-center gap-4">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--color-secondary)', color: '#fff' }}>
-                  <IconUsers className="h-5 w-5" />
-                </span>
-                <div>
-                  <h3 className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>Manage Users</h3>
-                  <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>View, activate, or deactivate user accounts.</p>
-                </div>
-              </div>
-              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-text-tertiary)' }}>
-                <path d="M5 12h14M13 5l7 7-7 7" />
-              </svg>
-            </Link>
           </section>
 
           {/* ================================================================ */}
@@ -915,7 +715,7 @@ function AdminDashboardPage() {
                       <IconFileText className="h-5 w-5" />
                     </span>
                     <div>
-                      <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Knowledge Base</h2>
+                      <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Customer Support Knowledge Base</h2>
                       <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                         {documentsLoading ? 'Loading…' : `${documents.length} document${documents.length === 1 ? '' : 's'} indexed`}
                       </p>
