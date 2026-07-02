@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import type { FormEvent } from 'react'
 import { compareChat } from './comparisonApi'
 import type { CompareChatRequest, CompareChatResponse, CompareRequest } from './comparison.types'
 import './ComparisonChatPopUp.css'
 
 interface ComparisonChatPopUpProps {
   compareParams: CompareRequest
+  openSignal?: number
 }
 
 interface ChatMsg {
@@ -13,7 +15,32 @@ interface ChatMsg {
   sources?: { policy_label: string; text: string; section_name: string }[]
 }
 
-export default function ComparisonChatPopUp({ compareParams }: ComparisonChatPopUpProps) {
+const UNAVAILABLE_TEXT = 'Information not available in the selected policies.'
+
+function splitAssistantText(content: string): string[] {
+  const cleaned = content.trim()
+  if (!cleaned) return [UNAVAILABLE_TEXT]
+
+  const explicitPoints = cleaned
+    .split(/\n+|(?:^|\s)[-*]\s+|(?:^|\s)\d+\.\s+/)
+    .map((point) => point.trim())
+    .filter(Boolean)
+
+  if (explicitPoints.length > 1) return explicitPoints.slice(0, 6)
+
+  const sentences = cleaned
+    .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
+    ?.map((point) => point.trim())
+    .filter(Boolean)
+
+  if (sentences && sentences.length > 1) return sentences.slice(0, 5)
+  return [cleaned]
+}
+
+export default function ComparisonChatPopUp({
+  compareParams,
+  openSignal = 0,
+}: ComparisonChatPopUpProps) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMsg[]>([
     {
@@ -30,7 +57,14 @@ export default function ComparisonChatPopUp({ compareParams }: ComparisonChatPop
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  async function handleSend() {
+  useEffect(() => {
+    if (openSignal > 0 && compareParams.policy_id_a && compareParams.policy_id_b) {
+      setOpen(true)
+    }
+  }, [compareParams.policy_id_a, compareParams.policy_id_b, openSignal])
+
+  async function handleSend(event?: FormEvent) {
+    event?.preventDefault()
     const q = input.trim()
     if (!q || loading) return
 
@@ -50,6 +84,7 @@ export default function ComparisonChatPopUp({ compareParams }: ComparisonChatPop
         business_profile_id: compareParams.business_profile_id,
         policy_id_a: compareParams.policy_id_a,
         policy_id_b: compareParams.policy_id_b,
+        session_id: compareParams.session_id,
         query: q,
         history,
       }
@@ -100,6 +135,7 @@ export default function ComparisonChatPopUp({ compareParams }: ComparisonChatPop
       </button>
 
       {open && (
+        <div className="comparison-chat-backdrop">
         <div className="comparison-chat-popup" role="dialog" aria-modal="true" aria-label="Policy comparison chat">
           <div className="comparison-chat-header">
             <div className="comparison-chat-header-left">
@@ -112,7 +148,7 @@ export default function ComparisonChatPopUp({ compareParams }: ComparisonChatPop
               </div>
               <div>
                 <p className="comparison-chat-title">Policy Comparison Chat</p>
-                <p className="comparison-chat-subtitle">Ask about these two policies</p>
+                <p className="comparison-chat-subtitle">Answers use only the selected policy PDFs</p>
               </div>
             </div>
             <button
@@ -132,7 +168,15 @@ export default function ComparisonChatPopUp({ compareParams }: ComparisonChatPop
             {messages.map((msg, i) => (
               <div key={i} className={`comparison-chat-row ${msg.role === 'user' ? 'is-user' : 'is-assistant'}`}>
                 <div className={`comparison-chat-bubble ${msg.role === 'user' ? 'bubble-user' : 'bubble-assistant'}`}>
-                  <p className="comparison-chat-text">{msg.content}</p>
+                  {msg.role === 'assistant' ? (
+                    <ul className="comparison-chat-points">
+                      {splitAssistantText(msg.content).map((point, index) => (
+                        <li key={`${point}-${index}`}>{point}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="comparison-chat-text">{msg.content}</p>
+                  )}
                   {msg.sources && msg.sources.length > 0 && (
                     <details className="comparison-chat-sources">
                       <summary>Sources ({msg.sources.length})</summary>
@@ -169,7 +213,7 @@ export default function ComparisonChatPopUp({ compareParams }: ComparisonChatPop
             <div ref={endRef} />
           </div>
 
-          <div className="comparison-chat-input-bar">
+          <form className="comparison-chat-input-bar" onSubmit={handleSend}>
             <input
               className="comparison-chat-input"
               type="text"
@@ -181,17 +225,17 @@ export default function ComparisonChatPopUp({ compareParams }: ComparisonChatPop
             />
             <button
               className="comparison-chat-send"
-              onClick={handleSend}
+              type="submit"
               disabled={loading || !input.trim()}
               aria-label="Send message"
-              type="button"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
             </button>
-          </div>
+          </form>
+        </div>
         </div>
       )}
     </>

@@ -2,6 +2,7 @@ export interface CompareRequest {
   business_profile_id: string
   policy_id_a: string
   policy_id_b: string
+  session_id?: string
 }
 
 export interface ComparisonItem {
@@ -31,6 +32,7 @@ export interface CompareChatRequest {
   business_profile_id: string
   policy_id_a: string
   policy_id_b: string
+  session_id?: string
   query: string
   history: { role: string; content: string }[]
   top_k?: number

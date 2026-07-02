@@ -149,3 +149,4 @@ class Tier2QuestionOut(BaseModel):
     risk_category_name: str
     factor_name: str
     current_risk_level: str
+    answer_value: str | None = None

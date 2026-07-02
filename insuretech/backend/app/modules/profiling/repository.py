@@ -408,7 +408,7 @@ async def save_risk_scores(
     db: AsyncSession,
     risk_scores: list[BusinessRiskScore],
 ) -> list[BusinessRiskScore]:
-    """Bulk-insert business risk score records.
+    """Create or update risk score records for a session.
 
     Args:
         risk_scores: List of BusinessRiskScore ORM instances to persist.
@@ -416,10 +416,27 @@ async def save_risk_scores(
     Returns:
         The persisted list of BusinessRiskScore instances.
     """
+    saved: list[BusinessRiskScore] = []
     for score in risk_scores:
-        db.add(score)
+        result = await db.execute(
+            select(BusinessRiskScore).where(
+                BusinessRiskScore.session_id == score.session_id,
+                BusinessRiskScore.risk_category_id == score.risk_category_id,
+            )
+        )
+        existing = result.scalar_one_or_none()
+        if existing:
+            existing.business_id = score.business_id
+            existing.score = score.score
+            existing.risk_level = score.risk_level
+            existing.factor_breakdown = score.factor_breakdown
+            existing.risk_category = score.risk_category
+            saved.append(existing)
+        else:
+            db.add(score)
+            saved.append(score)
     await db.flush()
-    return risk_scores
+    return saved
 
 
 async def get_risk_scores_for_session(

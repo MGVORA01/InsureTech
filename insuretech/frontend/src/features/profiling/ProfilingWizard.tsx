@@ -313,15 +313,20 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
 
       if (!mountedRef.current) return
       const t2questions = Array.from(new Map(tier2Questions.map(t => [t.question.id, t.question])).values())
+      const tier2Answers = tier2Questions.reduce<Record<string, string>>((acc, t) => {
+        if (t.answer_value) acc[t.question.id] = t.answer_value
+        return acc
+      }, {})
       setAllQuestions(t2questions)
       setSection({
         section: 'refinement',
         section_index: 0,
         total_sections: 1,
         questions: t2questions,
-        answers: {},
+        answers: tier2Answers,
         session: section?.session!,
       })
+      setAnswers(prev => ({ ...prev, ...tier2Answers }))
       setErrors({})
       setPhase('tier2')
     } catch (err) {

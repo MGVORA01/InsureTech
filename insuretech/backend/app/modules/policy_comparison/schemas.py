@@ -7,6 +7,10 @@ class CompareRequest(BaseModel):
     business_profile_id: UUID = Field(..., description="UUID of the business profile")
     policy_id_a: UUID = Field(..., description="UUID of the first policy")
     policy_id_b: UUID = Field(..., description="UUID of the second policy")
+    session_id: UUID | None = Field(
+        None,
+        description="Optional recommendation/profiling session used to scope comparison",
+    )
 
 
 class ComparisonItem(BaseModel):
@@ -48,6 +52,10 @@ class CompareChatRequest(BaseModel):
     business_profile_id: UUID = Field(..., description="UUID of the business profile")
     policy_id_a: UUID = Field(..., description="UUID of the first policy")
     policy_id_b: UUID = Field(..., description="UUID of the second policy")
+    session_id: UUID | None = Field(
+        None,
+        description="Optional recommendation/profiling session used to scope comparison",
+    )
     query: str = Field(..., min_length=1, description="User's question about the two policies")
     history: list[dict] = Field(default_factory=list, description="Prior conversation messages")
     top_k: int = Field(5, ge=1, le=20, description="Number of chunks to retrieve per policy")

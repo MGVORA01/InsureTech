@@ -47,12 +47,46 @@ function IconScale(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function IconSparkles(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" />
+      <path d="M19 15l.9 2.6L22 18.5l-2.1.9L19 22l-.9-2.6-2.1-.9 2.1-.9L19 15z" />
+      <path d="M4 14l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z" />
+    </svg>
+  )
+}
+
+function IconMessageCircle(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-4-.9L3 21l1.7-4.4a8.4 8.4 0 1 1 16.3-5.1z" />
+    </svg>
+  )
+}
+
 function IconLogOut(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <path d="M16 17l5-5-5-5" />
       <path d="M21 12H9" />
+    </svg>
+  )
+}
+
+function IconChevronLeft(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  )
+}
+
+function IconChevronRight(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M9 18l6-6-6-6" />
     </svg>
   )
 }
@@ -82,7 +116,7 @@ function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
   )
 }
 
-export type Section = 'profile' | 'profiling' | 'comparison'
+export type Section = 'profile' | 'profiling' | 'recommendation' | 'comparison' | 'chatbot'
 
 interface UserSidebarProps {
   activeSection: Section
@@ -111,12 +145,17 @@ export function UserSidebar({
 
   const navItems = [
     { section: 'profile' as Section, icon: IconBuilding, label: 'Business Profile' },
-    { section: 'profiling' as Section, icon: IconShield, label: 'Risk Profiling' },
+    { section: 'profiling' as Section, icon: IconShield, label: 'Risk Assessment' },
+    { section: 'recommendation' as Section, icon: IconSparkles, label: 'Recommendation' },
     { section: 'comparison' as Section, icon: IconScale, label: 'Policy Comparison' },
+    { section: 'chatbot' as Section, icon: IconMessageCircle, label: 'Chatbot' },
   ]
+  const activeIndex = navItems.findIndex((item) => item.section === activeSection)
+  const previousItem = activeIndex > 0 ? navItems[activeIndex - 1] : null
+  const nextItem = activeIndex >= 0 && activeIndex < navItems.length - 1 ? navItems[activeIndex + 1] : null
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-5">
         <LogoIcon />
@@ -126,7 +165,7 @@ export function UserSidebar({
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-1 px-3">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
         {navItems.map((item) => (
           <NavItem
             key={item.section}
@@ -141,8 +180,41 @@ export function UserSidebar({
         ))}
       </nav>
 
+      <div className="grid grid-cols-2 gap-2 border-t px-3 py-3" style={{ borderColor: 'var(--color-border)' }}>
+        <button
+          type="button"
+          disabled={!previousItem}
+          onClick={() => {
+            if (!previousItem) return
+            onSectionChange(previousItem.section)
+            onAfterNavigate?.()
+          }}
+          className="flex items-center justify-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', backgroundColor: 'var(--color-surface)' }}
+          title={previousItem ? `Back to ${previousItem.label}` : 'No previous step'}
+        >
+          <IconChevronLeft className="h-4 w-4" />
+          Back
+        </button>
+        <button
+          type="button"
+          disabled={!nextItem}
+          onClick={() => {
+            if (!nextItem) return
+            onSectionChange(nextItem.section)
+            onAfterNavigate?.()
+          }}
+          className="flex items-center justify-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', backgroundColor: 'var(--color-surface)' }}
+          title={nextItem ? `Next to ${nextItem.label}` : 'No next step'}
+        >
+          Next
+          <IconChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* User + Logout */}
-      <div className="border-t px-4 py-4" style={{ borderColor: 'var(--color-border)' }}>
+      <div className="sticky bottom-0 border-t px-4 py-4" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
         <div className="flex items-center gap-3">
           <span
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
@@ -177,7 +249,7 @@ export function UserSidebar({
 
 export function UserDesktopSidebar({ children }: { children: React.ReactNode }) {
   return (
-    <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+    <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:flex-col lg:border-r" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
       {children}
     </aside>
   )
