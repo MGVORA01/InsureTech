@@ -129,6 +129,23 @@ async def get_policy_documents(
     return list(result.scalars().all())
 
 
+async def get_latest_active_policy_document(
+    db: AsyncSession,
+    policy_id: UUID,
+) -> PolicyDocument | None:
+    """Fetch the latest active document for a policy."""
+    result = await db.execute(
+        select(PolicyDocument)
+        .where(
+            PolicyDocument.policy_id == policy_id,
+            PolicyDocument.is_active == True,
+        )
+        .order_by(PolicyDocument.version.desc(), PolicyDocument.created_at.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 async def get_document_chunks_for_policies(
     db: AsyncSession,
     policy_ids: list[UUID],

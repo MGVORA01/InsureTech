@@ -5,6 +5,8 @@ import CloseIcon from '@mui/icons-material/Close'
 import SendIcon from '@mui/icons-material/Send'
 import { sendChatMessage } from '../features/chat/chatApi'
 import type { ChatMessage } from '../features/chat/chat.types'
+import UserLayout from '../layout/UserLayout'
+import type { Section } from '../components/UserSidebar'
 
 function createSessionId() {
   if (crypto.randomUUID) return crypto.randomUUID()
@@ -30,7 +32,12 @@ function ChatPage() {
   }, [messages, sending])
 
   async function closeChat() {
-    navigate('/')
+    navigate('/dashboard')
+  }
+
+  function handleSectionChange(section: Section) {
+    if (section === 'chatbot') return
+    navigate('/dashboard', { state: { section } })
   }
 
   async function handleSend(event: FormEvent) {
@@ -62,24 +69,25 @@ function ChatPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-text-primary">
-      <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">InsureTech Assistant</h1>
-            <p className="break-all text-sm text-text-secondary">Session: {sessionId}</p>
+    <UserLayout activeSection="chatbot" onSectionChange={handleSectionChange} contentClassName="w-full">
+      <main className="min-h-screen bg-background text-text-primary">
+        <header className="border-b border-border bg-surface">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight">InsureTech Assistant</h1>
+              <p className="break-all text-sm text-text-secondary">Session: {sessionId}</p>
+            </div>
+            <button
+              type="button"
+              onClick={closeChat}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface-alt text-text-primary transition hover:bg-background"
+              aria-label="Close chat"
+              title="Close chat"
+            >
+              <CloseIcon fontSize="small" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={closeChat}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface-alt text-text-primary transition hover:bg-background"
-            aria-label="Close chat"
-            title="Close chat"
-          >
-            <CloseIcon fontSize="small" />
-          </button>
-        </div>
-      </header>
+        </header>
 
       <div className="mx-auto max-w-3xl px-5 py-6">
 
@@ -132,7 +140,8 @@ function ChatPage() {
           </form>
         </section>
       </div>
-    </main>
+      </main>
+    </UserLayout>
   )
 }
 

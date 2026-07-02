@@ -42,3 +42,17 @@ async def generate_recommendations(
     2. Semantic: enriches with document chunk highlights
     """
     return await Service.generate_recommendations(session_id, current_user, db)
+
+
+@router.get(
+    "/{session_id}/policies/{policy_id}/download",
+    status_code=status.HTTP_200_OK,
+)
+async def get_recommended_policy_download(
+    session_id: UUID,
+    policy_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> APIResponse:
+    """Fetch a downloadable PDF URL for a policy in this recommendation session."""
+    return await Service.get_policy_download(session_id, policy_id, current_user, db)

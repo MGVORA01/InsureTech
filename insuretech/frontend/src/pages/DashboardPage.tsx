@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { BusinessProfile } from '../features/profile/profile.types'
 import {
   BusinessProfileForm,
@@ -8,6 +8,7 @@ import {
   PROFILE_MESSAGES,
 } from '../features/profile'
 import {
+  profilingApi,
   ProfilingWizard,
   ProfilingLauncher,
   ProfilingResults,
@@ -40,6 +41,7 @@ function ProfileSkeleton() {
 export default function DashboardPage() {
 
   const navigate = useNavigate()
+  const location = useLocation()
   const [activeSection, setActiveSection] = useState<Section>('profile')
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([])
   const [businessesLoading, setBusinessesLoading] = useState(true)
@@ -48,6 +50,7 @@ export default function DashboardPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [profilingView, setProfilingView] = useState<'launcher' | 'wizard' | 'results'>('launcher')
   const [profilingResults, setProfilingResults] = useState<ProfilingCompleteOut | null>(null)
+  const [workflowSessionId, setWorkflowSessionId] = useState<string | null>(null)
 
 
 
@@ -75,8 +78,49 @@ export default function DashboardPage() {
     loadBusinesses()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    const state = location.state as { section?: Section } | null
+    if (state?.section) {
+      setActiveSection(state.section)
+    }
+  }, [location.state])
+
+  useEffect(() => {
+    if (!selectedBusinessId) {
+      setWorkflowSessionId(null)
+      return
+    }
+
+    let cancelled = false
+    profilingApi.getStatus(selectedBusinessId)
+      .then((status) => {
+        if (cancelled) return
+        setWorkflowSessionId(
+          status.session?.id ?? status.latest_completed_session?.id ?? null,
+        )
+      })
+      .catch(() => {
+        if (!cancelled) setWorkflowSessionId(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBusinessId])
+
+  useEffect(() => {
+    if (!workflowSessionId) return
+    if (activeSection === 'recommendation') {
+      navigate(`/recommendations/${workflowSessionId}`)
+    }
+    if (activeSection === 'comparison') {
+      navigate(`/recommendations/${workflowSessionId}/compare`)
+    }
+  }, [activeSection, navigate, workflowSessionId])
+
   const handleBusinessChange = (businessId: string) => {
     setSelectedBusinessId(businessId)
+    setWorkflowSessionId(null)
     setProfilingView('launcher')
     setProfilingResults(null)
     setShowAddForm(false)
@@ -215,6 +259,7 @@ export default function DashboardPage() {
             businessId={selectedBusinessId ?? undefined}
             onComplete={(data) => {
               setProfilingResults(data)
+              setWorkflowSessionId(data.session.id)
               setProfilingView('results')
             }}
             onCancel={() => setProfilingView('launcher')}
@@ -248,10 +293,43 @@ export default function DashboardPage() {
     )
   }
 
+  const handleSectionChange = (section: Section) => {
+    if (section === 'recommendation') {
+      if (workflowSessionId) {
+        navigate(`/recommendations/${workflowSessionId}`)
+      } else {
+        setActiveSection('profiling')
+      }
+      return
+    }
+
+    if (section === 'comparison') {
+      if (workflowSessionId) {
+        navigate(`/recommendations/${workflowSessionId}/compare`)
+      } else {
+        setActiveSection('comparison')
+      }
+      return
+    }
+
+    if (section === 'chatbot') {
+      if (workflowSessionId) {
+        navigate(`/recommendations/${workflowSessionId}/compare`, {
+          state: { openChat: true },
+        })
+      } else {
+        setActiveSection('comparison')
+      }
+      return
+    }
+
+    setActiveSection(section)
+  }
+
   return (
     <UserLayout
       activeSection={activeSection}
-      onSectionChange={setActiveSection}
+      onSectionChange={handleSectionChange}
     >
       {/* Business Switcher — prominent card at the top */}
       <BusinessSwitcher

@@ -33,6 +33,7 @@ export interface RecommendationOut {
   coverage_match_count: number
   coverage_match_total: number
   matched_risk_categories: string[]
+  additional_inclusions: string[]
   why_recommended: string | null
   coverage_summary: string | null
   key_benefits: string[]
@@ -50,6 +51,13 @@ export interface RiskScoreOut {
 
 export interface RecommendationListOut {
   session_id: string
+  business_profile_id: string | null
   scores: RiskScoreOut[]
   recommendations: RecommendationOut[]
+}
+
+export interface RecommendationDownloadOut {
+  policy_id: string
+  file_name: string
+  download_url: string
 }

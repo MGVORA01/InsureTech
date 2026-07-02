@@ -1,5 +1,8 @@
 import baseApi from '../../api/baseApi'
-import type { RecommendationListOut } from './recommendations.types'
+import type {
+  RecommendationDownloadOut,
+  RecommendationListOut,
+} from './recommendations.types'
 
 interface ApiEnvelope<T> {
   success: boolean
@@ -34,4 +37,14 @@ export async function generateRecommendations(sessionId: string): Promise<Recomm
     `/recommendations/${sessionId}/generate`,
   )
   return unwrapData<RecommendationListOut>(response)
+}
+
+export async function getRecommendationPolicyDownload(
+  sessionId: string,
+  policyId: string,
+): Promise<RecommendationDownloadOut> {
+  const response = await baseApi.get<ApiEnvelope<RecommendationDownloadOut>>(
+    `/recommendations/${sessionId}/policies/${policyId}/download`,
+  )
+  return unwrapData<RecommendationDownloadOut>(response)
 }

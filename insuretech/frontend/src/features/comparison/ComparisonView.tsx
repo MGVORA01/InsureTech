@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchPolicies } from '../policies/policiesApi'
 import { comparePolicies } from './comparisonApi'
 import type { PolicyListItem } from '../policies/policies.types'
@@ -8,9 +8,20 @@ import styles from './ComparisonView.module.css'
 
 interface ComparisonViewProps {
   businessProfileId: string
+  sessionId?: string
+  recommendedPolicies?: PolicyListItem[]
+  initialPolicyA?: string
+  initialPolicyB?: string
+  autoCompare?: boolean
+  openChatSignal?: number
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
+  'What is Covered': 'What is Covered',
+  Coverage: 'Coverage',
+  Exclusions: 'Exclusions',
+  'Claims Process': 'Claims Process',
+  Conditions: 'Conditions',
   coverage: 'Coverage',
   exclusions: 'Exclusions',
   claims: 'Claims Process',
@@ -18,16 +29,70 @@ const CATEGORY_LABELS: Record<string, string> = {
   conditions: 'Terms & Conditions',
 }
 
-export default function ComparisonView({ businessProfileId }: ComparisonViewProps) {
+const UNAVAILABLE_TEXT = 'Information not available in the selected policies.'
+
+function splitIntoPoints(value: string): string[] {
+  const cleaned = value.trim()
+  if (!cleaned) return [UNAVAILABLE_TEXT]
+
+  const explicitPoints = cleaned
+    .split(/\n+|(?:^|\s)[-*]\s+|(?:^|\s)\d+\.\s+/)
+    .map((point) => point.trim())
+    .filter(Boolean)
+
+  if (explicitPoints.length > 1) return explicitPoints.slice(0, 5)
+
+  const sentencePoints = cleaned
+    .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
+    ?.map((point) => point.trim())
+    .filter(Boolean)
+
+  if (sentencePoints && sentencePoints.length > 1) return sentencePoints.slice(0, 4)
+  return [cleaned]
+}
+
+function PointList({ value }: { value: string }) {
+  const points = splitIntoPoints(value)
+  return (
+    <ul className={styles.pointList}>
+      {points.map((point, index) => (
+        <li key={`${point}-${index}`}>{point}</li>
+      ))}
+    </ul>
+  )
+}
+
+function renderListItems(items: string[]) {
+  const safeItems = items.length > 0
+    ? items.flatMap((item) => splitIntoPoints(item))
+    : [UNAVAILABLE_TEXT]
+  return safeItems.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)
+}
+
+export default function ComparisonView({
+  businessProfileId,
+  sessionId,
+  recommendedPolicies,
+  initialPolicyA = '',
+  initialPolicyB = '',
+  autoCompare = false,
+  openChatSignal = 0,
+}: ComparisonViewProps) {
   const [policies, setPolicies] = useState<PolicyListItem[]>([])
-  const [loadingPolicies, setLoadingPolicies] = useState(true)
-  const [policyA, setPolicyA] = useState('')
-  const [policyB, setPolicyB] = useState('')
+  const [loadingPolicies, setLoadingPolicies] = useState(!recommendedPolicies)
+  const [policyA, setPolicyA] = useState(initialPolicyA)
+  const [policyB, setPolicyB] = useState(initialPolicyB)
   const [comparing, setComparing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<CompareResponse | null>(null)
+  const lastAutoCompareKey = useRef('')
 
   const loadPolicies = useCallback(async () => {
+    if (recommendedPolicies) {
+      setPolicies(recommendedPolicies)
+      setLoadingPolicies(false)
+      return
+    }
     setLoadingPolicies(true)
     try {
       const data = await fetchPolicies({ limit: 100 })
@@ -37,13 +102,20 @@ export default function ComparisonView({ businessProfileId }: ComparisonViewProp
     } finally {
       setLoadingPolicies(false)
     }
-  }, [])
+  }, [recommendedPolicies])
 
   useEffect(() => {
     loadPolicies()
   }, [loadPolicies])
 
-  function handleCompare() {
+  useEffect(() => {
+    setPolicyA(initialPolicyA)
+    setPolicyB(initialPolicyB)
+    setResult(null)
+    lastAutoCompareKey.current = ''
+  }, [initialPolicyA, initialPolicyB])
+
+  const handleCompare = useCallback(() => {
     if (!policyA || !policyB) return
     if (policyA === policyB) {
       setError('Please select two different policies to compare.')
@@ -58,6 +130,7 @@ export default function ComparisonView({ businessProfileId }: ComparisonViewProp
       business_profile_id: businessProfileId,
       policy_id_a: policyA,
       policy_id_b: policyB,
+      session_id: sessionId,
     }
 
     comparePolicies(payload)
@@ -66,7 +139,15 @@ export default function ComparisonView({ businessProfileId }: ComparisonViewProp
         setError(err instanceof Error ? err.message : 'Comparison failed. Please try again.')
       })
       .finally(() => setComparing(false))
-  }
+  }, [businessProfileId, policyA, policyB, sessionId])
+
+  useEffect(() => {
+    if (!autoCompare || !policyA || !policyB || policyA === policyB) return
+    const key = `${businessProfileId}:${sessionId || ''}:${policyA}:${policyB}`
+    if (lastAutoCompareKey.current === key) return
+    lastAutoCompareKey.current = key
+    handleCompare()
+  }, [autoCompare, businessProfileId, handleCompare, policyA, policyB, sessionId])
 
   const policyAMeta = policies.find((p) => p.id === policyA)
   const policyBMeta = policies.find((p) => p.id === policyB)
@@ -125,8 +206,6 @@ export default function ComparisonView({ businessProfileId }: ComparisonViewProp
                   <th className={styles.compTableCategory}>Category</th>
                   <th className={styles.compTableValue}>Policy A</th>
                   <th className={styles.compTableValue}>Policy B</th>
-                  <th className={styles.compTableStronger}>Stronger</th>
-                  <th>Evidence</th>
                 </tr>
               </thead>
               <tbody>
@@ -135,39 +214,12 @@ export default function ComparisonView({ businessProfileId }: ComparisonViewProp
                     <td className={`${styles.compTableCategory} ${styles.compTableValue}`}>
                       {CATEGORY_LABELS[item.category] || item.category}
                     </td>
-                    <td className={styles.compTableValue}>{item.policy_a_value}</td>
-                    <td className={styles.compTableValue}>{item.policy_b_value}</td>
-                    <td>
-                      <span className={`${styles.strongerBadge} ${
-                        item.stronger === 'a' ? styles.strongerA
-                        : item.stronger === 'b' ? styles.strongerB
-                        : item.stronger === 'equal' ? styles.strongerEqual
-                        : styles.strongerInsufficient
-                      }`}>
-                        {item.stronger === 'a' ? 'Policy A'
-                          : item.stronger === 'b' ? 'Policy B'
-                          : item.stronger === 'equal' ? 'Equal'
-                          : 'Insufficient Evidence'}
-                      </span>
-                      <div className={styles.confidenceBadge}>
-                        Confidence: {item.confidence}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={styles.evidenceText}>{item.evidence}</span>
-                    </td>
+                    <td className={styles.compTableValue}><PointList value={item.policy_a_value} /></td>
+                    <td className={styles.compTableValue}><PointList value={item.policy_b_value} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Coverage Gap Analysis */}
-        <div className={styles.sectionCard}>
-          <div className={styles.sectionHeader}>Coverage Gap Analysis</div>
-          <div className={styles.sectionBody}>
-            <p>{result.coverage_gap_analysis}</p>
           </div>
         </div>
 
@@ -188,13 +240,13 @@ export default function ComparisonView({ businessProfileId }: ComparisonViewProp
                 <div className={styles.policyColLabel}>Policy A — Advantages</div>
                 <div className={styles.listBlock}>
                   <ul>
-                    {result.advantages_a.map((a, i) => <li key={i}>{a}</li>)}
+                    {renderListItems(result.advantages_a)}
                   </ul>
                 </div>
                 <div className={styles.listBlock} style={{ marginTop: '1rem' }}>
                   <div className={styles.listBlockTitle}>Limitations</div>
                   <ul>
-                    {result.limitations_a.map((l, i) => <li key={i}>{l}</li>)}
+                    {renderListItems(result.limitations_a)}
                   </ul>
                 </div>
               </div>
@@ -202,13 +254,13 @@ export default function ComparisonView({ businessProfileId }: ComparisonViewProp
                 <div className={styles.policyColLabel}>Policy B — Advantages</div>
                 <div className={styles.listBlock}>
                   <ul>
-                    {result.advantages_b.map((a, i) => <li key={i}>{a}</li>)}
+                    {renderListItems(result.advantages_b)}
                   </ul>
                 </div>
                 <div className={styles.listBlock} style={{ marginTop: '1rem' }}>
                   <div className={styles.listBlockTitle}>Limitations</div>
                   <ul>
-                    {result.limitations_b.map((l, i) => <li key={i}>{l}</li>)}
+                    {renderListItems(result.limitations_b)}
                   </ul>
                 </div>
               </div>
@@ -232,15 +284,6 @@ export default function ComparisonView({ businessProfileId }: ComparisonViewProp
           </div>
         )}
 
-        {/* Confidence */}
-        <div className={styles.confidenceFooter}>
-          <span className={`${styles.confidenceDot} ${
-            result.overall_confidence === 'high' ? styles.confidenceHigh
-            : result.overall_confidence === 'medium' ? styles.confidenceMedium
-            : styles.confidenceLow
-          }`} />
-          Overall confidence: <strong>{result.overall_confidence.toUpperCase()}</strong>
-        </div>
       </div>
     )
   }
@@ -254,7 +297,12 @@ export default function ComparisonView({ businessProfileId }: ComparisonViewProp
           <select
             className={styles.policySelect}
             value={policyA}
-            onChange={(e) => { setPolicyA(e.target.value); setResult(null); setError(null) }}
+            onChange={(e) => {
+              lastAutoCompareKey.current = ''
+              setPolicyA(e.target.value)
+              setResult(null)
+              setError(null)
+            }}
             disabled={loadingPolicies || comparing}
           >
             <option value="">Select a policy...</option>
@@ -273,7 +321,12 @@ export default function ComparisonView({ businessProfileId }: ComparisonViewProp
           <select
             className={styles.policySelect}
             value={policyB}
-            onChange={(e) => { setPolicyB(e.target.value); setResult(null); setError(null) }}
+            onChange={(e) => {
+              lastAutoCompareKey.current = ''
+              setPolicyB(e.target.value)
+              setResult(null)
+              setError(null)
+            }}
             disabled={loadingPolicies || comparing}
           >
             <option value="">Select a policy...</option>
@@ -318,10 +371,12 @@ export default function ComparisonView({ businessProfileId }: ComparisonViewProp
 
       {/* Comparison Chat Popup */}
       <ComparisonChatPopUp
+        openSignal={openChatSignal}
         compareParams={{
           business_profile_id: businessProfileId,
           policy_id_a: policyA,
           policy_id_b: policyB,
+          session_id: sessionId,
         }}
       />
     </div>

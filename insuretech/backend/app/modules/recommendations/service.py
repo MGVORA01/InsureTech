@@ -20,6 +20,7 @@ from app.modules.businesses.service import Service as BusinessService
 from app.modules.recommendations import repository
 from app.modules.recommendations.schemas import (
     PolicyOut,
+    RecommendationDownloadOut,
     RecommendationListOut,
     RecommendationOut,
     RiskScoreOut,
@@ -132,6 +133,7 @@ class _RecommendationService:
                 "No risk scores found for policy recommendation.",
                 RecommendationListOut(
                     session_id=session_id,
+                    business_profile_id=business.id,
                     scores=[self._score_to_out(s) for s in scores],
                     recommendations=[],
                 ).model_dump(),
@@ -161,6 +163,7 @@ class _RecommendationService:
                 "No suitable policy evidence found for high-priority risks.",
                 RecommendationListOut(
                     session_id=session_id,
+                    business_profile_id=business.id,
                     scores=[self._score_to_out(s) for s in scores],
                     recommendations=[],
                 ).model_dump(),
@@ -201,6 +204,42 @@ class _RecommendationService:
             "Recommendations generated successfully", out.model_dump()
         )
 
+    async def get_policy_download(
+        self,
+        session_id: UUID,
+        policy_id: UUID,
+        user: User,
+        db: AsyncSession,
+    ) -> APIResponse:
+        await self._resolve_session(session_id, user, db)
+        recommendations = await repository.get_existing_recommendations(db, session_id)
+        session_policy_ids: set[UUID] = set()
+        for rec in recommendations:
+            payload = self._parse_recommendation_payload(rec.reason_text)
+            try:
+                if payload.get("policy_id"):
+                    session_policy_ids.add(UUID(payload["policy_id"]))
+            except (TypeError, ValueError):
+                continue
+        if policy_id not in session_policy_ids:
+            raise NotFoundException("Recommended policy document not found")
+
+        document = await repository.get_latest_active_policy_document(db, policy_id)
+        if not document or not document.file_url:
+            raise NotFoundException("Policy PDF is not available for download")
+        if not document.file_url.startswith(("http://", "https://")):
+            raise NotFoundException("Policy PDF is not available for download")
+
+        data = RecommendationDownloadOut(
+            policy_id=policy_id,
+            file_name=document.file_name,
+            download_url=document.file_url,
+        )
+        return APIResponse.success_response(
+            "Policy download link retrieved",
+            data.model_dump(),
+        )
+
     def _build_policy_response(
         self,
         session_id: UUID,
@@ -208,6 +247,11 @@ class _RecommendationService:
         rec_models: list[Recommendation],
     ) -> RecommendationListOut:
         score_out = [self._score_to_out(s) for s in scores]
+        business_risk_names = [
+            self._canonical_risk_name(score.risk_category_name)
+            for score in score_out
+        ]
+        business_id = rec_models[0].business_id if rec_models else None
         recommendations: list[RecommendationOut] = []
         for rec in rec_models:
             evidence = getattr(rec, "_evidence", None)
@@ -219,10 +263,12 @@ class _RecommendationService:
                     priority=rec.priority,
                     risk_level=rec.risk_level or rec.priority,
                     risk_score=float(rec.risk_score or 0),
+                    business_risk_names=business_risk_names,
                 )
             )
         return RecommendationListOut(
             session_id=session_id,
+            business_profile_id=business_id,
             scores=score_out,
             recommendations=sorted(
                 recommendations,
@@ -253,6 +299,7 @@ class _RecommendationService:
         if not policy_ids:
             return RecommendationListOut(
                 session_id=session_id,
+                business_profile_id=rec_models[0].business_id if rec_models else None,
                 scores=[self._score_to_out(s) for s in scores],
                 recommendations=[],
             )
@@ -407,6 +454,7 @@ class _RecommendationService:
         priority: str,
         risk_level: str,
         risk_score: float,
+        business_risk_names: list[str],
     ) -> RecommendationOut:
         policy = evidence.policy
         matched = sorted(
@@ -414,6 +462,14 @@ class _RecommendationService:
             key=lambda name: evidence.matched_risks[name],
             reverse=True,
         )
+        business_risk_set = set(business_risk_names)
+        covered_business_risks = [
+            risk_name for risk_name in matched if risk_name in business_risk_set
+        ]
+        additional_inclusions = [
+            risk_name for risk_name in matched if risk_name not in business_risk_set
+        ]
+        coverage_total = len(business_risk_names) or len(matched)
         policy_out = self._policy_to_out(policy, evidence)
         return RecommendationOut(
             priority=priority,
@@ -425,9 +481,10 @@ class _RecommendationService:
             policy_id=policy.id,
             policy_name=policy.policy_name,
             recommendation_score=evidence.recommendation_score,
-            coverage_match_count=len(matched),
-            coverage_match_total=7,
-            matched_risk_categories=matched,
+            coverage_match_count=len(covered_business_risks),
+            coverage_match_total=coverage_total,
+            matched_risk_categories=covered_business_risks,
+            additional_inclusions=additional_inclusions,
             why_recommended=self._build_reason_text(evidence, matched),
             coverage_summary=self._coverage_summary(evidence),
             key_benefits=self._key_benefits(evidence),
