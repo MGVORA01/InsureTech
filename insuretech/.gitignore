@@ -39,4 +39,4 @@ backfill_cloudinary.py
 backend/question.json
 backend/seed-question.py
 backend/seed-segments.py
-
+backend/generated_reports/
