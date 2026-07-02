@@ -25,7 +25,8 @@ from app.models import (
     Recommendation,
     Report,
     PolicyDocument,
-    DocumentChunk
+    DocumentChunk,
+    Feedback
 )
 
 # this is the Alembic Config object, which provides
