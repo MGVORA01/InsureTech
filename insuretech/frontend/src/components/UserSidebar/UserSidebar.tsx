@@ -34,6 +34,14 @@ function IconShield(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function IconMessageSquare(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+
 function IconScale(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -103,20 +111,23 @@ function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition"
+      className={`flex w-full items-center gap-3 px-4 py-3 text-[14px] font-semibold transition-all duration-200 ease-out ${
+        active ? 'shadow-sm' : 'hover:bg-black/5 hover:translate-x-0.5'
+      }`}
       style={{
-        backgroundColor: active ? 'var(--overlay-secondary-10, rgba(13,115,119,0.1))' : 'transparent',
-        color: active ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
-        borderRadius: 'var(--radius-md)',
+        backgroundColor: active ? 'rgba(207, 69, 0, 0.08)' : 'transparent',
+        color: active ? '#CF4500' : 'var(--color-text-secondary)',
+        borderRadius: '14px',
+        position: 'relative',
       }}
     >
       <Icon className="h-5 w-5 shrink-0" />
-      {label}
+      <span className={active ? 'font-semibold' : ''}>{label}</span>
     </button>
   )
 }
 
-export type Section = 'profile' | 'profiling' | 'recommendation' | 'comparison' | 'chatbot'
+export type Section = 'profile' | 'profiling' | 'recommendation' | 'comparison' | 'chatbot' | 'feedback'
 
 interface UserSidebarProps {
   activeSection: Section
@@ -144,11 +155,12 @@ export function UserSidebar({
     : 'U'
 
   const navItems = [
-    { section: 'profile' as Section, icon: IconBuilding, label: 'Business Profile' },
+    { section: 'profile' as Section, icon: IconBuilding, label: 'Dashboard' },
     { section: 'profiling' as Section, icon: IconShield, label: 'Risk Assessment' },
     { section: 'recommendation' as Section, icon: IconSparkles, label: 'Recommendation' },
     { section: 'comparison' as Section, icon: IconScale, label: 'Policy Comparison' },
     { section: 'chatbot' as Section, icon: IconMessageCircle, label: 'Chatbot' },
+    { section: 'feedback' as Section, icon: IconMessageSquare, label: 'Feedback' },
   ]
   const activeIndex = navItems.findIndex((item) => item.section === activeSection)
   const previousItem = activeIndex > 0 ? navItems[activeIndex - 1] : null

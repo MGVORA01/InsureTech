@@ -158,10 +158,16 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
           const nextTarget = SECTIONS_ORDER[result.section_index + 1]
           await loadSection(nextTarget, tier, direction)
           return
-        } else if (direction === 'backward' && result.section_index > 0) {
-          const prevTarget = SECTIONS_ORDER[result.section_index - 1]
-          await loadSection(prevTarget, tier, direction)
-          return
+        } else if (direction === 'backward') {
+          if (result.section_index > 0) {
+            const prevTarget = SECTIONS_ORDER[result.section_index - 1]
+            await loadSection(prevTarget, tier, direction)
+            return
+          } else {
+            // Reached the very first section navigating backward, and it's empty. Exit the wizard.
+            onCancel()
+            return
+          }
         }
       }
 
@@ -403,20 +409,24 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
 
     return (
       <div className={styles.container}>
+        <header className={styles.pageHeader}>
+          <h1 className={styles.pageTitle}>Insurance Risk Assessment</h1>
+          <p className={styles.pageSubtitle}>
+            Progress through each section at your own pace. Your answers shape the final risk profile and policy recommendations.
+          </p>
+        </header>
+
         <div className={styles.progressSection}>
           <div className={styles.progressHeader}>
-            <span className={styles.sectionLabel}>{sectionLabel}</span>
-            <span className={styles.progressCount}>
-              {currentIdx + 1} of {totalSections}
-            </span>
+            <div>
+              <span className={styles.sectionLabel}>{sectionLabel}</span>
+              <span className={styles.progressCount}>Step {currentIdx + 1} of {totalSections}</span>
+            </div>
+            <span className={styles.progressPercent}>{Math.round(progressPct)}% Complete</span>
           </div>
           <div className={styles.progressBar}>
             <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
           </div>
-        </div>
-
-        <div className={styles.sectionTitle}>
-          {SECTION_LABELS[section.section]}
         </div>
 
         {error && (
@@ -456,6 +466,7 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
           >
             {isFirstSection ? 'Cancel' : 'Back'}
           </button>
+          <span className={styles.navProgress}>Step {currentIdx + 1} of {totalSections}</span>
           {isLastSection ? (
             <button
               type="button"
@@ -488,7 +499,7 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
     const hasHighRisk = filteredScores.some(s => s.risk_level === 'high' || s.risk_level === 'critical')
 
     return (
-      <div className={styles.container}>
+      <div className={`${styles.container} ${styles.previewContainer}`}>
         <div className={styles.previewHeader}>
           <h2 className={styles.previewTitle}>Your Risk Assessment Results</h2>
           <p className={styles.previewSubtitle}>
@@ -583,13 +594,12 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
 
     return (
       <div className={styles.container}>
-        <div className={styles.tierBadge}>Precision Refinement</div>
-
-        <div className={styles.tier2Header}>
+        <header className={styles.pageHeader}>
+          <h1 className={styles.pageTitle}>Precision Refinement</h1>
           <p className={styles.tier2Subtitle}>
             Answer {questions.length} more question{questions.length !== 1 ? 's' : ''} to refine your risk scores
           </p>
-        </div>
+        </header>
 
         {error && (
           <div className={styles.errorBanner}>
@@ -628,6 +638,7 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
           >
             Skip
           </button>
+          <span className={styles.navProgress}>{questions.length} follow-up question{questions.length !== 1 ? 's' : ''}</span>
           <button
             type="button"
             className={styles.finishBtn}

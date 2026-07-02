@@ -1,5 +1,5 @@
-  import { useEffect, useRef, useState } from 'react'
-
+  import { useCallback, useEffect, useRef, useState } from 'react'
+import { animate } from 'framer-motion'
 
 import { ChatPopup } from '../features/chat'
 import AuthModal from '../features/auth-modal/AuthModal'
@@ -24,6 +24,20 @@ import AuthModal from '../features/auth-modal/AuthModal'
     const [contactError, setContactError] = useState<string | null>(null)
     const [chatOpen, setChatOpen] = useState(false)
   
+    const scrollToSection = useCallback((id: string) => {
+      const el = document.getElementById(id)
+      if (el) {
+        const top = el.getBoundingClientRect().top + window.scrollY - 80
+        animate(window.scrollY, top, {
+          type: 'spring',
+          stiffness: 80,
+          damping: 20,
+          mass: 0.5,
+          onUpdate: (latest) => window.scrollTo(0, latest),
+        })
+      }
+    }, [])
+
     useEffect(() => {
       function onScroll() {
         setScrolled(window.scrollY > 40)
@@ -226,7 +240,7 @@ import AuthModal from '../features/auth-modal/AuthModal'
           : 'text-text-onPrimary opacity-85 hover:opacity-100'
       }`
   
-    const navItems = ['Home', 'Features', 'How It Works', 'AI Assistant', 'Reviews', 'Contact']
+    const navItems = ['Home', 'How It Works', 'Features', 'Industries', 'AI Assistant', 'Reviews']
   
     return (
       <div className="w-full max-w-[100vw] overflow-x-hidden">
@@ -288,9 +302,9 @@ import AuthModal from '../features/auth-modal/AuthModal'
   
               <nav className="hidden lg:flex items-center gap-8 text-sm font-medium">
                 {navItems.map((item) => {
-                  const href = '#' + item.toLowerCase().replace(/\s+/g, '-')
+                  const id = item.toLowerCase().replace(/\s+/g, '-')
                   return (
-                    <a key={item} href={href} className={navLinkClass(scrolled)}>
+                    <a key={item} href={`#${id}`} onClick={(e) => { e.preventDefault(); scrollToSection(id) }} className={navLinkClass(scrolled)}>
                       {item}
                       <span
                         className="absolute left-0 -bottom-[6px] h-[2px] transition-all duration-200"
@@ -357,9 +371,9 @@ import AuthModal from '../features/auth-modal/AuthModal'
             <div className="lg:hidden bg-white/80 backdrop-blur-md border-t border-border shadow-card">
               <nav className="flex flex-col px-6 py-4 gap-3 text-sm font-medium text-text-primary">
                 {navItems.map((item) => {
-                  const href = '#' + item.toLowerCase().replace(/\s+/g, '-')
+                  const id = item.toLowerCase().replace(/\s+/g, '-')
                   return (
-                    <a key={item} href={href} className="py-1.5" onClick={() => setMenuOpen(false)}>
+                    <a key={item} href={`#${id}`} className="py-1.5" onClick={(e) => { e.preventDefault(); setMenuOpen(false); scrollToSection(id) }}>
                       {item}
                     </a>
                   )
@@ -561,7 +575,7 @@ import AuthModal from '../features/auth-modal/AuthModal'
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-6">
                 {[
                   { step: '01', title: 'Share Your Profile', desc: 'Tell us your industry, business size, and assets in a quick guided form.' },
-                  { step: '02', title: 'AI Analyzes Risk', desc: 'Our engine scores your risk exposure across fire, machinery, liability, and more.' },
+                  { step: '02', title: 'Risk Scoring', desc: 'Our algorithm scores your risk exposure across fire, machinery, liability, and more.' },
                   { step: '03', title: 'Get Matched Policies', desc: 'Receive a curated shortlist of policies that fit your specific risk profile.' },
                   { step: '04', title: 'Compare & Apply', desc: 'Compare coverage, premiums, and insurers side-by-side, then apply directly.' },
                 ].map((item, index) => (
@@ -686,8 +700,8 @@ import AuthModal from '../features/auth-modal/AuthModal'
             <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 {
-                  title: 'AI Risk Scoring',
-                  desc: 'Get an instant risk assessment based on your business profile, industry, and assets.',
+                  title: 'Risk Scoring',
+                  desc: 'Get an instant mathematical risk assessment based on your business profile, industry, and assets.',
                   color: 'var(--color-secondary)',
                   bg: 'rgba(13,115,119,0.1)',
                   icon: (
@@ -1363,51 +1377,27 @@ import AuthModal from '../features/auth-modal/AuthModal'
         {/* Footer */}
         <footer className="bg-[var(--color-primary-dark)] pt-16 pb-8">
           <div className="max-w-7xl mx-auto px-6 lg:px-10">
-            <div className="grid md:grid-cols-4 gap-10">
-              <div className="md:col-span-1">
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className="w-8 h-8 rounded-sm flex items-center justify-center"
-                    style={{ background: 'var(--color-secondary)' }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 2L3 6V11C3 16.5 6.8 20.7 12 22C17.2 20.7 21 16.5 21 11V6L12 2Z" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
-                      <path d="M9 12L11 14L15.5 9.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </span>
-                  <span className="font-semibold text-lg text-white tracking-tight">InsureTech</span>
-                </div>
-                <p className="mt-4 text-sm text-white/60 leading-relaxed">
-                  AI-powered insurance advisory built for India's Manufacturing and Retail MSMEs.
-                </p>
+            <div className="flex flex-col items-center text-center">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="w-8 h-8 rounded-sm flex items-center justify-center"
+                  style={{ background: 'var(--color-secondary)' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L3 6V11C3 16.5 6.8 20.7 12 22C17.2 20.7 21 16.5 21 11V6L12 2Z" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
+                    <path d="M9 12L11 14L15.5 9.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+                <span className="font-semibold text-lg text-white tracking-tight">InsureTech</span>
               </div>
-  
-              {[
-                { heading: 'Product', links: ['Features', 'How It Works', 'AI Assistant', 'Pricing'] },
-                { heading: 'Company', links: ['About Us', 'Careers', 'Blog', 'Contact'] },
-                { heading: 'Legal', links: ['Privacy Policy', 'Terms of Service', 'IRDAI Disclosures'] },
-              ].map((col) => (
-                <div key={col.heading}>
-                  <p className="text-sm font-semibold text-white">{col.heading}</p>
-                  <ul className="mt-4 space-y-2.5">
-                    {col.links.map((link) => (
-                      <li key={link}>
-                        <a href="#" className="text-sm text-white/60 hover:text-white transition-colors duration-200">
-                          {link}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              <p className="mt-4 text-sm text-white/60 leading-relaxed max-w-md">
+                AI-powered insurance advisory built for India's Manufacturing and Retail MSMEs.
+              </p>
             </div>
   
-            <div className="mt-12 pt-6 border-t border-white/10 flex flex-wrap items-center justify-between gap-4">
+            <div className="mt-12 pt-6 border-t border-white/10 text-center">
               <p className="text-xs text-white/50">
                 &copy; 2026 InsureTech. All rights reserved.
-              </p>
-              <p className="text-xs text-white/50">
-                Built for educational &amp; portfolio purposes.
               </p>
             </div>
           </div>

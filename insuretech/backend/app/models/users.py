@@ -19,3 +19,4 @@ class User(Base, TimestampMixin):
     role = relationship("Role", back_populates="users")
     business_profiles = relationship("BusinessProfile", back_populates="user")
     password_reset_tokens = relationship("PasswordResetToken", back_populates="user")
+    feedbacks = relationship("Feedback", back_populates="user")

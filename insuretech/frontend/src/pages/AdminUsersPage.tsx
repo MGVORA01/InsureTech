@@ -45,7 +45,7 @@
         style={
           isAdmin
             ? { backgroundColor: '#fef3c7', color: '#92400e' }
-            : { backgroundColor: 'var(--overlay-secondary-10, rgba(13,115,119,0.1))', color: 'var(--color-secondary)' }
+            : { backgroundColor: 'var(--overlay-secondary-10, rgba(207,69,0,0.1))', color: 'var(--color-secondary)' }
         }
       >
         {role}

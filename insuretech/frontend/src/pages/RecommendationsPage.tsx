@@ -291,28 +291,31 @@ export default function RecommendationsPage() {
   }
 
   const handleSectionChange = (section: Section) => {
-    if (section === 'profile' || section === 'profiling') {
-      navigate('/dashboard', { state: { section } })
+    if (section === 'profile') {
+      navigate('/dashboard')
       return
     }
-    if (section === 'comparison' && sessionId) {
-      navigate(`/recommendations/${sessionId}/compare`, {
-        state: {
-          recommendations: topRecommendations,
-          businessProfileId: data?.business_profile_id ?? null,
-        },
-      })
+    if (section === 'profiling' || section === 'feedback') {
+      navigate(`/dashboard/${section}`)
       return
     }
-    if (section === 'chatbot' && sessionId) {
-      navigate(`/recommendations/${sessionId}/compare`, {
-        state: {
-          recommendations: topRecommendations,
-          businessProfileId: data?.business_profile_id ?? null,
-          selectedPolicyIds,
-          openChat: true,
-        },
-      })
+    if (section === 'comparison') {
+      navigate(sessionId ? `/recommendations/${sessionId}/compare` : '/dashboard/comparison')
+      return
+    }
+    if (section === 'chatbot') {
+      if (sessionId) {
+        navigate(`/recommendations/${sessionId}/compare`, {
+          state: {
+            recommendations: topRecommendations,
+            businessProfileId: data?.business_profile_id ?? null,
+            selectedPolicyIds,
+            openChat: true,
+          },
+        })
+      } else {
+        navigate('/dashboard/comparison')
+      }
     }
   }
 

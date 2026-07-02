@@ -30,3 +30,4 @@ class BusinessProfile(Base, TimestampMixin):
     risk_scores = relationship("BusinessRiskScore", back_populates="business_profile")
     recommendations = relationship("Recommendation", back_populates="business_profile")
     reports = relationship("Report", back_populates="business_profile")
+    feedbacks = relationship("Feedback", back_populates="business_profile")

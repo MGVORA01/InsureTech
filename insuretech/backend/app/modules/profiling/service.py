@@ -363,6 +363,42 @@ class _ProfilingService:
             {"questions": [t.model_dump() for t in tier2_out]},
         )
 
+    async def get_business_results(
+        self,
+        business_id: UUID,
+        user: User,
+        db: AsyncSession,
+    ) -> APIResponse:
+        """Return completed profiling results for a business.
+
+        Args:
+            business_id: UUID of the business profile.
+            user: Authenticated user (must own the business).
+            db: Database session.
+
+        Returns:
+            ProfilingCompleteOut with session + scores.
+
+        Raises:
+            NotFoundException if no completed session exists.
+        """
+        business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+
+        session = await repository.get_latest_completed_session(db, business.id)
+        if not session:
+            raise NotFoundException("No completed profiling session found for this business")
+
+        scores = await repository.get_risk_scores_for_session(db, session.id)
+        scores_out = [self._score_to_out(s) for s in scores]
+
+        return APIResponse.success_response(
+            "Business profiling results fetched successfully",
+            ProfilingCompleteOut(
+                session=ProfilingSessionOut.model_validate(session),
+                scores=scores_out,
+            ).model_dump(),
+        )
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

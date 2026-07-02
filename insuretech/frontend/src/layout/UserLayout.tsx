@@ -65,7 +65,7 @@ export default function UserLayout({
 
       {/* Main content */}
       <main className="flex-1 overflow-auto pt-14 lg:pt-0">
-        <div className={contentClassName}>
+        <div className="mx-0 max-w-[1560px] px-5 py-8 sm:px-6 lg:pl-8 lg:pr-8 lg:py-10">
           {children}
         </div>
       </main>

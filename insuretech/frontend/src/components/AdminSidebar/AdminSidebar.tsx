@@ -75,7 +75,7 @@ function NavItem({ to, icon: Icon, label, active, onClick }: NavItemProps) {
       onClick={onClick}
       className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition"
       style={{
-        backgroundColor: active ? 'var(--overlay-secondary-10, rgba(13,115,119,0.1))' : 'transparent',
+        backgroundColor: active ? 'var(--overlay-secondary-10, rgba(207,69,0,0.1))' : 'transparent',
         color: active ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
         borderRadius: 'var(--radius-md)',
       }}

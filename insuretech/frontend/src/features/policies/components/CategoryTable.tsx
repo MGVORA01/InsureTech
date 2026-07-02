@@ -66,7 +66,7 @@ export function CategoryTable({ items, loading, onEdit, onDelete }: CategoryTabl
                     type="button"
                     onClick={() => onEdit(cat)}
                     className="rounded-md px-3 py-1.5 text-xs font-semibold transition"
-                    style={{ backgroundColor: 'var(--overlay-secondary-10, rgba(13,115,119,0.1))', color: 'var(--color-secondary)' }}
+                    style={{ backgroundColor: 'var(--overlay-secondary-10, rgba(207,69,0,0.1))', color: 'var(--color-secondary)' }}
                   >
                     Edit
                   </button>

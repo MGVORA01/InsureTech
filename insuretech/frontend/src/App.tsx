@@ -47,6 +47,7 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/dashboard/:section" element={<DashboardPage />} />
           <Route path="/recommendations/:sessionId" element={<RecommendationsPage />} />
           <Route path="/recommendations/:sessionId/compare" element={<PolicyComparisonPage />} />
           <Route path="/chat" element={<ChatPage />} />
