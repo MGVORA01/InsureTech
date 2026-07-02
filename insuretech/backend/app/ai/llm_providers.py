@@ -18,14 +18,19 @@ def generate_response(
     user_prompt: str,
     model: str = "llama-3.1-8b-instant",
     temperature: float = 0.1,
+    messages: list[dict] | None = None,
 ) -> str:
     client = get_client()
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
+    if messages is not None:
+        msgs = messages
+    else:
+        msgs = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
-        ],
+        ]
+    response = client.chat.completions.create(
+        model=model,
+        messages=msgs,
         temperature=temperature,
     )
     return response.choices[0].message.content

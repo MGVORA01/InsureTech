@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, or_, select, and_
+from sqlalchemy import desc, func, or_, select, and_
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -212,6 +212,30 @@ async def get_session_by_id(
     """
     result = await db.execute(
         select(ProfilingSession).where(ProfilingSession.id == session_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_latest_completed_session(
+    db: AsyncSession,
+    business_id: UUID,
+) -> ProfilingSession | None:
+    """Fetch the most recently completed session for a business profile.
+
+    Args:
+        business_id: UUID of the business profile.
+
+    Returns:
+        The latest completed ProfilingSession, or None if none exist.
+    """
+    result = await db.execute(
+        select(ProfilingSession)
+        .where(
+            ProfilingSession.business_id == business_id,
+            ProfilingSession.status == "completed",
+        )
+        .order_by(desc(ProfilingSession.completed_at))
+        .limit(1)
     )
     return result.scalar_one_or_none()
 

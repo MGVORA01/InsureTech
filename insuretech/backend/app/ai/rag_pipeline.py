@@ -62,6 +62,7 @@ async def retrieve_chunks(
     insurance_categories: list[str] | None = None,
     top_k: int = 5,
     section_type: str | None = None,
+    policy_ids: list[str] | None = None,
 ) -> list[dict]:
     detected_type = detect_section_type(query)
     final_section_type = section_type or detected_type
@@ -82,6 +83,10 @@ async def retrieve_chunks(
             f"document_metadata->>'section_type' = :section_type"
         )
         params["section_type"] = final_section_type
+
+    if policy_ids:
+        conditions.append("policy_id = ANY(:policy_ids)")
+        params["policy_ids"] = policy_ids
 
     where_clause = " AND ".join(f"({c})" for c in conditions) if conditions else "TRUE"
 
