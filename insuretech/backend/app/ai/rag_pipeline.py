@@ -1,4 +1,6 @@
-from sqlalchemy import select, text
+from uuid import UUID
+
+from sqlalchemy import bindparam, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import DocumentChunk
 from app.ai.embeddings import generate_embedding
@@ -62,7 +64,7 @@ async def retrieve_chunks(
     insurance_categories: list[str] | None = None,
     top_k: int = 5,
     section_type: str | None = None,
-    policy_ids: list[str] | None = None,
+    policy_ids: list[str | UUID] | None = None,
 ) -> list[dict]:
     detected_type = detect_section_type(query)
     final_section_type = section_type or detected_type
@@ -84,9 +86,10 @@ async def retrieve_chunks(
         )
         params["section_type"] = final_section_type
 
-    if policy_ids:
-        conditions.append("policy_id = ANY(:policy_ids)")
-        params["policy_ids"] = policy_ids
+    has_policy_filter = bool(policy_ids)
+    if has_policy_filter:
+        conditions.append("policy_id::text IN :policy_ids")
+        params["policy_ids"] = [str(policy_id) for policy_id in policy_ids]
 
     where_clause = " AND ".join(f"({c})" for c in conditions) if conditions else "TRUE"
 
@@ -100,6 +103,8 @@ async def retrieve_chunks(
         ORDER BY embedding <=> '{vector_literal}'::vector
         LIMIT :limit
     """)
+    if has_policy_filter:
+        sql = sql.bindparams(bindparam("policy_ids", expanding=True))
 
     result = await db.execute(sql, params)
     rows = result.fetchall()

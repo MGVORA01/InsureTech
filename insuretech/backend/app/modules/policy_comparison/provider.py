@@ -17,7 +17,12 @@ class RiskScoreInfo:
 
 @dataclass
 class BusinessContext:
+    business_id: UUID
+    session_id: UUID | None
+    business_name: str
+    business_description: str | None
     industry: str
+    segment: str
     business_size: str | None
     employee_count: int | None
     location: str | None
@@ -45,6 +50,7 @@ class BusinessContextProvider:
         self,
         db: AsyncSession,
         business_profile_id: UUID,
+        session_id: UUID | None = None,
     ) -> BusinessContext:
         profile = await get_business_by_id(db, business_profile_id)
         if not profile:
@@ -55,15 +61,23 @@ class BusinessContextProvider:
             location = ", ".join(filter(None, [profile.city, profile.state]))
 
         context = BusinessContext(
+            business_id=business_profile_id,
+            session_id=session_id,
+            business_name=profile.business_name,
+            business_description=profile.business_description,
             industry=profile.industry.name if profile.industry else "Unknown",
+            segment=profile.segment.name if profile.segment else "Unknown",
             business_size=profile.annual_turnover_range,
             employee_count=profile.employee_count,
             location=location,
         )
 
-        session = await get_latest_completed_session(db, business_profile_id)
-        if session:
-            scores = await get_risk_scores_for_session(db, session.id)
+        risk_session_id = session_id
+        if not risk_session_id:
+            session = await get_latest_completed_session(db, business_profile_id)
+            risk_session_id = session.id if session else None
+        if risk_session_id:
+            scores = await get_risk_scores_for_session(db, risk_session_id)
             context.risk_scores = [
                 RiskScoreInfo(
                     category=rs.risk_category.name if rs.risk_category else "Unknown",
@@ -77,7 +91,12 @@ class BusinessContextProvider:
 
     def format_context_for_prompt(self, ctx: BusinessContext) -> str:
         lines = [
+            f"Current Business ID: {ctx.business_id}",
+            f"Current Session ID: {ctx.session_id or 'Latest completed session'}",
+            f"Business Name: {ctx.business_name}",
+            f"Business Description: {ctx.business_description or 'Not specified'}",
             f"Industry: {ctx.industry}",
+            f"Segment: {ctx.segment}",
             f"Business Size: {ctx.business_size or 'Not specified'}",
             f"Employees: {ctx.employee_count or 'Not specified'}",
             f"Location: {ctx.location or 'Not specified'}",

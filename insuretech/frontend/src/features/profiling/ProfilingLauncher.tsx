@@ -101,7 +101,7 @@ export default function ProfilingLauncher({ onStartWizard, businessId }: Profili
           {status?.has_active_session
             ? PROFILING_MESSAGES.resumeButton
             : status?.profiling_completed
-              ? 'Start New Assessment'
+              ? 'Edit Assessment'
               : PROFILING_MESSAGES.startButton}
         </button>
       </div>

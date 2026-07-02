@@ -53,11 +53,13 @@ class _ProfilingService:
                     "profiling_completed": False,
                     "has_active_session": False,
                     "session": None,
+                    "latest_completed_session": None,
                 },
             )
 
         active = await repository.get_active_session(db, business.id)
-        completed = await repository.has_completed_session(db, business.id)
+        latest_completed = await repository.get_latest_completed_session(db, business.id)
+        completed = latest_completed is not None
 
         return APIResponse.success_response(
             "Profiling status fetched successfully",
@@ -66,6 +68,11 @@ class _ProfilingService:
                 "has_active_session": active is not None,
                 "session": ProfilingSessionOut.model_validate(active).model_dump()
                 if active
+                else None,
+                "latest_completed_session": ProfilingSessionOut.model_validate(
+                    latest_completed
+                ).model_dump()
+                if latest_completed
                 else None,
             },
         )
@@ -94,6 +101,24 @@ class _ProfilingService:
             state = await self._build_section_state(db, active, business, tier=tier)
             return APIResponse.success_response(
                 "Resumed active profiling session", state.model_dump()
+            )
+
+        latest_completed = await repository.get_latest_completed_session(db, business.id)
+        if latest_completed:
+            logger.info(
+                "Reopening completed session %s for business %s",
+                latest_completed.id,
+                business.id,
+            )
+            state = await self._build_section_state(
+                db,
+                latest_completed,
+                business,
+                repository.SECTIONS_ORDER[0],
+                tier=tier,
+            )
+            return APIResponse.success_response(
+                "Loaded completed profiling session", state.model_dump()
             )
 
         session = await repository.create_session(db, business.id)
@@ -315,6 +340,8 @@ class _ProfilingService:
         questions = await repository.get_tier2_questions_for_categories(
             db, segment_name, high_cat_ids
         )
+        answers = await repository.get_answers_for_session(db, session.id)
+        answers_dict = {str(a.question_id): a.answer_value for a in answers}
 
         tier2_out = []
         for q in questions:
@@ -327,6 +354,7 @@ class _ProfilingService:
                             risk_category_name=cat_names.get(rcat_id, "Unknown"),
                             factor_name=mapping.risk_factor.factor_name,
                             current_risk_level=cat_levels.get(rcat_id, "unknown"),
+                            answer_value=answers_dict.get(str(q.id)),
                         )
                     )
 

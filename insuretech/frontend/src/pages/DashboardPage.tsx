@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type SVGProps } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import type { BusinessProfile } from '../features/profile/profile.types'
 import {
   BusinessProfileForm,
@@ -9,6 +9,7 @@ import {
   PROFILE_MESSAGES,
 } from '../features/profile'
 import {
+  profilingApi,
   ProfilingWizard,
   ProfilingLauncher,
   ProfilingResults,
@@ -286,6 +287,7 @@ export default function DashboardPage() {
 
   const { section } = useParams<{ section: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const activeSection: Section = section === 'profiling' ? 'profiling'
     : section === 'feedback' ? 'feedback'
@@ -306,6 +308,7 @@ export default function DashboardPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [profilingView, setProfilingView] = useState<'loading' | 'launcher' | 'wizard' | 'results'>('loading')
   const [profilingResults, setProfilingResults] = useState<ProfilingCompleteOut | null>(null)
+  const [workflowSessionId, setWorkflowSessionId] = useState<string | null>(null)
 
   const selectedBusiness = useMemo(
     () => businesses.find((b) => b.id === selectedBusinessId) ?? null,
@@ -363,8 +366,49 @@ export default function DashboardPage() {
     return () => { cancelled = true }
   }, [selectedBusinessId, activeSection, profilingView])
 
+  useEffect(() => {
+    const state = location.state as { section?: Section } | null
+    if (state?.section) {
+      setActiveSection(state.section)
+    }
+  }, [location.state])
+
+  useEffect(() => {
+    if (!selectedBusinessId) {
+      setWorkflowSessionId(null)
+      return
+    }
+
+    let cancelled = false
+    profilingApi.getStatus(selectedBusinessId)
+      .then((status) => {
+        if (cancelled) return
+        setWorkflowSessionId(
+          status.session?.id ?? status.latest_completed_session?.id ?? null,
+        )
+      })
+      .catch(() => {
+        if (!cancelled) setWorkflowSessionId(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBusinessId])
+
+  useEffect(() => {
+    if (!workflowSessionId) return
+    if (activeSection === 'recommendation') {
+      navigate(`/recommendations/${workflowSessionId}`)
+    }
+    if (activeSection === 'comparison') {
+      navigate(`/recommendations/${workflowSessionId}/compare`)
+    }
+  }, [activeSection, navigate, workflowSessionId])
+
   const handleBusinessChange = (businessId: string) => {
     setSelectedBusinessId(businessId)
+    setWorkflowSessionId(null)
     setProfilingView('loading')
     setProfilingResults(null)
     setShowAddForm(false)
@@ -527,6 +571,7 @@ export default function DashboardPage() {
           businessId={selectedBusinessId ?? undefined}
           onComplete={(data) => {
             setProfilingResults(data)
+              setWorkflowSessionId(data.session.id)
             setProfilingView('results')
           }}
           onCancel={() => setProfilingView('launcher')}
@@ -557,6 +602,39 @@ export default function DashboardPage() {
         />
       </div>
     )
+  }
+
+  const handleSectionChange = (section: Section) => {
+    if (section === 'recommendation') {
+      if (workflowSessionId) {
+        navigate(`/recommendations/${workflowSessionId}`)
+      } else {
+        setActiveSection('profiling')
+      }
+      return
+    }
+
+    if (section === 'comparison') {
+      if (workflowSessionId) {
+        navigate(`/recommendations/${workflowSessionId}/compare`)
+      } else {
+        setActiveSection('comparison')
+      }
+      return
+    }
+
+    if (section === 'chatbot') {
+      if (workflowSessionId) {
+        navigate(`/recommendations/${workflowSessionId}/compare`, {
+          state: { openChat: true },
+        })
+      } else {
+        setActiveSection('comparison')
+      }
+      return
+    }
+
+    setActiveSection(section)
   }
 
   const renderFeedbackTab = () => {

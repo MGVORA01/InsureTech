@@ -49,8 +49,9 @@ class RecommendationOut(BaseModel):
     policy_name: str | None = None
     recommendation_score: float | None = None
     coverage_match_count: int = 0
-    coverage_match_total: int = 7
+    coverage_match_total: int = 0
     matched_risk_categories: list[str] = Field(default_factory=list)
+    additional_inclusions: list[str] = Field(default_factory=list)
     why_recommended: str | None = None
     coverage_summary: str | None = None
     key_benefits: list[str] = Field(default_factory=list)
@@ -68,8 +69,15 @@ class RiskScoreOut(BaseModel):
 
 class RecommendationListOut(BaseModel):
     session_id: UUID
+    business_profile_id: UUID | None = None
     scores: list[RiskScoreOut]
     recommendations: list[RecommendationOut]
+
+
+class RecommendationDownloadOut(BaseModel):
+    policy_id: UUID
+    file_name: str
+    download_url: str
 
 
 class PolicyListOut(BaseModel):
