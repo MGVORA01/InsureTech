@@ -158,10 +158,16 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
           const nextTarget = SECTIONS_ORDER[result.section_index + 1]
           await loadSection(nextTarget, tier, direction)
           return
-        } else if (direction === 'backward' && result.section_index > 0) {
-          const prevTarget = SECTIONS_ORDER[result.section_index - 1]
-          await loadSection(prevTarget, tier, direction)
-          return
+        } else if (direction === 'backward') {
+          if (result.section_index > 0) {
+            const prevTarget = SECTIONS_ORDER[result.section_index - 1]
+            await loadSection(prevTarget, tier, direction)
+            return
+          } else {
+            // Reached the very first section navigating backward, and it's empty. Exit the wizard.
+            onCancel()
+            return
+          }
         }
       }
 

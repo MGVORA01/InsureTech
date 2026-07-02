@@ -93,12 +93,20 @@ export default function PolicyComparisonPage() {
   )
 
   const handleSectionChange = (section: Section) => {
-    if (section === 'profile' || section === 'profiling') {
-      navigate('/dashboard', { state: { section } })
+    if (section === 'profile') {
+      navigate('/dashboard')
       return
     }
-    if (section === 'recommendation' && sessionId) {
-      navigate(`/recommendations/${sessionId}`)
+    if (section === 'profiling' || section === 'feedback') {
+      navigate(`/dashboard/${section}`)
+      return
+    }
+    if (section === 'recommendation') {
+      navigate(sessionId ? `/recommendations/${sessionId}` : '/dashboard/profiling')
+      return
+    }
+    if (section === 'comparison') {
+      navigate(sessionId ? `/recommendations/${sessionId}/compare` : '/dashboard/comparison')
       return
     }
     if (section === 'chatbot') {

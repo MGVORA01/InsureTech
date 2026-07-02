@@ -9,7 +9,6 @@ import {
   PROFILE_MESSAGES,
 } from '../features/profile'
 import {
-  profilingApi,
   ProfilingWizard,
   ProfilingLauncher,
   ProfilingResults,
@@ -291,15 +290,8 @@ export default function DashboardPage() {
 
   const activeSection: Section = section === 'profiling' ? 'profiling'
     : section === 'feedback' ? 'feedback'
+    : section === 'comparison' ? 'comparison'
     : 'profile'
-
-  const handleSectionChange = useCallback((newSection: Section) => {
-    if (newSection === 'profile') {
-      navigate('/dashboard')
-    } else {
-      navigate(`/dashboard/${newSection}`)
-    }
-  }, [navigate])
 
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([])
   const [businessesLoading, setBusinessesLoading] = useState(true)
@@ -604,38 +596,42 @@ export default function DashboardPage() {
     )
   }
 
-  const handleSectionChange = (section: Section) => {
-    if (section === 'recommendation') {
+  const handleSectionChange = useCallback((newSection: Section) => {
+    if (newSection === 'recommendation') {
       if (workflowSessionId) {
         navigate(`/recommendations/${workflowSessionId}`)
       } else {
-        setActiveSection('profiling')
+        navigate('/dashboard/profiling')
       }
       return
     }
 
-    if (section === 'comparison') {
+    if (newSection === 'comparison') {
       if (workflowSessionId) {
         navigate(`/recommendations/${workflowSessionId}/compare`)
       } else {
-        setActiveSection('comparison')
+        navigate('/dashboard/comparison')
       }
       return
     }
 
-    if (section === 'chatbot') {
+    if (newSection === 'chatbot') {
       if (workflowSessionId) {
         navigate(`/recommendations/${workflowSessionId}/compare`, {
           state: { openChat: true },
         })
       } else {
-        setActiveSection('comparison')
+        navigate('/dashboard/comparison')
       }
       return
     }
 
-    setActiveSection(section)
-  }
+    if (newSection === 'profile') {
+      navigate('/dashboard')
+    } else {
+      navigate(`/dashboard/${newSection}`)
+    }
+  }, [navigate, workflowSessionId])
 
   const renderFeedbackTab = () => {
     return (
