@@ -847,7 +847,7 @@ function AdminDashboardPage() {
                     className="flex cursor-pointer items-center gap-3 border-2 border-dashed px-4 py-5 text-sm transition"
                     style={{
                       borderColor: isDragging ? 'var(--color-secondary)' : 'var(--color-border-strong)',
-                      backgroundColor: isDragging ? 'var(--overlay-secondary-10, rgba(13,115,119,0.1))' : 'var(--color-surface-alt)',
+                      backgroundColor: isDragging ? 'var(--overlay-secondary-10, rgba(207,69,0,0.1))' : 'var(--color-surface-alt)',
                       color: 'var(--color-text-secondary)',
                     }}
                   >
@@ -1019,7 +1019,7 @@ function AdminDashboardPage() {
                     <p className="mt-1">
                       <span
                         className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold capitalize"
-                        style={{ backgroundColor: 'var(--overlay-secondary-10, rgba(13,115,119,0.1))', color: 'var(--color-secondary)' }}
+                        style={{ backgroundColor: 'var(--overlay-secondary-10, rgba(207,69,0,0.1))', color: 'var(--color-secondary)' }}
                       >
                         {user?.role || '—'}
                       </span>

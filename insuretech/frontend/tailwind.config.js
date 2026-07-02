@@ -58,6 +58,7 @@ export default {
       },
       fontFamily: {
         sans: [
+          'Sofia Sans',
           'Inter',
           'ui-sans-serif',
           'system-ui',
