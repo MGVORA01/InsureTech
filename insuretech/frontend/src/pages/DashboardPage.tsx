@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { BusinessProfile } from '../features/profile/profile.types'
 import {
   BusinessProfileForm,
@@ -38,6 +39,7 @@ function ProfileSkeleton() {
 
 export default function DashboardPage() {
 
+  const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState<Section>('profile')
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([])
   const [businessesLoading, setBusinessesLoading] = useState(true)
@@ -230,6 +232,7 @@ export default function DashboardPage() {
               setProfilingResults(null)
               setProfilingView('launcher')
             }}
+            onSeeRecommendations={() => navigate(`/recommendations/${profilingResults.session.id}`)}
           />
         </div>
       )

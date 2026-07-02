@@ -25,7 +25,7 @@ def main():
         print("=" * 60)
         print("Stage 1: PDF Extraction")
         print("=" * 60)
-        from app.ai.policy_extractor import main as extract
+        from app.ai.policy_extractor import process_all_policies as extract
         extract()
     else:
         print("Skipping Stage 1 (PDF extraction)")
