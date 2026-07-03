@@ -150,17 +150,27 @@ class ReportService:
             for line in textwrap.wrap(str(text), width=width):
                 add_raw(f"{prefix}{line}", size, bold)
 
-        def section(title: str) -> None:
+        def section(title: str, min_lines: int = 8) -> None:
+            nonlocal current
+            if current and len(current) + min_lines > max_lines:
+                pages.append(current)
+                current = []
             if current:
                 add()
             add(title.upper(), 12, True)
 
         location = ", ".join(part for part in [report.business.city, report.business.state] if part) or "N/A"
+        sorted_risks = sorted(report.risk_scores, key=lambda item: item.score, reverse=True)
+        top_risks = sorted_risks[:3]
+        high_risk_count = sum(
+            1 for risk in report.risk_scores if (risk.risk_level or "").lower() in {"high", "critical"}
+        )
 
         add("INSURETECH RISK ADVISORY REPORT", 18, True)
-        add(f"Generated: {report.generated_at.strftime('%d %b %Y, %I:%M %p %Z')}", 9)
+        add("Business risk profile, coverage priorities, and policy recommendation notes", 11)
+        add(f"Generated: {report.generated_at.strftime('%d %b %Y, %I:%M %p')}", 9)
         add()
-        section("Business Profile")
+        section("1. Business Profile")
         add(f"Business name: {report.business.business_name}")
         add(f"Industry: {report.business.industry or 'N/A'}")
         add(f"Segment: {report.business.segment or 'N/A'}")
@@ -168,23 +178,55 @@ class ReportService:
         add(f"Employees: {report.business.employee_count if report.business.employee_count is not None else 'N/A'}")
         add(f"Annual turnover: {report.business.annual_turnover_range or 'N/A'}")
 
-        section("Executive Summary")
+        section("2. Executive Summary")
         add(report.executive_summary)
         add(
-            "This report is generated from the profiling risk scores and policy wording evidence. "
-            "Use it as an advisory document before final purchase, renewal, or insurer discussion."
+            f"The assessment reviewed {len(report.risk_scores)} risk categories and found "
+            f"{high_risk_count} category or categories at high or critical priority. "
+            "Recommended policies are ranked from the business profile, calculated risk scores, "
+            "and available policy wording evidence."
         )
+        if top_risks:
+            add("Highest priority risks:", 10, True)
+            for index, risk in enumerate(top_risks, start=1):
+                add(
+                    f"{index}. {risk.risk_category_name}: {self._pct(risk.score)} "
+                    f"({self._risk_priority_label(risk.risk_level)})",
+                    indent=2,
+                )
 
-        section("Risk Score Overview")
-        if report.risk_scores:
-            for risk in sorted(report.risk_scores, key=lambda item: item.score, reverse=True):
-                add(f"{risk.risk_category_name}: {self._pct(risk.score)} risk score ({risk.risk_level})", 10, True)
-                for factor in risk.risk_factors[:5]:
-                    add(f"- {factor.name}: {self._pct(factor.score)}", indent=2)
+        section("3. How To Read This Report")
+        add(
+            "Risk scores are shown from 0 to 100. A higher score means the category should be "
+            "reviewed earlier because the business profile indicates greater exposure or weaker "
+            "controls for that area."
+        )
+        add("Priority guide:", 10, True)
+        add("Low: monitor during normal renewal reviews.", indent=2)
+        add("Medium: validate controls and confirm policy limits.", indent=2)
+        add("High: review coverage soon and resolve material gaps.", indent=2)
+        add("Critical: treat as an immediate coverage and control priority.", indent=2)
+
+        section("4. Risk Score Details")
+        if sorted_risks:
+            for risk in sorted_risks:
+                add(
+                    f"{risk.risk_category_name}: {self._pct(risk.score)} "
+                    f"risk score - {self._risk_priority_label(risk.risk_level)}",
+                    10,
+                    True,
+                )
+                add(self._risk_action(risk), indent=2)
+                if risk.risk_factors:
+                    add("Top contributing factors:", 10, True, indent=2)
+                    for factor in risk.risk_factors[:5]:
+                        add(f"- {factor.name}: {self._pct(factor.score)} contribution", indent=4)
+                else:
+                    add("No factor-level breakdown was available for this category.", indent=2)
         else:
             add("No risk score data was available for this session.")
 
-        section("Recommended Policies")
+        section("5. Recommended Policy Matches")
         if not report.recommended_policies:
             add("No policy recommendations were available for this report.")
         for index, policy in enumerate(report.recommended_policies, start=1):
@@ -192,8 +234,10 @@ class ReportService:
             add(f"Company: {policy.company_name or 'Unknown Company'}", indent=2)
             add(f"Recommendation score: {self._pct(policy.recommendation_score)}", indent=2)
             add(f"Matched risks: {', '.join(policy.matched_risk_categories) or 'None'}", indent=2)
-            add(f"Why recommended: {policy.why_recommended or 'N/A'}", indent=2)
-            add(f"Coverage summary: {policy.coverage_summary or 'N/A'}", indent=2)
+            add("Reason for match:", 10, True, indent=2)
+            add(policy.why_recommended or "Not specified in available recommendation data.", indent=4)
+            add("Coverage summary:", 10, True, indent=2)
+            add(policy.coverage_summary or "Not specified in available policy evidence.", indent=4)
             if policy.coverage_highlights:
                 add("Coverage highlights:", 10, True, indent=2)
                 for item in policy.coverage_highlights[:6]:
@@ -208,9 +252,26 @@ class ReportService:
                     add(f"- {item}", indent=4)
             add()
 
-        section("Next Steps")
+        section("6. Action Plan")
+        if top_risks:
+            add("Start with these coverage review actions:", 10, True)
+            for risk in top_risks:
+                add(f"- {self._risk_action(risk)}")
         for step in report.next_steps:
             add(f"- {step}")
+
+        section("7. Important Notes")
+        add(
+            "This report is an advisory summary generated from the profiling answers, calculated "
+            "risk scores, recommendations, and available policy wording data in the platform. It "
+            "does not replace the official policy schedule, insurer quotation, policy wording, or "
+            "licensed professional advice."
+        )
+        add(
+            "Before purchase or renewal, confirm sums insured, deductibles, exclusions, sub-limits, "
+            "warranties, waiting periods, claim documentation requirements, and add-ons directly "
+            "with the insurer or advisor."
+        )
 
         if current:
             pages.append(current)
@@ -364,6 +425,26 @@ class ReportService:
             f"The assessment identifies {risk_names} as the highest-priority risk areas. "
             f"The report lists {len(recommended_policies)} recommended policies selected from the user's risk profile and policy wording evidence."
         )
+
+    def _risk_priority_label(self, risk_level: str | None) -> str:
+        labels = {
+            "low": "Low priority",
+            "medium": "Medium priority",
+            "high": "High priority",
+            "critical": "Critical priority",
+        }
+        return labels.get((risk_level or "").lower(), (risk_level or "Unknown").title())
+
+    def _risk_action(self, risk: ReportRiskScoreOut) -> str:
+        category = risk.risk_category_name
+        level = (risk.risk_level or "").lower()
+        if level == "critical":
+            return f"Immediately review {category} coverage, limits, exclusions, and operational controls."
+        if level == "high":
+            return f"Prioritize {category} in the next insurer or advisor discussion and confirm gaps."
+        if level == "medium":
+            return f"Validate {category} controls and check whether existing cover limits remain adequate."
+        return f"Monitor {category} during routine risk and renewal reviews."
 
     def _pct(self, value: float | int | None) -> str:
         if value is None:
