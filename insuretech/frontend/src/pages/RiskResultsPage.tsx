@@ -33,6 +33,7 @@ const RISK_COLORS: Record<string, { bg: string; text: string; bar: string; label
 function RiskCard({ score }: { score: RiskScore }) {
   const colors = RISK_COLORS[score.risk_level] ?? RISK_COLORS.low
   const pct = Math.round(score.score * 100)
+  const factorBreakdown = score.factor_breakdown ?? {}
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -63,7 +64,7 @@ function RiskCard({ score }: { score: RiskScore }) {
         />
       </div>
 
-      {Object.keys(score.factor_breakdown).length > 0 && (
+      {Object.keys(factorBreakdown).length > 0 && (
         <>
           <button
             className="mt-3 text-sm font-medium text-slate-600 hover:text-slate-900"
@@ -71,12 +72,12 @@ function RiskCard({ score }: { score: RiskScore }) {
             type="button"
           >
             {expanded ? 'Hide details' : 'Show details'} —
-            {Object.keys(score.factor_breakdown).length} factors
+            {Object.keys(factorBreakdown).length} factors
           </button>
 
           {expanded && (
             <div className="mt-3 space-y-2">
-              {Object.entries(score.factor_breakdown).map(([name, val]) => (
+              {Object.entries(factorBreakdown).map(([name, val]) => (
                 <div key={name} className="flex items-center justify-between text-sm">
                   <span className="text-slate-700">{name}</span>
                   <span className="font-medium text-slate-900">
@@ -113,7 +114,11 @@ function RiskResultsPage() {
   }, [sessionId])
 
   useEffect(() => {
-    load()
+    const timeoutId = window.setTimeout(() => {
+      void load()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
   }, [load])
 
   if (loading) {
