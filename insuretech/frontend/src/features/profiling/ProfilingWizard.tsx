@@ -37,6 +37,7 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([])
   const [previewScores, setPreviewScores] = useState<PreviewScoreOut[]>([])
   const [tier2Questions, setTier2Questions] = useState<Tier2QuestionOut[]>([])
+  const [finished, setFinished] = useState(false)
   const uniqueT2Questions = useMemo(
     () => Array.from(new Map(tier2Questions.map(t => [t.question.id, t.question])).values()),
     [tier2Questions],
@@ -202,6 +203,8 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
     if (!section || !sessionId) return
     if (!validateSection()) return
 
+    // navigating forward clears any previously marked finished state
+    setFinished(false)
     const currentIdx = section.section_index
     if (currentIdx >= SECTIONS_ORDER.length - 1) return
 
@@ -229,6 +232,8 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
 
   const handleTier1Back = async () => {
     if (!section || !sessionId) return
+    // navigating back cancels finished state
+    setFinished(false)
     const currentIdx = section.section_index
     if (currentIdx <= 0) {
       onCancel()
@@ -258,6 +263,8 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
     if (!section || !sessionId) return
     if (!validateSection()) return
 
+    // mark finished so progress shows 100% immediately while finishing
+    setFinished(true)
     setSubmitting(true)
     setError(null)
 
@@ -290,6 +297,8 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
       }
     } catch (err) {
       if (mountedRef.current) setError(getProfilingErrorMessage(err))
+      // revert finished state on error
+      if (mountedRef.current) setFinished(false)
     } finally {
       if (mountedRef.current) setSubmitting(false)
     }
@@ -402,7 +411,13 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
 
     const currentIdx = section.section_index
     const totalSections = section.total_sections
-    const progressPct = ((currentIdx + 1) / totalSections) * 100
+    // Map progress so the first step shows 0% and the last step shows 100%.
+    // When there's only one section, show 100%.
+    const progressPct = finished
+      ? 100
+      : totalSections > 1
+      ? (currentIdx / (totalSections - 1)) * 100
+      : 0
     const sectionLabel = SECTION_LABELS[section.section] || section.section
     const isFirstSection = currentIdx === 0
     const isLastSection = currentIdx === totalSections - 1
