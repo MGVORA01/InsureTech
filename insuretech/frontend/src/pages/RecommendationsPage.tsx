@@ -5,6 +5,7 @@ import BalanceRoundedIcon from '@mui/icons-material/BalanceRounded'
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded'
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined'
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
@@ -12,6 +13,8 @@ import {
   generateRecommendations,
   getRecommendationPolicyDownload,
 } from '../features/recommendations/recommendationsApi'
+import { downloadRecommendationReportPdf } from '../features/recommendations/recommendationReportPdf'
+import { profileApi } from '../features/profile/profileApi'
 import type { RecommendationListOut, RecommendationOut, RiskScoreOut } from '../features/recommendations/recommendations.types'
 import UserLayout from '../layout/UserLayout'
 import type { Section } from '../components/UserSidebar'
@@ -233,6 +236,8 @@ export default function RecommendationsPage() {
   const [status, setStatus] = useState<Status>('loading')
   const [errorMsg, setErrorMsg] = useState('')
   const [selectedPolicyIds, setSelectedPolicyIds] = useState<string[]>([])
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const [pdfError, setPdfError] = useState('')
 
   const loadRecommendations = useCallback(async () => {
     if (!sessionId) {
@@ -246,6 +251,7 @@ export default function RecommendationsPage() {
       const result = await generateRecommendations(sessionId)
       setData({ ...result, recommendations: result.recommendations.slice(0, 5) })
       setSelectedPolicyIds([])
+      setPdfError('')
       setStatus(result.recommendations.length === 0 ? 'empty' : 'ready')
     } catch (err: unknown) {
       const apiError = err as ApiError
@@ -288,6 +294,22 @@ export default function RecommendationsPage() {
       }
       return [...current, policyId]
     })
+  }
+
+  const handleDownloadReport = async () => {
+    if (!data || status !== 'ready' || pdfBusy) return
+    setPdfBusy(true)
+    setPdfError('')
+    try {
+      const business = data.business_profile_id
+        ? await profileApi.getBusinessById(data.business_profile_id).catch(() => null)
+        : null
+      await downloadRecommendationReportPdf(data, business)
+    } catch (err) {
+      setPdfError(getApiErrorMessage(err, 'Unable to generate the PDF report. Please try again.'))
+    } finally {
+      setPdfBusy(false)
+    }
   }
 
   const handleSectionChange = (section: Section) => {
@@ -437,10 +459,25 @@ export default function RecommendationsPage() {
         ) : (
           <>
             <section className="mt-8">
-              <div className="mb-4 flex items-center gap-2">
-                <InsightsOutlinedIcon className="h-5 w-5" style={{ color: 'var(--color-text-primary)' }} />
-                <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Best Matches</h2>
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <InsightsOutlinedIcon className="h-5 w-5" style={{ color: 'var(--color-text-primary)' }} />
+                  <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Top Recommended Insurance Policies</h2>
+                </div>
+                <button
+                  onClick={handleDownloadReport}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ background: 'var(--color-primary-dark)' }}
+                  type="button"
+                  disabled={pdfBusy}
+                >
+                  <PictureAsPdfRoundedIcon className="h-4 w-4" />
+                  {pdfBusy ? 'Preparing PDF...' : 'Download PDF Report'}
+                </button>
               </div>
+              {pdfError && (
+                <p className="mb-4 text-right text-sm font-medium text-red-600">{pdfError}</p>
+              )}
               <div className="space-y-6">
                 {topRecommendations.map((recommendation, index) => (
                   <RecommendationCard
@@ -451,7 +488,7 @@ export default function RecommendationsPage() {
                     selected={Boolean(recommendation.policy_id && selectedPolicyIds.includes(recommendation.policy_id))}
                     selectionDisabled={
                       selectedPolicyIds.length >= 2 &&
-                      !Boolean(recommendation.policy_id && selectedPolicyIds.includes(recommendation.policy_id))
+                      !(recommendation.policy_id && selectedPolicyIds.includes(recommendation.policy_id))
                     }
                     onToggleSelect={() => handleTogglePolicy(recommendation.policy_id)}
                   />

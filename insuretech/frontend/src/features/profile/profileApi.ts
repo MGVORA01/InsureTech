@@ -92,6 +92,13 @@ export const profileApi = {
     return unwrapData<BusinessProfile[]>(response)
   },
 
+  async getBusinessById(id: string): Promise<BusinessProfile> {
+    const response = await baseApi.get<ApiEnvelope<BusinessProfile>>(
+      PROFILE_ENDPOINTS.businessById(id),
+    )
+    return unwrapData<BusinessProfile>(response)
+  },
+
   async deleteBusiness(id: string): Promise<BusinessProfile> {
     const response = await baseApi.delete<ApiEnvelope<BusinessProfile>>(
       PROFILE_ENDPOINTS.deleteBusiness(id),

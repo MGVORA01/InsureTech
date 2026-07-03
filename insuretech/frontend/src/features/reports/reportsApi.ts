@@ -39,6 +39,8 @@ export async function downloadRiskAdvisoryReport(report: RiskAdvisoryReport): Pr
   const link = document.createElement('a')
   link.href = url
   link.download = `risk-advisory-report-${report.session_id}.pdf`
+  document.body.appendChild(link)
   link.click()
-  URL.revokeObjectURL(url)
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 0)
 }
