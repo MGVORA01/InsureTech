@@ -4,6 +4,7 @@ export const PROFILE_ENDPOINTS = {
   businesses: '/businesses',
   myBusiness: '/businesses/me',
   myBusinesses: '/businesses',
+  businessById: (id: string) => `/businesses/${id}`,
   deleteBusiness: (id: string) => `/businesses/${id}`,
 } as const
 
