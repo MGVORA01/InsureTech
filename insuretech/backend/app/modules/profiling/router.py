@@ -9,18 +9,34 @@ from starlette import status
 
 from app.core.database import get_db
 from app.models import User
-from app.modules.profiling.schemas import ProfilingAnswerCreate, ProfilingAnswerBatchCreate
+from app.modules.profiling.constants import (
+    BUSINESS_RESULTS_ROUTE,
+    PROFILING_PREFIX,
+    PROFILING_TAG,
+    SESSION_ANSWER_ROUTE,
+    SESSION_ANSWERS_BATCH_ROUTE,
+    SESSION_COMPLETE_ROUTE,
+    SESSION_PREVIEW_SCORES_ROUTE,
+    SESSION_ROUTE,
+    SESSION_TIER2_QUESTIONS_ROUTE,
+    START_ROUTE,
+    STATUS_ROUTE,
+)
+from app.modules.profiling.schemas import (
+    ProfilingAnswerCreate,
+    ProfilingAnswerBatchCreate,
+)
 from app.modules.profiling.service import Service
 from app.shared.dependency.get_current_user import get_current_user
 from app.shared.response import APIResponse
 
 router = APIRouter(
-    prefix="/profiling",
-    tags=["profiling"],
+    prefix=PROFILING_PREFIX,
+    tags=[PROFILING_TAG],
 )
 
 
-@router.get("/status", status_code=status.HTTP_200_OK)
+@router.get(STATUS_ROUTE, status_code=status.HTTP_200_OK)
 async def get_profiling_status(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -33,7 +49,7 @@ async def get_profiling_status(
     return await Service.get_status(current_user, db, business_id=business_id)
 
 
-@router.post("/start", status_code=status.HTTP_200_OK)
+@router.post(START_ROUTE, status_code=status.HTTP_200_OK)
 async def start_profiling(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -46,10 +62,12 @@ async def start_profiling(
     Use ``?tier=1`` for core assessment questions (default).
     Use ``?tier=2`` for precision refinement questions.
     """
-    return await Service.start_session(current_user, db, tier=tier, business_id=business_id)
+    return await Service.start_session(
+        current_user, db, tier=tier, business_id=business_id
+    )
 
 
-@router.get("/session/{session_id}", status_code=status.HTTP_200_OK)
+@router.get(SESSION_ROUTE, status_code=status.HTTP_200_OK)
 async def get_session_state(
     session_id: UUID,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -62,10 +80,12 @@ async def get_session_state(
     Optionally specify ``section`` to navigate to that wizard step.
     Use ``?tier=1`` or ``?tier=2`` to filter questions by tier.
     """
-    return await Service.get_session_state(session_id, current_user, db, section, tier=tier)
+    return await Service.get_session_state(
+        session_id, current_user, db, section, tier=tier
+    )
 
 
-@router.post("/session/{session_id}/answer", status_code=status.HTTP_200_OK)
+@router.post(SESSION_ANSWER_ROUTE, status_code=status.HTTP_200_OK)
 async def submit_answer(
     session_id: UUID,
     data: ProfilingAnswerCreate,
@@ -79,7 +99,7 @@ async def submit_answer(
     return await Service.submit_answer(session_id, data, current_user, db)
 
 
-@router.post("/session/{session_id}/answers/batch", status_code=status.HTTP_200_OK)
+@router.post(SESSION_ANSWERS_BATCH_ROUTE, status_code=status.HTTP_200_OK)
 async def submit_answers_batch(
     session_id: UUID,
     data: ProfilingAnswerBatchCreate,
@@ -90,7 +110,7 @@ async def submit_answers_batch(
     return await Service.submit_answers_batch(session_id, data, current_user, db)
 
 
-@router.post("/session/{session_id}/preview-scores", status_code=status.HTTP_200_OK)
+@router.post(SESSION_PREVIEW_SCORES_ROUTE, status_code=status.HTTP_200_OK)
 async def preview_scores(
     session_id: UUID,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -104,7 +124,7 @@ async def preview_scores(
     return await Service.preview_scores(session_id, current_user, db)
 
 
-@router.get("/business/{business_id}/results", status_code=status.HTTP_200_OK)
+@router.get(BUSINESS_RESULTS_ROUTE, status_code=status.HTTP_200_OK)
 async def get_business_results(
     business_id: UUID,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -118,7 +138,7 @@ async def get_business_results(
     return await Service.get_business_results(business_id, current_user, db)
 
 
-@router.post("/session/{session_id}/tier2-questions", status_code=status.HTTP_200_OK)
+@router.post(SESSION_TIER2_QUESTIONS_ROUTE, status_code=status.HTTP_200_OK)
 async def get_tier2_questions(
     session_id: UUID,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -131,7 +151,7 @@ async def get_tier2_questions(
     return await Service.get_tier2_questions(session_id, current_user, db)
 
 
-@router.post("/session/{session_id}/complete", status_code=status.HTTP_200_OK)
+@router.post(SESSION_COMPLETE_ROUTE, status_code=status.HTTP_200_OK)
 async def complete_session(
     session_id: UUID,
     current_user: Annotated[User, Depends(get_current_user)],

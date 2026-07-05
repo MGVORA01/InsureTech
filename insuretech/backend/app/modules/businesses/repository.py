@@ -17,12 +17,14 @@ async def get_all_segments(db: AsyncSession) -> list[Segment]:
         List of active Segment ORM instances.
     """
     result = await db.execute(
-        select(Segment).where(Segment.is_active == True).order_by(Segment.name)
+        select(Segment).where(Segment.is_active.is_(True)).order_by(Segment.name)
     )
     return list(result.scalars().all())
 
 
-async def get_industries_by_segment(db: AsyncSession, segment_id: UUID) -> list[Industry]:
+async def get_industries_by_segment(
+    db: AsyncSession, segment_id: UUID
+) -> list[Industry]:
     """Fetch active industries for a given segment.
 
     Args:
@@ -33,7 +35,7 @@ async def get_industries_by_segment(db: AsyncSession, segment_id: UUID) -> list[
     """
     result = await db.execute(
         select(Industry)
-        .where(Industry.segment_id == segment_id, Industry.is_active == True)
+        .where(Industry.segment_id == segment_id, Industry.is_active.is_(True))
         .order_by(Industry.name)
     )
     return list(result.scalars().all())
@@ -68,19 +70,24 @@ async def create_business(
         annual_turnover_range=data.annual_turnover_range,
     )
     db.add(business)
-    await db.flush()
+    await db.commit()
     await db.refresh(business)
 
     # Eagerly load relationships for serialization
     result = await db.execute(
         select(BusinessProfile)
-        .options(selectinload(BusinessProfile.industry), selectinload(BusinessProfile.segment))
+        .options(
+            selectinload(BusinessProfile.industry),
+            selectinload(BusinessProfile.segment),
+        )
         .where(BusinessProfile.id == business.id)
     )
     return result.scalar_one()
 
 
-async def get_business_by_user_id(db: AsyncSession, user_id: UUID) -> BusinessProfile | None:
+async def get_business_by_user_id(
+    db: AsyncSession, user_id: UUID
+) -> BusinessProfile | None:
     """Fetch a user's active business profile.
 
     Args:
@@ -91,13 +98,18 @@ async def get_business_by_user_id(db: AsyncSession, user_id: UUID) -> BusinessPr
     """
     result = await db.execute(
         select(BusinessProfile)
-        .options(selectinload(BusinessProfile.industry), selectinload(BusinessProfile.segment))
-        .where(BusinessProfile.user_id == user_id, BusinessProfile.is_active == True)
+        .options(
+            selectinload(BusinessProfile.industry),
+            selectinload(BusinessProfile.segment),
+        )
+        .where(BusinessProfile.user_id == user_id, BusinessProfile.is_active.is_(True))
     )
     return result.scalar_one_or_none()
 
 
-async def get_businesses_by_user_id(db: AsyncSession, user_id: UUID) -> list[BusinessProfile]:
+async def get_businesses_by_user_id(
+    db: AsyncSession, user_id: UUID
+) -> list[BusinessProfile]:
     """Fetch all active business profiles for a user.
 
     Args:
@@ -108,14 +120,19 @@ async def get_businesses_by_user_id(db: AsyncSession, user_id: UUID) -> list[Bus
     """
     result = await db.execute(
         select(BusinessProfile)
-        .options(selectinload(BusinessProfile.industry), selectinload(BusinessProfile.segment))
-        .where(BusinessProfile.user_id == user_id, BusinessProfile.is_active == True)
+        .options(
+            selectinload(BusinessProfile.industry),
+            selectinload(BusinessProfile.segment),
+        )
+        .where(BusinessProfile.user_id == user_id, BusinessProfile.is_active.is_(True))
         .order_by(BusinessProfile.created_at)
     )
     return list(result.scalars().all())
 
 
-async def get_business_by_id(db: AsyncSession, business_id: UUID) -> BusinessProfile | None:
+async def get_business_by_id(
+    db: AsyncSession, business_id: UUID
+) -> BusinessProfile | None:
     """Fetch an active business profile by its ID.
 
     Args:
@@ -126,13 +143,18 @@ async def get_business_by_id(db: AsyncSession, business_id: UUID) -> BusinessPro
     """
     result = await db.execute(
         select(BusinessProfile)
-        .options(selectinload(BusinessProfile.industry), selectinload(BusinessProfile.segment))
-        .where(BusinessProfile.id == business_id, BusinessProfile.is_active == True)
+        .options(
+            selectinload(BusinessProfile.industry),
+            selectinload(BusinessProfile.segment),
+        )
+        .where(BusinessProfile.id == business_id, BusinessProfile.is_active.is_(True))
     )
     return result.scalar_one_or_none()
 
 
-async def delete_business(db: AsyncSession, business_id: UUID) -> BusinessProfile | None:
+async def delete_business(
+    db: AsyncSession, business_id: UUID
+) -> BusinessProfile | None:
     """Soft-delete a business profile by setting is_active to False.
 
     Args:
@@ -142,12 +164,14 @@ async def delete_business(db: AsyncSession, business_id: UUID) -> BusinessProfil
         The updated BusinessProfile instance if found, None otherwise.
     """
     result = await db.execute(
-        select(BusinessProfile)
-        .where(BusinessProfile.id == business_id, BusinessProfile.is_active == True)
+        select(BusinessProfile).where(
+            BusinessProfile.id == business_id, BusinessProfile.is_active.is_(True)
+        )
     )
     business = result.scalar_one_or_none()
     if business:
         business.is_active = False
-        await db.flush()
+        db.add(business)
+        await db.commit()
         await db.refresh(business)
     return business
