@@ -8,7 +8,34 @@ from app.core.exceptions import NotFoundException
 from app.models import User
 from app.modules.recommendations.service import Service as RecommendationService
 from app.modules.reports import repository
-from app.modules.reports.constants import REPORTS_DIR, REPORT_TYPE_RISK_ADVISORY
+from app.modules.reports.constants import (
+    COVERAGE_HIGHLIGHTS_LIMIT,
+    HIGH_RISK_LEVELS,
+    IMPORTANT_LIMITATIONS_LIMIT,
+    KEY_BENEFITS_LIMIT,
+    MAX_LINES_PER_PAGE,
+    NOT_AVAILABLE_LABEL,
+    PROFILING_SESSION_NOT_FOUND_MESSAGE,
+    RECOMMENDED_POLICIES_LIMIT,
+    REPORT_DOWNLOAD_URL_TEMPLATE,
+    REPORT_FILE_NOT_FOUND_MESSAGE,
+    REPORT_NOT_FOUND_MESSAGE,
+    REPORT_TYPE_RISK_ADVISORY,
+    REPORTS_DIR,
+    RISK_ADVISORY_GENERATED_MESSAGE,
+    RISK_ADVISORY_PDF_FILENAME_TEMPLATE,
+    RISK_ADVISORY_TXT_FILENAME_TEMPLATE,
+    RISK_FACTORS_LIMIT,
+    RISK_LEVEL_CRITICAL,
+    RISK_LEVEL_HIGH,
+    RISK_LEVEL_MEDIUM,
+    RISK_PRIORITY_LABELS,
+    TOP_RISKS_LIMIT,
+    UNKNOWN_COMPANY_LABEL,
+    UNKNOWN_LABEL,
+    UNKNOWN_LEVEL_LABEL,
+    UNKNOWN_POLICY_LABEL,
+)
 from app.modules.reports.schemas import (
     ReportBusinessOut,
     ReportPolicyOut,
@@ -28,11 +55,11 @@ class ReportService:
     ) -> APIResponse:
         session = await repository.get_session_with_business(db, session_id)
         if not session or not session.business_profile:
-            raise NotFoundException("Profiling session not found")
+            raise NotFoundException(PROFILING_SESSION_NOT_FOUND_MESSAGE)
 
         business = session.business_profile
         if business.user_id != user.id:
-            raise NotFoundException("Profiling session not found")
+            raise NotFoundException(PROFILING_SESSION_NOT_FOUND_MESSAGE)
 
         recommendations_response = await RecommendationService.get_recommendations(
             session_id, user, db
@@ -59,7 +86,9 @@ class ReportService:
         ]
         recommended_policies = [
             self._policy_to_report(rec)
-            for rec in recommendation_data.get("recommendations", [])[:5]
+            for rec in recommendation_data.get("recommendations", [])[
+                :RECOMMENDED_POLICIES_LIMIT
+            ]
         ]
 
         out = RiskAdvisoryReportOut(
@@ -96,12 +125,12 @@ class ReportService:
         )
 
         self._write_report_file(out)
-        file_url = f"/api/v1/reports/{report.id}/download"
+        file_url = REPORT_DOWNLOAD_URL_TEMPLATE.format(report_id=report.id)
         report = await repository.update_report_file_url(db, report, file_url)
 
         out.file_url = report.file_url
         return APIResponse.success_response(
-            message="Risk advisory report generated successfully",
+            message=RISK_ADVISORY_GENERATED_MESSAGE,
             data=out.model_dump(mode="json"),
         )
 
@@ -117,13 +146,17 @@ class ReportService:
             or not report.business_profile
             or report.business_profile.user_id != user.id
         ):
-            raise NotFoundException("Report not found")
+            raise NotFoundException(REPORT_NOT_FOUND_MESSAGE)
 
-        file_path = REPORTS_DIR / f"risk-advisory-report-{report.id}.pdf"
+        file_path = REPORTS_DIR / RISK_ADVISORY_PDF_FILENAME_TEMPLATE.format(
+            report_id=report.id
+        )
         if not file_path.exists():
-            legacy_path = REPORTS_DIR / f"risk-advisory-report-{report.id}.txt"
+            legacy_path = REPORTS_DIR / RISK_ADVISORY_TXT_FILENAME_TEMPLATE.format(
+                report_id=report.id
+            )
             if not legacy_path.exists():
-                raise NotFoundException("Report file not found")
+                raise NotFoundException(REPORT_FILE_NOT_FOUND_MESSAGE)
             file_path.write_bytes(
                 self._legacy_text_report_pdf(legacy_path.read_text(encoding="utf-8"))
             )
@@ -132,7 +165,9 @@ class ReportService:
 
     def _write_report_file(self, report: RiskAdvisoryReportOut) -> Path:
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-        file_path = REPORTS_DIR / f"risk-advisory-report-{report.report_id}.pdf"
+        file_path = REPORTS_DIR / RISK_ADVISORY_PDF_FILENAME_TEMPLATE.format(
+            report_id=report.report_id
+        )
         file_path.write_bytes(self._report_pdf(report))
         return file_path
 
@@ -145,7 +180,7 @@ class ReportService:
     ) -> list[list[tuple[str, int, bool]]]:
         pages: list[list[tuple[str, int, bool]]] = []
         current: list[tuple[str, int, bool]] = []
-        max_lines = 43
+        max_lines = MAX_LINES_PER_PAGE
 
         def add_raw(text: str = "", size: int = 10, bold: bool = False) -> None:
             nonlocal current
@@ -178,16 +213,16 @@ class ReportService:
             ", ".join(
                 part for part in [report.business.city, report.business.state] if part
             )
-            or "N/A"
+            or NOT_AVAILABLE_LABEL
         )
         sorted_risks = sorted(
             report.risk_scores, key=lambda item: item.score, reverse=True
         )
-        top_risks = sorted_risks[:3]
+        top_risks = sorted_risks[:TOP_RISKS_LIMIT]
         high_risk_count = sum(
             1
             for risk in report.risk_scores
-            if (risk.risk_level or "").lower() in {"high", "critical"}
+            if (risk.risk_level or "").lower() in HIGH_RISK_LEVELS
         )
 
         add("INSURETECH RISK ADVISORY REPORT", 18, True)
@@ -199,13 +234,15 @@ class ReportService:
         add()
         section("1. Business Profile")
         add(f"Business name: {report.business.business_name}")
-        add(f"Industry: {report.business.industry or 'N/A'}")
-        add(f"Segment: {report.business.segment or 'N/A'}")
+        add(f"Industry: {report.business.industry or NOT_AVAILABLE_LABEL}")
+        add(f"Segment: {report.business.segment or NOT_AVAILABLE_LABEL}")
         add(f"Location: {location}")
         add(
-            f"Employees: {report.business.employee_count if report.business.employee_count is not None else 'N/A'}"
+            f"Employees: {report.business.employee_count if report.business.employee_count is not None else NOT_AVAILABLE_LABEL}"
         )
-        add(f"Annual turnover: {report.business.annual_turnover_range or 'N/A'}")
+        add(
+            f"Annual turnover: {report.business.annual_turnover_range or NOT_AVAILABLE_LABEL}"
+        )
 
         section("2. Executive Summary")
         add(report.executive_summary)
@@ -248,7 +285,7 @@ class ReportService:
                 add(self._risk_action(risk), indent=2)
                 if risk.risk_factors:
                     add("Top contributing factors:", 10, True, indent=2)
-                    for factor in risk.risk_factors[:5]:
+                    for factor in risk.risk_factors[:RISK_FACTORS_LIMIT]:
                         add(
                             f"- {factor.name}: {self._pct(factor.score)} contribution",
                             indent=4,
@@ -265,8 +302,8 @@ class ReportService:
         if not report.recommended_policies:
             add("No policy recommendations were available for this report.")
         for index, policy in enumerate(report.recommended_policies, start=1):
-            add(f"{index}. {policy.policy_name or 'Unknown Policy'}", 11, True)
-            add(f"Company: {policy.company_name or 'Unknown Company'}", indent=2)
+            add(f"{index}. {policy.policy_name or UNKNOWN_POLICY_LABEL}", 11, True)
+            add(f"Company: {policy.company_name or UNKNOWN_COMPANY_LABEL}", indent=2)
             add(
                 f"Recommendation score: {self._pct(policy.recommendation_score)}",
                 indent=2,
@@ -289,15 +326,15 @@ class ReportService:
             )
             if policy.coverage_highlights:
                 add("Coverage highlights:", 10, True, indent=2)
-                for item in policy.coverage_highlights[:6]:
+                for item in policy.coverage_highlights[:COVERAGE_HIGHLIGHTS_LIMIT]:
                     add(f"- {item}", indent=4)
             if policy.key_benefits:
                 add("Key benefits:", 10, True, indent=2)
-                for item in policy.key_benefits[:5]:
+                for item in policy.key_benefits[:KEY_BENEFITS_LIMIT]:
                     add(f"- {item}", indent=4)
             if policy.important_limitations:
                 add("Important limitations:", 10, True, indent=2)
-                for item in policy.important_limitations[:4]:
+                for item in policy.important_limitations[:IMPORTANT_LIMITATIONS_LIMIT]:
                     add(f"- {item}", indent=4)
             add()
 
@@ -434,7 +471,7 @@ class ReportService:
         current: list[tuple[str, int, bool]] = []
         for raw_line in content.splitlines():
             text = raw_line.strip()
-            if len(current) >= 43:
+            if len(current) >= MAX_LINES_PER_PAGE:
                 pages.append(current)
                 current = []
             is_heading = (
@@ -467,9 +504,9 @@ class ReportService:
 
         factors.sort(key=lambda item: item.score, reverse=True)
         return ReportRiskScoreOut(
-            risk_category_name=score.get("risk_category_name", "Unknown"),
+            risk_category_name=score.get("risk_category_name", UNKNOWN_LABEL),
             score=float(score.get("score") or 0),
-            risk_level=score.get("risk_level", "unknown"),
+            risk_level=score.get("risk_level", UNKNOWN_LEVEL_LABEL),
             risk_factors=factors,
         )
 
@@ -503,28 +540,24 @@ class ReportService:
         )
 
     def _risk_priority_label(self, risk_level: str | None) -> str:
-        labels = {
-            "low": "Low priority",
-            "medium": "Medium priority",
-            "high": "High priority",
-            "critical": "Critical priority",
-        }
-        return labels.get((risk_level or "").lower(), (risk_level or "Unknown").title())
+        return RISK_PRIORITY_LABELS.get(
+            (risk_level or "").lower(), (risk_level or UNKNOWN_LABEL).title()
+        )
 
     def _risk_action(self, risk: ReportRiskScoreOut) -> str:
         category = risk.risk_category_name
         level = (risk.risk_level or "").lower()
-        if level == "critical":
+        if level == RISK_LEVEL_CRITICAL:
             return f"Immediately review {category} coverage, limits, exclusions, and operational controls."
-        if level == "high":
+        if level == RISK_LEVEL_HIGH:
             return f"Prioritize {category} in the next insurer or advisor discussion and confirm gaps."
-        if level == "medium":
+        if level == RISK_LEVEL_MEDIUM:
             return f"Validate {category} controls and check whether existing cover limits remain adequate."
         return f"Monitor {category} during routine risk and renewal reviews."
 
     def _pct(self, value: float | int | None) -> str:
         if value is None:
-            return "N/A"
+            return NOT_AVAILABLE_LABEL
         number = float(value)
         if number <= 1:
             number *= 100

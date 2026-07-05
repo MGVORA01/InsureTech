@@ -19,10 +19,25 @@ from app.models import (
 from app.modules.businesses.service import Service as BusinessService
 from app.modules.profiling.service import Service as ProfilingService
 from app.modules.recommendations.constants import (
+    BENEFIT_TERMS,
+    DEFAULT_SEGMENT,
+    HIGHLIGHT_BENEFIT_TERMS,
+    HIGHLIGHT_LIMITATION_TERMS,
+    IMPORTANT_LIMITATION_TERMS,
     MAX_RECOMMENDATIONS,
+    NO_RECOMMENDATIONS_YET_MESSAGE,
+    NO_RISK_SCORES_MESSAGE,
+    NO_SUITABLE_POLICY_EVIDENCE_MESSAGE,
+    POLICY_DOWNLOAD_RETRIEVED_MESSAGE,
+    POLICY_PDF_UNAVAILABLE_MESSAGE,
     PRIORITY_WEIGHTS,
+    PROFILING_SESSION_NOT_FOUND_MESSAGE,
+    RECOMMENDATIONS_FETCHED_MESSAGE,
+    RECOMMENDATIONS_GENERATED_MESSAGE,
+    RECOMMENDED_POLICY_NOT_FOUND_MESSAGE,
     RISK_ALIASES,
     RISK_KEYWORDS,
+    UNKNOWN_LABEL,
 )
 from app.modules.recommendations import repository
 from app.modules.recommendations.schemas import (
@@ -67,7 +82,7 @@ class _RecommendationService:
         existing = await repository.get_existing_recommendations(db, session_id)
         if not existing:
             return APIResponse.success_response(
-                "No recommendations generated yet. Use /generate to create them.",
+                NO_RECOMMENDATIONS_YET_MESSAGE,
                 RecommendationListOut(
                     session_id=session_id, scores=[], recommendations=[]
                 ).model_dump(),
@@ -75,7 +90,7 @@ class _RecommendationService:
         scores = await repository.get_business_risk_scores(db, session_id)
         out = await self._build_existing_response(db, session_id, scores, existing)
         return APIResponse.success_response(
-            "Recommendations fetched successfully", out.model_dump()
+            RECOMMENDATIONS_FETCHED_MESSAGE, out.model_dump()
         )
 
     async def generate_recommendations(
@@ -92,7 +107,7 @@ class _RecommendationService:
 
         if not risk_priorities:
             return APIResponse.success_response(
-                "No risk scores found for policy recommendation.",
+                NO_RISK_SCORES_MESSAGE,
                 RecommendationListOut(
                     session_id=session_id,
                     business_profile_id=business.id,
@@ -101,7 +116,7 @@ class _RecommendationService:
                 ).model_dump(),
             )
 
-        segment = business.segment.name.lower() if business.segment else "both"
+        segment = business.segment.name.lower() if business.segment else DEFAULT_SEGMENT
         chunks = await repository.get_candidate_chunks_for_risk_categories(
             db=db,
             risk_category_ids=[r.id for r in risk_priorities],
@@ -125,7 +140,7 @@ class _RecommendationService:
 
         if not top_policies:
             return APIResponse.success_response(
-                "No suitable policy evidence found for high-priority risks.",
+                NO_SUITABLE_POLICY_EVIDENCE_MESSAGE,
                 RecommendationListOut(
                     session_id=session_id,
                     business_profile_id=business.id,
@@ -165,7 +180,7 @@ class _RecommendationService:
 
         out = self._build_policy_response(session_id, scores, saved)
         return APIResponse.success_response(
-            "Recommendations generated successfully", out.model_dump()
+            RECOMMENDATIONS_GENERATED_MESSAGE, out.model_dump()
         )
 
     async def get_policy_download(
@@ -186,13 +201,13 @@ class _RecommendationService:
             except (TypeError, ValueError):
                 continue
         if policy_id not in session_policy_ids:
-            raise NotFoundException("Recommended policy document not found")
+            raise NotFoundException(RECOMMENDED_POLICY_NOT_FOUND_MESSAGE)
 
         document = await repository.get_latest_active_policy_document(db, policy_id)
         if not document or not document.file_url:
-            raise NotFoundException("Policy PDF is not available for download")
+            raise NotFoundException(POLICY_PDF_UNAVAILABLE_MESSAGE)
         if not document.file_url.startswith(("http://", "https://")):
-            raise NotFoundException("Policy PDF is not available for download")
+            raise NotFoundException(POLICY_PDF_UNAVAILABLE_MESSAGE)
 
         data = RecommendationDownloadOut(
             policy_id=policy_id,
@@ -200,7 +215,7 @@ class _RecommendationService:
             download_url=document.file_url,
         )
         return APIResponse.success_response(
-            "Policy download link retrieved",
+            POLICY_DOWNLOAD_RETRIEVED_MESSAGE,
             data.model_dump(),
         )
 
@@ -456,7 +471,7 @@ class _RecommendationService:
             risk_score=risk_score,
             risk_level=risk_level,
             policies=[policy_out],
-            company_name=policy.insurer.name if policy.insurer else "Unknown",
+            company_name=policy.insurer.name if policy.insurer else UNKNOWN_LABEL,
             policy_id=policy.id,
             policy_name=policy.policy_name,
             recommendation_score=evidence.recommendation_score,
@@ -476,11 +491,11 @@ class _RecommendationService:
         return PolicyOut(
             id=policy.id,
             policy_name=policy.policy_name,
-            insurer_name=policy.insurer.name if policy.insurer else "Unknown",
+            insurer_name=policy.insurer.name if policy.insurer else UNKNOWN_LABEL,
             insurer_logo_url=policy.insurer.logo_url if policy.insurer else None,
             insurance_category_name=policy.insurance_category.name
             if policy.insurance_category
-            else "Unknown",
+            else UNKNOWN_LABEL,
             key_features=policy.key_features,
             min_sum_insured=float(policy.min_sum_insured)
             if policy.min_sum_insured
@@ -526,31 +541,12 @@ class _RecommendationService:
         return f"Relevant policy wording was found for {categories}."
 
     def _key_benefits(self, evidence: PolicyEvidence) -> list[str]:
-        benefit_terms = (
-            "cover",
-            "indemnify",
-            "pay",
-            "benefit",
-            "in-built",
-            "extension",
-            "reinstatement",
-            "defence costs",
-            "loss of profit",
-        )
-        return self._extract_lines(evidence.all_chunks, benefit_terms, limit=5)
+        return self._extract_lines(evidence.all_chunks, BENEFIT_TERMS, limit=5)
 
     def _important_limitations(self, evidence: PolicyEvidence) -> list[str]:
-        limitation_terms = (
-            "exclusion",
-            "deductible",
-            "excess",
-            "not cover",
-            "not payable",
-            "condition",
-            "limit",
-            "underinsurance",
+        return self._extract_lines(
+            evidence.all_chunks, IMPORTANT_LIMITATION_TERMS, limit=4
         )
-        return self._extract_lines(evidence.all_chunks, limitation_terms, limit=4)
 
     def _advisor_coverage_highlights(
         self,
@@ -562,20 +558,7 @@ class _RecommendationService:
             chunks = evidence.chunks_by_risk.get(risk_name, [])
             benefit_lines = self._extract_lines(
                 chunks,
-                (
-                    "cover",
-                    "indemnify",
-                    "pay",
-                    "benefit",
-                    "extension",
-                    "in-built",
-                    "reinstatement",
-                    "loss of profit",
-                    "defence costs",
-                    "theft",
-                    "fire",
-                    "transit",
-                ),
+                HIGHLIGHT_BENEFIT_TERMS,
                 limit=2,
             )
             if benefit_lines:
@@ -589,14 +572,7 @@ class _RecommendationService:
 
             limitation_lines = self._extract_lines(
                 chunks,
-                (
-                    "exclusion",
-                    "excess",
-                    "deductible",
-                    "not cover",
-                    "condition",
-                    "underinsurance",
-                ),
+                HIGHLIGHT_LIMITATION_TERMS,
                 limit=1,
             )
             if limitation_lines:
@@ -723,7 +699,7 @@ class _RecommendationService:
         return RiskScoreOut(
             risk_category_name=score.risk_category.name
             if score.risk_category
-            else "Unknown",
+            else UNKNOWN_LABEL,
             score=float(score.score),
             risk_level=score.risk_level,
             factor_breakdown=score.factor_breakdown,
@@ -732,7 +708,7 @@ class _RecommendationService:
     async def _resolve_session(self, session_id: UUID, user: User, db: AsyncSession):
         session = await ProfilingService.get_session_by_id(session_id, db)
         if not session:
-            raise NotFoundException("Profiling session not found")
+            raise NotFoundException(PROFILING_SESSION_NOT_FOUND_MESSAGE)
         business = await BusinessService.get_business_by_id_for_user(
             session.business_id, user, db
         )

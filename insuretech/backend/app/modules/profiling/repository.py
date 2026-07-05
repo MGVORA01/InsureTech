@@ -17,17 +17,13 @@ from app.models import (
     RiskCategory,
     RiskFactor,
 )
+from app.modules.profiling.constants import (
+    DEFAULT_SECTION,
+    DEFAULT_SEGMENT,
+    SESSION_STATUS_COMPLETED,
+    SESSION_STATUS_IN_PROGRESS,
+)
 from app.modules.profiling.schemas import ProfilingAnswerCreate
-
-SECTIONS_ORDER: list[str] = [
-    "business_profile",
-    "premises_building",
-    "assets_stock",
-    "machinery_operations",
-    "safety_security",
-    "claims_history",
-    "transit_logistics",
-]
 
 
 async def get_questions_by_section(
@@ -54,7 +50,7 @@ async def get_questions_by_section(
         Question.section == section,
         Question.is_active.is_(True),
         or_(
-            Question.applicable_segment == "both",
+            Question.applicable_segment == DEFAULT_SEGMENT,
             Question.applicable_segment == segment,
         ),
     ]
@@ -83,7 +79,7 @@ async def has_completed_session(
         select(ProfilingSession.id)
         .where(
             ProfilingSession.business_id == business_id,
-            ProfilingSession.status == "completed",
+            ProfilingSession.status == SESSION_STATUS_COMPLETED,
         )
         .limit(1)
     )
@@ -115,7 +111,7 @@ async def get_conditional_questions_for_section(
             Question.is_conditional.is_(True),
             Question.parent_question_id.isnot(None),
             or_(
-                Question.applicable_segment == "both",
+                Question.applicable_segment == DEFAULT_SEGMENT,
                 Question.applicable_segment == segment,
             ),
         )
@@ -164,8 +160,8 @@ async def create_session(
     """
     session = ProfilingSession(
         business_id=business_id,
-        status="in_progress",
-        current_section="business_profile",
+        status=SESSION_STATUS_IN_PROGRESS,
+        current_section=DEFAULT_SECTION,
     )
     db.add(session)
     await db.commit()
@@ -189,7 +185,7 @@ async def get_active_session(
         select(ProfilingSession)
         .where(
             ProfilingSession.business_id == business_id,
-            ProfilingSession.status == "in_progress",
+            ProfilingSession.status == SESSION_STATUS_IN_PROGRESS,
         )
         .order_by(ProfilingSession.created_at.desc())
         .limit(1)
@@ -306,7 +302,7 @@ async def get_latest_completed_session(
         select(ProfilingSession)
         .where(
             ProfilingSession.business_id == business_id,
-            ProfilingSession.status == "completed",
+            ProfilingSession.status == SESSION_STATUS_COMPLETED,
         )
         .order_by(ProfilingSession.completed_at.desc())
         .limit(1)
@@ -396,7 +392,7 @@ async def complete_session(
     session = result.scalar_one_or_none()
 
     if session:
-        session.status = "completed"
+        session.status = SESSION_STATUS_COMPLETED
         session.completed_at = datetime.now()
         db.add(session)
         await db.commit()
@@ -496,7 +492,7 @@ async def get_tier2_questions_for_categories(
             Question.tier == 2,
             Question.is_active.is_(True),
             or_(
-                Question.applicable_segment == "both",
+                Question.applicable_segment == DEFAULT_SEGMENT,
                 Question.applicable_segment == segment,
             ),
         )
