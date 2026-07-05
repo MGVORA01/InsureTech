@@ -1,5 +1,8 @@
+"""Service functions for chat and knowledge-base PDF ingestion."""
+
 import asyncio
 import os
+from typing import Any
 from uuid import uuid4
 
 from groq import Groq
@@ -9,7 +12,32 @@ from sentence_transformers import SentenceTransformer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.exceptions import BadRequestException, NotFoundException
 from app.modules.chat import repository as Repo
+from app.modules.chat.constants import (
+    ANSWER_GENERATED_MESSAGE,
+    ANSWER_GENERATED_SUCCESS_MESSAGE,
+    CHUNK_INDEX_KEY,
+    CHUNK_TEXT_KEY,
+    CONTENT_KEY,
+    CONTEXT_SEPARATOR,
+    DEFAULT_CHUNK_LIMIT,
+    EMBEDDING_KEY,
+    EMBEDDING_MODEL_NAME,
+    FILE_NOT_FOUND_MESSAGE_TEMPLATE,
+    NO_ANSWER_FALLBACK_MESSAGE,
+    NO_TEXT_EXTRACTED_MESSAGE,
+    PAGE_NUMBER_KEY,
+    PDF_PROCESSED_MESSAGE,
+    READ_BINARY_MODE,
+    ROLE_KEY,
+    SOURCE_TEMPLATE,
+    SOURCE_TEXT_LIMIT,
+    SPLITTER_CHUNK_OVERLAP,
+    SPLITTER_CHUNK_SIZE,
+    SYSTEM_ROLE,
+    USER_ROLE,
+)
 from app.modules.chat.schemas import ChatRequest, ChatResponse, UploadResponse
 from app.modules.chat.system_prompt import SYSTEM_PROMPT
 from app.shared.response import APIResponse
@@ -18,18 +46,21 @@ client = Groq(api_key=settings.GROQ_API_KEY)
 _embed_model = None
 
 
-def _get_embed_model():
+def _get_embed_model() -> SentenceTransformer:
+    """Return the lazily loaded embedding model."""
     global _embed_model
     if _embed_model is None:
-        _embed_model = SentenceTransformer("all-mpnet-base-v2")
+        _embed_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
     return _embed_model
 
 
 def _embed_text(text: str) -> list[float]:
+    """Embed text into a vector."""
     return _get_embed_model().encode(text).tolist()
 
 
-def _call_groq(messages: list[dict]) -> str:
+def _call_groq(messages: list[dict[str, Any]]) -> str:
+    """Generate a chat completion using Groq."""
     response = client.chat.completions.create(
         model=settings.GROQ_MODEL,
         messages=messages,
@@ -38,66 +69,90 @@ def _call_groq(messages: list[dict]) -> str:
     return response.choices[0].message.content
 
 
-async def chat(data: ChatRequest, db: AsyncSession) -> APIResponse:
+async def chat(data: ChatRequest, db: AsyncSession) -> APIResponse[dict[str, Any]]:
+    """Answer a chat question using similar knowledge-base chunks."""
     session_id = data.session_id or str(uuid4())
     query_vec = _embed_text(data.question)
-    chunks = await Repo.search_similar_chunks(db, query_vec, limit=5)
+    chunks = await Repo.search_similar_chunks(db, query_vec, limit=DEFAULT_CHUNK_LIMIT)
 
     if not chunks:
         return APIResponse.success_response(
-            message="Answer generated",
+            message=ANSWER_GENERATED_MESSAGE,
             data=ChatResponse(
-                answer="Sorry, I'm unable to answer this question. Please contact our support team through the website and they'll help you directly.",
+                answer=NO_ANSWER_FALLBACK_MESSAGE,
                 session_id=session_id,
                 sources=[],
             ).model_dump(),
         )
 
-    context = "\n\n".join(c[0] for c in chunks)
-    system_msg = {"role": "system", "content": SYSTEM_PROMPT.format(context=context)}
-    messages = [system_msg, *data.history, {"role": "user", "content": data.question}]
+    context = CONTEXT_SEPARATOR.join(chunk[0] for chunk in chunks)
+    system_msg = {
+        ROLE_KEY: SYSTEM_ROLE,
+        CONTENT_KEY: SYSTEM_PROMPT.format(context=context),
+    }
+    messages = [
+        system_msg,
+        *data.history,
+        {ROLE_KEY: USER_ROLE, CONTENT_KEY: data.question},
+    ]
     answer = _call_groq(messages)
-    sources = [f"Page {page}: {text[:150]}..." for text, page, _ in chunks]
+    sources = [
+        SOURCE_TEMPLATE.format(page=page, text=text[:SOURCE_TEXT_LIMIT])
+        for text, page, _ in chunks
+    ]
 
     return APIResponse.success_response(
-        message="Answer generated successfully",
-        data=ChatResponse(answer=answer, session_id=session_id, sources=sources).model_dump(),
+        message=ANSWER_GENERATED_SUCCESS_MESSAGE,
+        data=ChatResponse(
+            answer=answer, session_id=session_id, sources=sources
+        ).model_dump(),
     )
 
 
-async def process_pdf_upload(file_path: str, db: AsyncSession) -> APIResponse:
+async def process_pdf_upload(
+    file_path: str,
+    db: AsyncSession,
+) -> APIResponse[dict[str, Any]]:
+    """Extract, embed, and store chunks from a PDF file."""
     if not os.path.exists(file_path):
-        return APIResponse.error_response(message=f"File not found: {file_path}")
+        raise NotFoundException(
+            FILE_NOT_FOUND_MESSAGE_TEMPLATE.format(file_path=file_path)
+        )
 
-    with open(file_path, "rb") as f:
-        reader = PdfReader(f)
+    with open(file_path, READ_BINARY_MODE) as pdf_file:
+        reader = PdfReader(pdf_file)
         pages = [(i + 1, page.extract_text()) for i, page in enumerate(reader.pages)]
 
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=SPLITTER_CHUNK_SIZE,
+        chunk_overlap=SPLITTER_CHUNK_OVERLAP,
+    )
     chunks = []
     for page_num, text in pages:
         if not text.strip():
             continue
         page_chunks = await asyncio.to_thread(splitter.split_text, text)
         for chunk_text in page_chunks:
-            chunks.append({"chunk_text": chunk_text, "page_number": page_num})
+            chunks.append({CHUNK_TEXT_KEY: chunk_text, PAGE_NUMBER_KEY: page_num})
 
     if not chunks:
-        return APIResponse.error_response(message="No text extracted from PDF")
+        raise BadRequestException(NO_TEXT_EXTRACTED_MESSAGE)
 
     model = _get_embed_model()
-    texts = [c["chunk_text"] for c in chunks]
+    texts = [chunk[CHUNK_TEXT_KEY] for chunk in chunks]
     embeddings = await asyncio.to_thread(model.encode, texts)
-    for i, emb in enumerate(embeddings):
-        chunks[i]["embedding"] = emb.tolist()
-        chunks[i]["chunk_index"] = i
+    for index, embedding in enumerate(embeddings):
+        chunks[index][EMBEDDING_KEY] = embedding.tolist()
+        chunks[index][CHUNK_INDEX_KEY] = index
 
-    policy_id, document_id = await Repo.get_or_create_knowledge_document(db, os.path.basename(file_path))
+    policy_id, document_id = await Repo.get_or_create_knowledge_document(
+        db, os.path.basename(file_path)
+    )
     await Repo.delete_existing_chunks(db, document_id)
     await Repo.store_chunks(db, chunks, policy_id, document_id)
 
     return APIResponse.success_response(
-        message="PDF processed successfully",
+        message=PDF_PROCESSED_MESSAGE,
         data=UploadResponse(
             document_id=str(document_id),
             filename=os.path.basename(file_path),
