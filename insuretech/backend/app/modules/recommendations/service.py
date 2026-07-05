@@ -17,6 +17,13 @@ from app.models import (
     User,
 )
 from app.modules.businesses.service import Service as BusinessService
+from app.modules.profiling.service import Service as ProfilingService
+from app.modules.recommendations.constants import (
+    MAX_RECOMMENDATIONS,
+    PRIORITY_WEIGHTS,
+    RISK_ALIASES,
+    RISK_KEYWORDS,
+)
 from app.modules.recommendations import repository
 from app.modules.recommendations.schemas import (
     PolicyOut,
@@ -29,49 +36,6 @@ from app.modules.recommendations.schemas import (
 from app.shared.response import APIResponse
 
 logger = get_logger(__name__)
-
-PRIORITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-MAX_RECOMMENDATIONS = 5
-HIGH_RISK_THRESHOLD = 0.70
-PRIORITY_WEIGHTS = [1.0, 0.75, 0.55, 0.4, 0.3, 0.25, 0.2]
-RISK_KEYWORDS: dict[str, list[str]] = {
-    "Fire Risk": [
-        "fire", "special perils", "property damage", "building", "stock",
-        "contents", "sprinkler", "explosion", "lightning", "debris",
-    ],
-    "Theft & Burglary Risk": [
-        "theft", "burglary", "robbery", "housebreaking", "stolen",
-        "security", "break-in", "cash", "money",
-    ],
-    "Employee/Workforce Risk": [
-        "employee", "workforce", "workmen", "workers compensation",
-        "personal accident", "group health", "injury", "disablement",
-    ],
-    "Public Liability Risk": [
-        "public liability", "third party", "legal liability", "bodily injury",
-        "property damage", "claimant", "defence costs", "pollution",
-    ],
-    "Business Interruption Risk": [
-        "business interruption", "consequential loss", "loss of profit",
-        "gross profit", "indemnity period", "standing charges",
-        "increased cost of working",
-    ],
-    "Transit Risk": [
-        "transit", "marine", "cargo", "voyage", "inland transit",
-        "shipment", "transport", "loading", "unloading",
-    ],
-    "Machinery & Equipment Risk": [
-        "machinery", "equipment", "breakdown", "plant and machinery",
-        "boiler", "electrical", "mechanical", "repair", "reinstatement",
-    ],
-}
-RISK_ALIASES = {
-    "Public Liability": "Public Liability Risk",
-    "Theft/Burglary Risk": "Theft & Burglary Risk",
-    "Machinery/Equipment Breakdown": "Machinery & Equipment Risk",
-    "Machinery/Equipment Risk": "Machinery & Equipment Risk",
-    "Business Interruption": "Business Interruption Risk",
-}
 
 
 @dataclass
@@ -94,7 +58,6 @@ class PolicyEvidence:
 
 
 class _RecommendationService:
-
     async def get_recommendations(
         self,
         session_id: UUID,
@@ -128,7 +91,6 @@ class _RecommendationService:
         risk_priorities = self._select_priority_risks(scores)
 
         if not risk_priorities:
-            await db.commit()
             return APIResponse.success_response(
                 "No risk scores found for policy recommendation.",
                 RecommendationListOut(
@@ -151,14 +113,17 @@ class _RecommendationService:
             policy_evidence.values(),
             key=lambda item: (
                 len(item.matched_risks),
-                sum(primary.weight for primary in risk_priorities if primary.name in item.matched_risks),
+                sum(
+                    primary.weight
+                    for primary in risk_priorities
+                    if primary.name in item.matched_risks
+                ),
                 item.recommendation_score,
             ),
             reverse=True,
         )[:MAX_RECOMMENDATIONS]
 
         if not top_policies:
-            await db.commit()
             return APIResponse.success_response(
                 "No suitable policy evidence found for high-priority risks.",
                 RecommendationListOut(
@@ -193,7 +158,6 @@ class _RecommendationService:
             rec_models.append(rec)
 
         saved = await repository.save_recommendations(db, rec_models)
-        await db.commit()
 
         for rec, evidence in zip(saved, top_policies, strict=False):
             rec._policy_id = evidence.policy.id
@@ -248,8 +212,7 @@ class _RecommendationService:
     ) -> RecommendationListOut:
         score_out = [self._score_to_out(s) for s in scores]
         business_risk_names = [
-            self._canonical_risk_name(score.risk_category_name)
-            for score in score_out
+            self._canonical_risk_name(score.risk_category_name) for score in score_out
         ]
         business_id = rec_models[0].business_id if rec_models else None
         recommendations: list[RecommendationOut] = []
@@ -312,19 +275,27 @@ class _RecommendationService:
             policy = policy_map.get(policy_id)
             if not policy:
                 continue
-            evidence = PolicyEvidence(policy=policy, recommendation_score=float(rec.risk_score or 0) * 100)
+            evidence = PolicyEvidence(
+                policy=policy, recommendation_score=float(rec.risk_score or 0) * 100
+            )
             matched_names = payload.get("matched_risk_categories") or [
-                self._canonical_risk_name(rec.risk_category.name if rec.risk_category else "")
+                self._canonical_risk_name(
+                    rec.risk_category.name if rec.risk_category else ""
+                )
             ]
             for name in matched_names:
                 evidence.matched_risks[name] = evidence.recommendation_score
-            evidence.all_chunks = [chunk for chunk in chunks if chunk.policy_id == policy.id][:5]
+            evidence.all_chunks = [
+                chunk for chunk in chunks if chunk.policy_id == policy.id
+            ][:5]
             for name in matched_names:
                 evidence.chunks_by_risk[name] = evidence.all_chunks[:3]
             rec._evidence = evidence
         return self._build_policy_response(session_id, scores, rec_models)
 
-    def _select_priority_risks(self, scores: list[BusinessRiskScore]) -> list[RiskPriority]:
+    def _select_priority_risks(
+        self, scores: list[BusinessRiskScore]
+    ) -> list[RiskPriority]:
         ranked = sorted(scores, key=lambda s: float(s.score), reverse=True)
         priorities: list[RiskPriority] = []
         for index, score in enumerate(ranked):
@@ -384,10 +355,13 @@ class _RecommendationService:
                     evidence.chunks_by_risk[risk_name].append(chunk)
 
         for evidence in evidence_by_policy.values():
-            evidence.recommendation_score = self._score_policy_evidence(evidence, risk_by_name)
+            evidence.recommendation_score = self._score_policy_evidence(
+                evidence, risk_by_name
+            )
 
         return {
-            policy_id: evidence for policy_id, evidence in evidence_by_policy.items()
+            policy_id: evidence
+            for policy_id, evidence in evidence_by_policy.items()
             if evidence.matched_risks and evidence.recommendation_score > 0
         }
 
@@ -400,12 +374,15 @@ class _RecommendationService:
         matches: dict[str, float] = {}
         policy_category = self._canonical_risk_name(
             chunk.policy.insurance_category.risk_category.name
-            if chunk.policy and chunk.policy.insurance_category and chunk.policy.insurance_category.risk_category
+            if chunk.policy
+            and chunk.policy.insurance_category
+            and chunk.policy.insurance_category.risk_category
             else ""
         )
         insurance_category = self._canonical_risk_name(
             chunk.document_metadata.get("insurance_category", "")
-            if chunk.document_metadata else ""
+            if chunk.document_metadata
+            else ""
         )
 
         for risk in risks:
@@ -440,7 +417,9 @@ class _RecommendationService:
         weighted_score = sum(evidence.matched_risks.values()) * 55
         matched_count = len(evidence.matched_risks)
         total_priority_weight = sum(risk.weight for risk in risk_by_name.values()) or 1
-        covered_weight = sum(risk_by_name[name].weight for name in evidence.matched_risks)
+        covered_weight = sum(
+            risk_by_name[name].weight for name in evidence.matched_risks
+        )
         breadth_ratio = covered_weight / total_priority_weight
         breadth_bonus = 22 * breadth_ratio
         multi_risk_bonus = 14 if matched_count >= 2 else 0
@@ -499,19 +478,31 @@ class _RecommendationService:
             policy_name=policy.policy_name,
             insurer_name=policy.insurer.name if policy.insurer else "Unknown",
             insurer_logo_url=policy.insurer.logo_url if policy.insurer else None,
-            insurance_category_name=policy.insurance_category.name if policy.insurance_category else "Unknown",
+            insurance_category_name=policy.insurance_category.name
+            if policy.insurance_category
+            else "Unknown",
             key_features=policy.key_features,
-            min_sum_insured=float(policy.min_sum_insured) if policy.min_sum_insured else None,
-            max_sum_insured=float(policy.max_sum_insured) if policy.max_sum_insured else None,
+            min_sum_insured=float(policy.min_sum_insured)
+            if policy.min_sum_insured
+            else None,
+            max_sum_insured=float(policy.max_sum_insured)
+            if policy.max_sum_insured
+            else None,
             target_segment=policy.target_segment,
-            pdf_url=evidence.all_chunks[0].document.file_url if evidence.all_chunks and evidence.all_chunks[0].document else None,
+            pdf_url=evidence.all_chunks[0].document.file_url
+            if evidence.all_chunks and evidence.all_chunks[0].document
+            else None,
             coverage_highlights=self._clean_coverage_highlights(
                 [chunk.chunk_text for chunk in evidence.all_chunks]
             ),
         )
 
-    def _build_reason_text(self, evidence: PolicyEvidence, matched_risks: list[str]) -> str:
-        company = evidence.policy.insurer.name if evidence.policy.insurer else "the insurer"
+    def _build_reason_text(
+        self, evidence: PolicyEvidence, matched_risks: list[str]
+    ) -> str:
+        company = (
+            evidence.policy.insurer.name if evidence.policy.insurer else "the insurer"
+        )
         top_risks = ", ".join(matched_risks[:3])
         if len(matched_risks) > 1:
             return (
@@ -536,15 +527,28 @@ class _RecommendationService:
 
     def _key_benefits(self, evidence: PolicyEvidence) -> list[str]:
         benefit_terms = (
-            "cover", "indemnify", "pay", "benefit", "in-built", "extension",
-            "reinstatement", "defence costs", "loss of profit",
+            "cover",
+            "indemnify",
+            "pay",
+            "benefit",
+            "in-built",
+            "extension",
+            "reinstatement",
+            "defence costs",
+            "loss of profit",
         )
         return self._extract_lines(evidence.all_chunks, benefit_terms, limit=5)
 
     def _important_limitations(self, evidence: PolicyEvidence) -> list[str]:
         limitation_terms = (
-            "exclusion", "deductible", "excess", "not cover", "not payable",
-            "condition", "limit", "underinsurance",
+            "exclusion",
+            "deductible",
+            "excess",
+            "not cover",
+            "not payable",
+            "condition",
+            "limit",
+            "underinsurance",
         )
         return self._extract_lines(evidence.all_chunks, limitation_terms, limit=4)
 
@@ -559,14 +563,25 @@ class _RecommendationService:
             benefit_lines = self._extract_lines(
                 chunks,
                 (
-                    "cover", "indemnify", "pay", "benefit", "extension",
-                    "in-built", "reinstatement", "loss of profit",
-                    "defence costs", "theft", "fire", "transit",
+                    "cover",
+                    "indemnify",
+                    "pay",
+                    "benefit",
+                    "extension",
+                    "in-built",
+                    "reinstatement",
+                    "loss of profit",
+                    "defence costs",
+                    "theft",
+                    "fire",
+                    "transit",
                 ),
                 limit=2,
             )
             if benefit_lines:
-                highlights.append(f"Covers {risk_name.lower()} through: {benefit_lines[0]}")
+                highlights.append(
+                    f"Covers {risk_name.lower()} through: {benefit_lines[0]}"
+                )
             else:
                 highlights.append(
                     f"Addresses {risk_name.lower()} based on matching policy wording and category coverage."
@@ -574,11 +589,20 @@ class _RecommendationService:
 
             limitation_lines = self._extract_lines(
                 chunks,
-                ("exclusion", "excess", "deductible", "not cover", "condition", "underinsurance"),
+                (
+                    "exclusion",
+                    "excess",
+                    "deductible",
+                    "not cover",
+                    "condition",
+                    "underinsurance",
+                ),
                 limit=1,
             )
             if limitation_lines:
-                highlights.append(f"Check limitation for {risk_name.lower()}: {limitation_lines[0]}")
+                highlights.append(
+                    f"Check limitation for {risk_name.lower()}: {limitation_lines[0]}"
+                )
 
             if len(highlights) >= 6:
                 break
@@ -605,7 +629,8 @@ class _RecommendationService:
                     section_type=metadata.get("section_type"),
                     chunk_text=self._shorten_text(chunk.chunk_text, 600),
                     matched_risk_categories=[
-                        name for name, chunks in evidence.chunks_by_risk.items()
+                        name
+                        for name, chunks in evidence.chunks_by_risk.items()
                         if chunk in chunks
                     ],
                 )
@@ -696,15 +721,16 @@ class _RecommendationService:
     @staticmethod
     def _score_to_out(score: BusinessRiskScore) -> RiskScoreOut:
         return RiskScoreOut(
-            risk_category_name=score.risk_category.name if score.risk_category else "Unknown",
+            risk_category_name=score.risk_category.name
+            if score.risk_category
+            else "Unknown",
             score=float(score.score),
             risk_level=score.risk_level,
             factor_breakdown=score.factor_breakdown,
         )
 
     async def _resolve_session(self, session_id: UUID, user: User, db: AsyncSession):
-        from app.modules.profiling.repository import get_session_by_id
-        session = await get_session_by_id(db, session_id)
+        session = await ProfilingService.get_session_by_id(session_id, db)
         if not session:
             raise NotFoundException("Profiling session not found")
         business = await BusinessService.get_business_by_id_for_user(
