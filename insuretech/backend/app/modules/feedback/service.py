@@ -1,12 +1,19 @@
+"""Service layer for feedback workflows."""
+
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundException
 from app.core.logging import get_logger
 from app.models import User
 from app.modules.businesses.service import Service as BusinessService
 from app.modules.feedback import repository
+from app.modules.feedback.constants import (
+    FEEDBACK_SUBMITTED_LOG_MESSAGE,
+    FEEDBACK_SUBMITTED_MESSAGE,
+    FEEDBACKS_FETCHED_MESSAGE,
+)
 from app.modules.feedback.schemas import CreateFeedbackRequest, FeedbackResponse
 from app.shared.response import APIResponse
 
@@ -14,6 +21,7 @@ logger = get_logger(__name__)
 
 
 class _FeedbackService:
+    """Service for feedback workflows."""
 
     async def submit_feedback(
         self,
@@ -21,17 +29,24 @@ class _FeedbackService:
         user: User,
         db: AsyncSession,
         business_id: UUID | None = None,
-    ) -> APIResponse:
+    ) -> APIResponse[dict[str, Any]]:
+        """Submit feedback for the user's business."""
         if business_id:
-            business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+            business = await BusinessService.get_business_by_id_for_user(
+                business_id, user, db
+            )
         else:
             business = await BusinessService.get_business_by_user(user, db)
 
         feedback = await repository.create_feedback(db, user.id, business.id, data)
-        await db.commit()
-        logger.info("Feedback %s submitted for business %s by user %s", feedback.id, business.id, user.id)
+        logger.info(
+            FEEDBACK_SUBMITTED_LOG_MESSAGE,
+            feedback.id,
+            business.id,
+            user.id,
+        )
         return APIResponse.success_response(
-            "Feedback submitted successfully",
+            FEEDBACK_SUBMITTED_MESSAGE,
             FeedbackResponse.model_validate(feedback).model_dump(),
         )
 
@@ -40,15 +55,18 @@ class _FeedbackService:
         user: User,
         db: AsyncSession,
         business_id: UUID | None = None,
-    ) -> APIResponse:
+    ) -> APIResponse[list[dict[str, Any]]]:
+        """List feedback for the user's business."""
         if business_id:
-            business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+            business = await BusinessService.get_business_by_id_for_user(
+                business_id, user, db
+            )
         else:
             business = await BusinessService.get_business_by_user(user, db)
 
         feedbacks = await repository.get_business_feedbacks(db, business.id)
         return APIResponse.success_response(
-            "Feedbacks fetched successfully",
+            FEEDBACKS_FETCHED_MESSAGE,
             [FeedbackResponse.model_validate(f).model_dump() for f in feedbacks],
         )
 

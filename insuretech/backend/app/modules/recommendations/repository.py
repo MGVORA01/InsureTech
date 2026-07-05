@@ -14,8 +14,8 @@ from app.models import (
     Policy,
     PolicyDocument,
     Recommendation,
-    RiskCategory,
 )
+from app.modules.recommendations.constants import DEFAULT_SEGMENT
 
 
 async def get_business_risk_scores(
@@ -39,7 +39,7 @@ async def get_business_by_session(
     result = await db.execute(
         select(BusinessProfile)
         .options(selectinload(BusinessProfile.segment))
-        .where(BusinessProfile.id == business_id, BusinessProfile.is_active == True)
+        .where(BusinessProfile.id == business_id, BusinessProfile.is_active.is_(True))
     )
     return result.scalar_one_or_none()
 
@@ -52,10 +52,9 @@ async def get_insurance_categories_for_risk_categories(
     if not risk_category_ids:
         return []
     result = await db.execute(
-        select(InsuranceCategory)
-        .where(
+        select(InsuranceCategory).where(
             InsuranceCategory.risk_category_id.in_(risk_category_ids),
-            InsuranceCategory.is_active == True,
+            InsuranceCategory.is_active.is_(True),
         )
     )
     return list(result.scalars().all())
@@ -77,11 +76,11 @@ async def get_policies_for_insurance_categories(
         )
         .where(
             Policy.insurance_category_id.in_(insurance_category_ids),
-            Policy.is_active == True,
+            Policy.is_active.is_(True),
             or_(
                 Policy.target_segment.is_(None),
                 Policy.target_segment == segment,
-                Policy.target_segment == "both",
+                Policy.target_segment == DEFAULT_SEGMENT,
             ),
         )
         .order_by(Policy.policy_name)
@@ -104,7 +103,7 @@ async def get_policies_by_insurance_categories(
         )
         .where(
             Policy.insurance_category_id.in_(insurance_category_ids),
-            Policy.is_active == True,
+            Policy.is_active.is_(True),
         )
         .order_by(Policy.policy_name)
     )
@@ -122,7 +121,7 @@ async def get_policy_documents(
         select(PolicyDocument)
         .where(
             PolicyDocument.policy_id.in_(policy_ids),
-            PolicyDocument.is_active == True,
+            PolicyDocument.is_active.is_(True),
         )
         .order_by(PolicyDocument.policy_id, PolicyDocument.version.desc())
     )
@@ -138,7 +137,7 @@ async def get_latest_active_policy_document(
         select(PolicyDocument)
         .where(
             PolicyDocument.policy_id == policy_id,
-            PolicyDocument.is_active == True,
+            PolicyDocument.is_active.is_(True),
         )
         .order_by(PolicyDocument.version.desc(), PolicyDocument.created_at.desc())
         .limit(1)
@@ -179,8 +178,14 @@ async def get_candidate_chunks_for_risk_categories(
         filters.append(InsuranceCategory.risk_category_id.in_(risk_category_ids))
     for pattern in text_patterns:
         filters.append(DocumentChunk.chunk_text.ilike(f"%{pattern}%"))
-        filters.append(DocumentChunk.document_metadata["section_name"].astext.ilike(f"%{pattern}%"))
-        filters.append(DocumentChunk.document_metadata["insurance_category"].astext.ilike(f"%{pattern}%"))
+        filters.append(
+            DocumentChunk.document_metadata["section_name"].astext.ilike(f"%{pattern}%")
+        )
+        filters.append(
+            DocumentChunk.document_metadata["insurance_category"].astext.ilike(
+                f"%{pattern}%"
+            )
+        )
 
     result = await db.execute(
         select(DocumentChunk)
@@ -194,11 +199,11 @@ async def get_candidate_chunks_for_risk_categories(
             selectinload(DocumentChunk.document),
         )
         .where(
-            Policy.is_active == True,
+            Policy.is_active.is_(True),
             or_(
                 Policy.target_segment.is_(None),
                 Policy.target_segment == segment,
-                Policy.target_segment == "both",
+                Policy.target_segment == DEFAULT_SEGMENT,
             ),
             or_(*filters),
         )
@@ -219,11 +224,13 @@ async def get_policies_by_ids(
         select(Policy)
         .options(
             selectinload(Policy.insurer),
-            selectinload(Policy.insurance_category).selectinload(InsuranceCategory.risk_category),
+            selectinload(Policy.insurance_category).selectinload(
+                InsuranceCategory.risk_category
+            ),
         )
         .where(
             Policy.id.in_(policy_ids),
-            Policy.is_active == True,
+            Policy.is_active.is_(True),
         )
     )
     return list(result.scalars().all())
@@ -242,7 +249,7 @@ async def get_existing_recommendations(
         )
         .where(
             Recommendation.session_id == session_id,
-            Recommendation.is_active == True,
+            Recommendation.is_active.is_(True),
         )
         .order_by(Recommendation.priority, Recommendation.risk_score.desc())
     )
@@ -256,7 +263,7 @@ async def save_recommendations(
     """Bulk-save recommendation records."""
     for rec in recommendations:
         db.add(rec)
-    await db.flush()
+    await db.commit()
     for rec in recommendations:
         await db.refresh(rec)
     return recommendations
@@ -271,7 +278,8 @@ async def deactivate_recommendations_for_session(
         update(Recommendation)
         .where(
             Recommendation.session_id == session_id,
-            Recommendation.is_active == True,
+            Recommendation.is_active.is_(True),
         )
         .values(is_active=False)
     )
+    await db.commit()

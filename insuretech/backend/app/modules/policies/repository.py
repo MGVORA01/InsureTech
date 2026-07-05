@@ -1,81 +1,142 @@
-from sqlalchemy import select, func, update, delete
+"""Database access layer for policy workflows."""
+
+from typing import Any
+
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from app.models import Insurer, InsuranceCategory, Policy, PolicyDocument, DocumentChunk
+
+from app.models import DocumentChunk, InsuranceCategory, Insurer, Policy, PolicyDocument
+from app.modules.policies.constants import (
+    POLICY_WORDING_DOC_TYPE,
+    SEARCH_PATTERN_TEMPLATE,
+)
 
 
 async def get_insurers(db: AsyncSession) -> list[Insurer]:
+    """Fetch active insurers ordered by name."""
     result = await db.execute(
-        select(Insurer).where(Insurer.is_active == True).order_by(Insurer.name)
+        select(Insurer).where(Insurer.is_active.is_(True)).order_by(Insurer.name)
     )
     return list(result.scalars().all())
 
 
 async def get_insurer_by_id(db: AsyncSession, insurer_id: str) -> Insurer | None:
+    """Fetch an active insurer by ID."""
     result = await db.execute(
-        select(Insurer).where(Insurer.id == insurer_id, Insurer.is_active == True)
+        select(Insurer).where(Insurer.id == insurer_id, Insurer.is_active.is_(True))
     )
     return result.scalar_one_or_none()
 
 
-async def create_insurer(db: AsyncSession, data: dict) -> Insurer:
+async def create_insurer(db: AsyncSession, data: dict[str, Any]) -> Insurer:
+    """Create and persist an insurer."""
     insurer = Insurer(**data)
     db.add(insurer)
-    await db.flush()
+    await db.commit()
+    await db.refresh(insurer)
     return insurer
 
 
-async def update_insurer(db: AsyncSession, insurer_id: str, data: dict) -> Insurer | None:
+async def update_insurer(
+    db: AsyncSession,
+    insurer_id: str,
+    data: dict[str, Any],
+) -> Insurer | None:
+    """Update an insurer and return the updated row."""
     result = await db.execute(
-        update(Insurer).where(Insurer.id == insurer_id).values(**data).returning(Insurer)
+        update(Insurer)
+        .where(Insurer.id == insurer_id)
+        .values(**data)
+        .returning(Insurer)
     )
-    await db.flush()
-    return result.scalar_one_or_none()
+    insurer = result.scalar_one_or_none()
+    if insurer:
+        await db.commit()
+        await db.refresh(insurer)
+    return insurer
 
 
 async def soft_delete_insurer(db: AsyncSession, insurer_id: str) -> bool:
+    """Soft-delete an insurer by marking it inactive."""
     result = await db.execute(
-        update(Insurer).where(Insurer.id == insurer_id).values(is_active=False).returning(Insurer.id)
+        update(Insurer)
+        .where(Insurer.id == insurer_id)
+        .values(is_active=False)
+        .returning(Insurer.id)
     )
-    await db.flush()
-    return result.scalar() is not None
+    deleted = result.scalar() is not None
+    if deleted:
+        await db.commit()
+    return deleted
 
 
 async def get_categories(db: AsyncSession) -> list[InsuranceCategory]:
+    """Fetch active insurance categories ordered by name."""
     result = await db.execute(
-        select(InsuranceCategory).where(InsuranceCategory.is_active == True).order_by(InsuranceCategory.name)
+        select(InsuranceCategory)
+        .where(InsuranceCategory.is_active.is_(True))
+        .order_by(InsuranceCategory.name)
     )
     return list(result.scalars().all())
 
 
-async def get_category_by_id(db: AsyncSession, category_id: str) -> InsuranceCategory | None:
+async def get_category_by_id(
+    db: AsyncSession, category_id: str
+) -> InsuranceCategory | None:
+    """Fetch an active insurance category by ID."""
     result = await db.execute(
-        select(InsuranceCategory).where(InsuranceCategory.id == category_id, InsuranceCategory.is_active == True)
+        select(InsuranceCategory).where(
+            InsuranceCategory.id == category_id,
+            InsuranceCategory.is_active.is_(True),
+        )
     )
     return result.scalar_one_or_none()
 
 
-async def create_category(db: AsyncSession, data: dict) -> InsuranceCategory:
+async def create_category(
+    db: AsyncSession,
+    data: dict[str, Any],
+) -> InsuranceCategory:
+    """Create and persist an insurance category."""
     cat = InsuranceCategory(**data)
     db.add(cat)
-    await db.flush()
+    await db.commit()
+    await db.refresh(cat)
     return cat
 
 
-async def update_category(db: AsyncSession, category_id: str, data: dict) -> InsuranceCategory | None:
+async def update_category(
+    db: AsyncSession,
+    category_id: str,
+    data: dict[str, Any],
+) -> InsuranceCategory | None:
+    """Update an insurance category and return the updated row."""
     result = await db.execute(
-        update(InsuranceCategory).where(InsuranceCategory.id == category_id).values(**data).returning(InsuranceCategory)
+        update(InsuranceCategory)
+        .where(InsuranceCategory.id == category_id)
+        .values(**data)
+        .returning(InsuranceCategory)
     )
-    await db.flush()
-    return result.scalar_one_or_none()
+    category = result.scalar_one_or_none()
+    if category:
+        await db.commit()
+        await db.refresh(category)
+    return category
 
 
 async def soft_delete_category(db: AsyncSession, category_id: str) -> bool:
+    """Soft-delete an insurance category by marking it inactive."""
     result = await db.execute(
-        update(InsuranceCategory).where(InsuranceCategory.id == category_id).values(is_active=False).returning(InsuranceCategory.id)
+        update(InsuranceCategory)
+        .where(InsuranceCategory.id == category_id)
+        .values(is_active=False)
+        .returning(InsuranceCategory.id)
     )
-    await db.flush()
-    return result.scalar() is not None
+    deleted = result.scalar() is not None
+    if deleted:
+        await db.commit()
+    return deleted
 
 
 async def get_policies(
@@ -86,12 +147,13 @@ async def get_policies(
     category_id: str | None = None,
     search: str | None = None,
 ) -> tuple[list[Policy], int]:
+    """Fetch active policies with pagination and optional filters."""
     query = (
         select(Policy)
-        .where(Policy.is_active == True)
+        .where(Policy.is_active.is_(True))
         .options(selectinload(Policy.insurer), selectinload(Policy.insurance_category))
     )
-    count_query = select(func.count(Policy.id)).where(Policy.is_active == True)
+    count_query = select(func.count(Policy.id)).where(Policy.is_active.is_(True))
 
     if insurer_id:
         query = query.where(Policy.insurer_id == insurer_id)
@@ -100,7 +162,7 @@ async def get_policies(
         query = query.where(Policy.insurance_category_id == category_id)
         count_query = count_query.where(Policy.insurance_category_id == category_id)
     if search:
-        pattern = f"%{search}%"
+        pattern = SEARCH_PATTERN_TEMPLATE.format(search=search)
         query = query.where(Policy.policy_name.ilike(pattern))
         count_query = count_query.where(Policy.policy_name.ilike(pattern))
 
@@ -111,9 +173,10 @@ async def get_policies(
 
 
 async def get_policy_by_id(db: AsyncSession, policy_id: str) -> Policy | None:
+    """Fetch an active policy by ID with display relationships."""
     result = await db.execute(
         select(Policy)
-        .where(Policy.id == policy_id, Policy.is_active == True)
+        .where(Policy.id == policy_id, Policy.is_active.is_(True))
         .options(
             selectinload(Policy.insurer),
             selectinload(Policy.insurance_category),
@@ -123,27 +186,43 @@ async def get_policy_by_id(db: AsyncSession, policy_id: str) -> Policy | None:
     return result.scalar_one_or_none()
 
 
-async def create_policy(db: AsyncSession, data: dict) -> Policy:
+async def create_policy(db: AsyncSession, data: dict[str, Any]) -> Policy:
+    """Create and persist a policy."""
     policy = Policy(**data)
     db.add(policy)
-    await db.flush()
+    await db.commit()
+    await db.refresh(policy)
     return policy
 
 
-async def update_policy(db: AsyncSession, policy_id: str, data: dict) -> Policy | None:
+async def update_policy(
+    db: AsyncSession,
+    policy_id: str,
+    data: dict[str, Any],
+) -> Policy | None:
+    """Update a policy and return the updated row."""
     result = await db.execute(
         update(Policy).where(Policy.id == policy_id).values(**data).returning(Policy)
     )
-    await db.flush()
-    return result.scalar_one_or_none()
+    policy = result.scalar_one_or_none()
+    if policy:
+        await db.commit()
+        await db.refresh(policy)
+    return policy
 
 
 async def soft_delete_policy(db: AsyncSession, policy_id: str) -> bool:
+    """Soft-delete a policy by marking it inactive."""
     result = await db.execute(
-        update(Policy).where(Policy.id == policy_id).values(is_active=False).returning(Policy.id)
+        update(Policy)
+        .where(Policy.id == policy_id)
+        .values(is_active=False)
+        .returning(Policy.id)
     )
-    await db.flush()
-    return result.scalar() is not None
+    deleted = result.scalar() is not None
+    if deleted:
+        await db.commit()
+    return deleted
 
 
 async def create_document(
@@ -152,10 +231,11 @@ async def create_document(
     insurer_id: str,
     file_name: str,
     file_url: str,
-    doc_type: str = "policy_wording",
+    doc_type: str = POLICY_WORDING_DOC_TYPE,
     file_size: int | None = None,
     version: int = 1,
 ) -> PolicyDocument:
+    """Create and persist a policy document."""
     doc = PolicyDocument(
         policy_id=policy_id,
         insurer_id=insurer_id,
@@ -166,67 +246,119 @@ async def create_document(
         version=version,
     )
     db.add(doc)
-    await db.flush()
+    await db.commit()
+    await db.refresh(doc)
     return doc
 
 
-async def get_active_documents_for_policy(db: AsyncSession, policy_id: str) -> list[PolicyDocument]:
+async def get_policy_for_upload(db: AsyncSession, policy_id: str) -> Policy | None:
+    """Fetch a policy for PDF upload with related display data."""
+    result = await db.execute(
+        select(Policy)
+        .where(Policy.id == policy_id, Policy.is_active.is_(True))
+        .options(
+            selectinload(Policy.insurer),
+            selectinload(Policy.insurance_category),
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_active_documents_for_policy(
+    db: AsyncSession, policy_id: str
+) -> list[PolicyDocument]:
+    """Fetch active documents for a policy ordered by version."""
     result = await db.execute(
         select(PolicyDocument)
-        .where(PolicyDocument.policy_id == policy_id, PolicyDocument.is_active == True)
+        .where(
+            PolicyDocument.policy_id == policy_id,
+            PolicyDocument.is_active.is_(True),
+        )
         .order_by(PolicyDocument.version)
     )
     return list(result.scalars().all())
 
 
 async def get_document_count_for_policy(db: AsyncSession, policy_id: str) -> int:
+    """Count active documents for a policy."""
     result = await db.execute(
-        select(func.count(PolicyDocument.id))
-        .where(PolicyDocument.policy_id == policy_id, PolicyDocument.is_active == True)
+        select(func.count(PolicyDocument.id)).where(
+            PolicyDocument.policy_id == policy_id,
+            PolicyDocument.is_active.is_(True),
+        )
     )
     return result.scalar() or 0
 
 
-async def delete_document_chunks(db: AsyncSession, document_id: str):
+async def delete_document_chunks(db: AsyncSession, document_id: str) -> None:
+    """Delete all chunks for a document."""
     await db.execute(
         delete(DocumentChunk).where(DocumentChunk.document_id == document_id)
     )
-    await db.flush()
+    await db.commit()
 
 
-async def delete_chunks_for_policy(db: AsyncSession, policy_id: str):
-    await db.execute(
-        delete(DocumentChunk).where(DocumentChunk.policy_id == policy_id)
-    )
-    await db.flush()
+async def delete_chunks_for_policy(db: AsyncSession, policy_id: str) -> None:
+    """Delete all chunks for a policy."""
+    await db.execute(delete(DocumentChunk).where(DocumentChunk.policy_id == policy_id))
+    await db.commit()
 
 
-async def soft_delete_documents_for_policy(db: AsyncSession, policy_id: str):
+async def soft_delete_documents_for_policy(db: AsyncSession, policy_id: str) -> None:
+    """Soft-delete all documents for a policy."""
     await db.execute(
         update(PolicyDocument)
         .where(PolicyDocument.policy_id == policy_id)
         .values(is_active=False)
     )
-    await db.flush()
+    await db.commit()
 
 
 async def get_policy_count_for_insurer(db: AsyncSession, insurer_id: str) -> int:
+    """Count active policies for an insurer."""
     result = await db.execute(
-        select(func.count(Policy.id))
-        .where(Policy.insurer_id == insurer_id, Policy.is_active == True)
+        select(func.count(Policy.id)).where(
+            Policy.insurer_id == insurer_id, Policy.is_active.is_(True)
+        )
     )
     return result.scalar() or 0
 
 
 async def get_policy_count_for_category(db: AsyncSession, category_id: str) -> int:
+    """Count active policies for an insurance category."""
     result = await db.execute(
-        select(func.count(Policy.id))
-        .where(Policy.insurance_category_id == category_id, Policy.is_active == True)
+        select(func.count(Policy.id)).where(
+            Policy.insurance_category_id == category_id,
+            Policy.is_active.is_(True),
+        )
     )
     return result.scalar() or 0
 
 
-async def insert_chunk(db: AsyncSession, policy_id: str, document_id: str, chunk_index: int, chunk_text: str, embedding: list[float], metadata: dict):
+async def update_document_file_url(
+    db: AsyncSession,
+    document_id: str,
+    file_url: str,
+) -> None:
+    """Update the stored URL for a policy document."""
+    await db.execute(
+        update(PolicyDocument)
+        .where(PolicyDocument.id == document_id)
+        .values(file_url=file_url)
+    )
+    await db.commit()
+
+
+async def insert_chunk(
+    db: AsyncSession,
+    policy_id: str,
+    document_id: str,
+    chunk_index: int,
+    chunk_text: str,
+    embedding: list[float],
+    metadata: dict[str, Any],
+) -> DocumentChunk:
+    """Create and persist a document chunk."""
     chunk = DocumentChunk(
         policy_id=policy_id,
         document_id=document_id,
@@ -236,3 +368,6 @@ async def insert_chunk(db: AsyncSession, policy_id: str, document_id: str, chunk
         document_metadata=metadata,
     )
     db.add(chunk)
+    await db.commit()
+    await db.refresh(chunk)
+    return chunk
