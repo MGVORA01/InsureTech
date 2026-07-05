@@ -32,7 +32,7 @@ function ChatPage() {
   }, [messages, sending])
 
   async function closeChat() {
-    navigate('/dashboard')
+    navigate(-1)
   }
 
   function handleSectionChange(section: Section) {

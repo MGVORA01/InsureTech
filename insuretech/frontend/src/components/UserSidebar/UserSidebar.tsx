@@ -1,4 +1,5 @@
 import { useAuth } from '../../hooks/useAuth'
+import { useNavigate } from 'react-router-dom'
 
 function LogoIcon() {
   return (
@@ -73,16 +74,6 @@ function IconMessageCircle(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
-function IconLogOut(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <path d="M16 17l5-5-5-5" />
-      <path d="M21 12H9" />
-    </svg>
-  )
-}
-
 function IconChevronLeft(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -91,10 +82,12 @@ function IconChevronLeft(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
-function IconChevronRight(props: React.SVGProps<SVGSVGElement>) {
+function IconLogOut(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M9 18l6-6-6-6" />
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
     </svg>
   )
 }
@@ -141,6 +134,7 @@ export function UserSidebar({
   onAfterNavigate,
 }: UserSidebarProps) {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
 
   const handleLogout = async () => {
     try {
@@ -162,9 +156,6 @@ export function UserSidebar({
     { section: 'chatbot' as Section, icon: IconMessageCircle, label: 'Chatbot' },
     { section: 'feedback' as Section, icon: IconMessageSquare, label: 'Feedback' },
   ]
-  const activeIndex = navItems.findIndex((item) => item.section === activeSection)
-  const previousItem = activeIndex > 0 ? navItems[activeIndex - 1] : null
-  const nextItem = activeIndex >= 0 && activeIndex < navItems.length - 1 ? navItems[activeIndex + 1] : null
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -191,39 +182,6 @@ export function UserSidebar({
           />
         ))}
       </nav>
-
-      <div className="grid grid-cols-2 gap-2 border-t px-3 py-3" style={{ borderColor: 'var(--color-border)' }}>
-        <button
-          type="button"
-          disabled={!previousItem}
-          onClick={() => {
-            if (!previousItem) return
-            onSectionChange(previousItem.section)
-            onAfterNavigate?.()
-          }}
-          className="flex items-center justify-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', backgroundColor: 'var(--color-surface)' }}
-          title={previousItem ? `Back to ${previousItem.label}` : 'No previous step'}
-        >
-          <IconChevronLeft className="h-4 w-4" />
-          Back
-        </button>
-        <button
-          type="button"
-          disabled={!nextItem}
-          onClick={() => {
-            if (!nextItem) return
-            onSectionChange(nextItem.section)
-            onAfterNavigate?.()
-          }}
-          className="flex items-center justify-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', backgroundColor: 'var(--color-surface)' }}
-          title={nextItem ? `Next to ${nextItem.label}` : 'No next step'}
-        >
-          Next
-          <IconChevronRight className="h-4 w-4" />
-        </button>
-      </div>
 
       {/* User + Logout */}
       <div className="sticky bottom-0 border-t px-4 py-4" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
@@ -267,19 +225,25 @@ export function UserDesktopSidebar({ children }: { children: React.ReactNode }) 
   )
 }
 
-export function UserMobileTopBar({ onOpenDrawer, onLogout }: { onOpenDrawer: () => void; onLogout: () => void }) {
+export function UserMobileTopBar({ onOpenDrawer, onLogout, onBack }: { onOpenDrawer: () => void; onLogout: () => void; onBack?: () => void }) {
   return (
     <div
       className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b px-4 py-3 backdrop-blur-md lg:hidden"
       style={{ backgroundColor: 'var(--overlay-surface-80)', borderColor: 'var(--color-border)' }}
     >
-      <button type="button" onClick={onOpenDrawer} className="rounded-md p-1.5 transition hover:[background-color:var(--color-hover)]" style={{ color: 'var(--color-text-tertiary)' }}>
-        <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="3" y1="6" x2="21" y2="6" />
-          <line x1="3" y1="12" x2="21" y2="12" />
-          <line x1="3" y1="18" x2="21" y2="18" />
-        </svg>
-      </button>
+      {onBack ? (
+        <button type="button" onClick={onBack} className="rounded-md p-1.5 transition hover:[background-color:var(--color-hover)]" style={{ color: 'var(--color-text-tertiary)' }}>
+          <IconChevronLeft className="h-6 w-6" />
+        </button>
+      ) : (
+        <button type="button" onClick={onOpenDrawer} className="rounded-md p-1.5 transition hover:[background-color:var(--color-hover)]" style={{ color: 'var(--color-text-tertiary)' }}>
+          <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+      )}
       <div className="flex items-center gap-2">
         <LogoIcon />
         <span className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>InsureTech</span>
