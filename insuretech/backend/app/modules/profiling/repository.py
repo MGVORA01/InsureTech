@@ -3,8 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import desc, func, or_, select, and_
-from sqlalchemy.orm import contains_eager
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -53,7 +52,7 @@ async def get_questions_by_section(
     """
     conditions = [
         Question.section == section,
-        Question.is_active == True,
+        Question.is_active.is_(True),
         or_(
             Question.applicable_segment == "both",
             Question.applicable_segment == segment,
@@ -112,8 +111,8 @@ async def get_conditional_questions_for_section(
         select(Question)
         .where(
             Question.section == section,
-            Question.is_active == True,
-            Question.is_conditional == True,
+            Question.is_active.is_(True),
+            Question.is_conditional.is_(True),
             Question.parent_question_id.isnot(None),
             or_(
                 Question.applicable_segment == "both",
@@ -144,7 +143,7 @@ async def get_conditional_questions(
         .where(
             Question.parent_question_id == parent_question_id,
             Question.parent_answer_value == parent_answer_value,
-            Question.is_active == True,
+            Question.is_active.is_(True),
         )
         .order_by(Question.order_index)
     )
@@ -169,7 +168,7 @@ async def create_session(
         current_section="business_profile",
     )
     db.add(session)
-    await db.flush()
+    await db.commit()
     await db.refresh(session)
     return session
 
@@ -216,30 +215,6 @@ async def get_session_by_id(
     return result.scalar_one_or_none()
 
 
-async def get_latest_completed_session(
-    db: AsyncSession,
-    business_id: UUID,
-) -> ProfilingSession | None:
-    """Fetch the most recently completed session for a business profile.
-
-    Args:
-        business_id: UUID of the business profile.
-
-    Returns:
-        The latest completed ProfilingSession, or None if none exist.
-    """
-    result = await db.execute(
-        select(ProfilingSession)
-        .where(
-            ProfilingSession.business_id == business_id,
-            ProfilingSession.status == "completed",
-        )
-        .order_by(desc(ProfilingSession.completed_at))
-        .limit(1)
-    )
-    return result.scalar_one_or_none()
-
-
 async def save_answer(
     db: AsyncSession,
     session_id: UUID,
@@ -275,7 +250,7 @@ async def save_answer(
         )
         db.add(existing)
 
-    await db.flush()
+    await db.commit()
     await db.refresh(existing)
     return existing
 
@@ -309,7 +284,7 @@ async def get_active_risk_categories(db: AsyncSession) -> list[RiskCategory]:
     result = await db.execute(
         select(RiskCategory)
         .options(selectinload(RiskCategory.risk_factors))
-        .where(RiskCategory.is_active == True)
+        .where(RiskCategory.is_active.is_(True))
         .order_by(RiskCategory.name)
     )
     return list(result.scalars().all())
@@ -366,7 +341,7 @@ async def get_answer_score_rules_for_session(
         )
         .where(
             AnswerScoreRule.question_id.in_(answered_qids),
-            AnswerScoreRule.is_active == True,
+            AnswerScoreRule.is_active.is_(True),
         )
     )
     return list(result.scalars().all())
@@ -393,7 +368,8 @@ async def update_session_section(
 
     if session:
         session.current_section = section
-        await db.flush()
+        db.add(session)
+        await db.commit()
         await db.refresh(session)
 
     return session
@@ -422,7 +398,8 @@ async def complete_session(
     if session:
         session.status = "completed"
         session.completed_at = datetime.now()
-        await db.flush()
+        db.add(session)
+        await db.commit()
         await db.refresh(session)
 
     return session
@@ -459,7 +436,9 @@ async def save_risk_scores(
         else:
             db.add(score)
             saved.append(score)
-    await db.flush()
+    await db.commit()
+    for score in saved:
+        await db.refresh(score)
     return saved
 
 
@@ -508,12 +487,14 @@ async def get_tier2_questions_for_categories(
     result = await db.execute(
         select(Question)
         .options(
-            selectinload(Question.factor_mappings).selectinload(QuestionFactorMapping.risk_factor),
+            selectinload(Question.factor_mappings).selectinload(
+                QuestionFactorMapping.risk_factor
+            ),
         )
         .where(
             Question.id.in_(select(subq.c.question_id)),
             Question.tier == 2,
-            Question.is_active == True,
+            Question.is_active.is_(True),
             or_(
                 Question.applicable_segment == "both",
                 Question.applicable_segment == segment,

@@ -43,7 +43,9 @@ class _ProfilingService:
         """Return profiling status for the authenticated user's business."""
         try:
             if business_id:
-                business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+                business = await BusinessService.get_business_by_id_for_user(
+                    business_id, user, db
+                )
             else:
                 business = await BusinessService.get_business_by_user(user, db)
         except NotFoundException:
@@ -58,7 +60,9 @@ class _ProfilingService:
             )
 
         active = await repository.get_active_session(db, business.id)
-        latest_completed = await repository.get_latest_completed_session(db, business.id)
+        latest_completed = await repository.get_latest_completed_session(
+            db, business.id
+        )
         completed = latest_completed is not None
 
         return APIResponse.success_response(
@@ -91,19 +95,25 @@ class _ProfilingService:
             business_id: Target business. Falls back to user's first business if omitted.
         """
         if business_id:
-            business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+            business = await BusinessService.get_business_by_id_for_user(
+                business_id, user, db
+            )
         else:
             business = await BusinessService.get_business_by_user(user, db)
 
         active = await repository.get_active_session(db, business.id)
         if active:
-            logger.info("Resuming active session %s for business %s", active.id, business.id)
+            logger.info(
+                "Resuming active session %s for business %s", active.id, business.id
+            )
             state = await self._build_section_state(db, active, business, tier=tier)
             return APIResponse.success_response(
                 "Resumed active profiling session", state.model_dump()
             )
 
-        latest_completed = await repository.get_latest_completed_session(db, business.id)
+        latest_completed = await repository.get_latest_completed_session(
+            db, business.id
+        )
         if latest_completed:
             logger.info(
                 "Reopening completed session %s for business %s",
@@ -122,8 +132,9 @@ class _ProfilingService:
             )
 
         session = await repository.create_session(db, business.id)
-        await db.commit()
-        logger.info("Created profiling session %s for business %s", session.id, business.id)
+        logger.info(
+            "Created profiling session %s for business %s", session.id, business.id
+        )
 
         state = await self._build_section_state(db, session, business, tier=tier)
         return APIResponse.success_response(
@@ -154,7 +165,9 @@ class _ProfilingService:
             if updated:
                 session = updated
 
-        state = await self._build_section_state(db, session, business, target, tier=tier)
+        state = await self._build_section_state(
+            db, session, business, target, tier=tier
+        )
         return APIResponse.success_response(
             "Session state fetched successfully", state.model_dump()
         )
@@ -174,7 +187,9 @@ class _ProfilingService:
         session, business = await self._resolve_session(session_id, user, db)
 
         await repository.save_answer(db, session.id, data)
-        logger.info("Answer saved for session %s, question %s", session.id, data.question_id)
+        logger.info(
+            "Answer saved for session %s, question %s", session.id, data.question_id
+        )
 
         target = data.advance_to_section or session.current_section
         if target and target != session.current_section:
@@ -184,7 +199,6 @@ class _ProfilingService:
             if updated:
                 session = updated
 
-        await db.commit()
         state = await self._build_section_state(db, session, business, target)
         return APIResponse.success_response(
             "Answer submitted successfully", state.model_dump()
@@ -203,7 +217,11 @@ class _ProfilingService:
         for ans_data in data.answers:
             await repository.save_answer(db, session.id, ans_data)
 
-        logger.info("Batch answers saved for session %s, count: %d", session.id, len(data.answers))
+        logger.info(
+            "Batch answers saved for session %s, count: %d",
+            session.id,
+            len(data.answers),
+        )
 
         target = data.advance_to_section or session.current_section
         if target and target != session.current_section:
@@ -213,7 +231,6 @@ class _ProfilingService:
             if updated:
                 session = updated
 
-        await db.commit()
         state = await self._build_section_state(db, session, business, target)
         return APIResponse.success_response(
             "Batch answers submitted successfully", state.model_dump()
@@ -238,7 +255,6 @@ class _ProfilingService:
         # Build scores before commit while relationships are still in-memory
         scores_out = [self._score_to_out(s) for s in saved]
 
-        await db.commit()
         logger.info("Session %s completed with %d risk scores", session.id, len(saved))
 
         return APIResponse.success_response(
@@ -382,11 +398,15 @@ class _ProfilingService:
         Raises:
             NotFoundException if no completed session exists.
         """
-        business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+        business = await BusinessService.get_business_by_id_for_user(
+            business_id, user, db
+        )
 
         session = await repository.get_latest_completed_session(db, business.id)
         if not session:
-            raise NotFoundException("No completed profiling session found for this business")
+            raise NotFoundException(
+                "No completed profiling session found for this business"
+            )
 
         scores = await repository.get_risk_scores_for_session(db, session.id)
         scores_out = [self._score_to_out(s) for s in scores]
@@ -398,6 +418,30 @@ class _ProfilingService:
                 scores=scores_out,
             ).model_dump(),
         )
+
+    async def get_latest_completed_session_for_business(
+        self,
+        business_id: UUID,
+        db: AsyncSession,
+    ) -> ProfilingSession | None:
+        """Fetch the latest completed session for cross-module service use."""
+        return await repository.get_latest_completed_session(db, business_id)
+
+    async def get_risk_scores_for_session(
+        self,
+        session_id: UUID,
+        db: AsyncSession,
+    ) -> list[BusinessRiskScore]:
+        """Fetch risk scores for cross-module service use."""
+        return await repository.get_risk_scores_for_session(db, session_id)
+
+    async def get_session_by_id(
+        self,
+        session_id: UUID,
+        db: AsyncSession,
+    ) -> ProfilingSession | None:
+        """Fetch a profiling session by ID for cross-module service use."""
+        return await repository.get_session_by_id(db, session_id)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -431,7 +475,9 @@ class _ProfilingService:
         if not session:
             raise NotFoundException("Profiling session not found")
 
-        business = await BusinessService.get_business_by_id_for_user(session.business_id, user, db)
+        business = await BusinessService.get_business_by_id_for_user(
+            session.business_id, user, db
+        )
 
         return session, business
 
@@ -483,12 +529,14 @@ class _ProfilingService:
         Frontend handles conditional visibility via is_conditional,
         parent_unified_id, and parent_answer_value.
         """
-        return await repository.get_questions_by_section(db, segment, section, tier=tier)
+        return await repository.get_questions_by_section(
+            db, segment, section, tier=tier
+        )
 
     @staticmethod
     def _rule_matches_answer(rule, answers_dict: dict[str, str]) -> bool:
         """Check if a scoring rule's answer_value matches the user's answer.
-        
+
         For single-select questions the match is exact. For multi-select the
         stored answer is a delimiter-separated list and the match succeeds if
         any element equals the rule's ``answer_value``. Both the new ``|||``
@@ -499,8 +547,8 @@ class _ProfilingService:
         if not user_answer:
             return False
 
-        if rule.question.question_type == 'multi_select':
-            for delim in ('|||', ','):
+        if rule.question.question_type == "multi_select":
+            for delim in ("|||", ","):
                 parts = [p for p in user_answer.split(delim) if p]
                 if rule.answer_value in parts:
                     return True
