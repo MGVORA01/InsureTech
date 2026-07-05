@@ -1,20 +1,29 @@
-from fastapi import HTTPException, Request
-from starlette import status
+from fastapi import Request
 
+from app.core.exceptions import TooManyRequestsException
 from app.modules.contact import repository as Repository
+from app.modules.contact.constants import (
+    CONTACT_SUBMITTED_MESSAGE,
+    TOO_MANY_REQUESTS_MESSAGE,
+    UNKNOWN_CLIENT_IP,
+)
 from app.modules.contact.schemas import ContactRequest
+from app.shared.response import APIResponse
 
 
 class ContactService:
+    """Service for contact form workflows."""
 
-    async def submit_contact(self, data: ContactRequest, request: Request):
-        client_ip = request.client.host if request.client else "unknown"
+    async def submit_contact(
+        self,
+        data: ContactRequest,
+        request: Request,
+    ) -> APIResponse[None]:
+        """Submit a contact form email."""
+        client_ip = request.client.host if request.client else UNKNOWN_CLIENT_IP
 
         if Repository.is_rate_limited(client_ip):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many requests. Please try again in 15 minutes.",
-            )
+            raise TooManyRequestsException(TOO_MANY_REQUESTS_MESSAGE)
 
         Repository.record_hit(client_ip)
 
@@ -24,7 +33,10 @@ class ContactService:
             message=data.message,
         )
 
-        return {"detail": "Message sent successfully."}
+        return APIResponse.success_response(
+            message=CONTACT_SUBMITTED_MESSAGE,
+            data=None,
+        )
 
 
 Service = ContactService()
