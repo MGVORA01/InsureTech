@@ -35,12 +35,25 @@ export default function UserLayout({
     }
   }
 
+  // determine previous section for mobile back behaviour
+  const orderedSections: Section[] = ['profile', 'profiling', 'recommendation', 'comparison', 'chatbot', 'feedback']
+  const activeIndex = orderedSections.findIndex((s) => s === activeSection)
+  const previousSection = activeIndex > 0 ? orderedSections[activeIndex - 1] : null
+  const handleMobileBack = () => {
+    if (previousSection) {
+      onSectionChange(previousSection)
+      return
+    }
+    navigate(-1)
+  }
+
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
       {/* Mobile top bar */}
       <UserMobileTopBar
         onOpenDrawer={() => setDrawerOpen(true)}
         onLogout={handleLogout}
+        onBack={activeSection === 'profile' ? undefined : handleMobileBack}
       />
 
       {/* Mobile drawer */}

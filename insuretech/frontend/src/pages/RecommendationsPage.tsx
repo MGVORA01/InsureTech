@@ -392,14 +392,6 @@ export default function RecommendationsPage() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <button
-                onClick={() => navigate('/dashboard')}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border px-4 text-sm font-bold transition hover:opacity-90"
-                style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border-strong)', color: 'var(--color-text-primary)' }}
-              >
-                <ArrowBackRoundedIcon className="h-4 w-4" />
-                Go to Dashboard
-              </button>
-              <button
                 onClick={() => {
                   if (selectedPolicyIds.length !== 2) return
                   navigate(`/recommendations/${sessionId}/compare`, {
