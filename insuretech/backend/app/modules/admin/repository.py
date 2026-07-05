@@ -1,6 +1,9 @@
+"""Repository helpers for admin workflows."""
+
 from uuid import UUID
 
 from sqlalchemy import delete as sa_delete
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import func, select
 
@@ -12,31 +15,54 @@ from app.models import (
     PolicyDocument,
     User,
 )
+from app.modules.admin.constants import (
+    ACTIVE_USERS_KEY,
+    CHUNKS_COUNT_LABEL,
+    DOCUMENT_TYPE_KNOWLEDGE_BASE,
+    INACTIVE_USERS_KEY,
+    LIMIT_KEY,
+    PAGE_KEY,
+    TOTAL_CATEGORIES_KEY,
+    TOTAL_INSURERS_KEY,
+    TOTAL_KEY,
+    TOTAL_POLICIES_KEY,
+    TOTAL_USERS_KEY,
+    USERS_KEY,
+)
 
 
-async def get_user_stats(db) -> dict:
+async def get_user_stats(db: AsyncSession) -> dict[str, int | None]:
+    """Fetch aggregate dashboard statistics."""
     total = await db.execute(select(func.count(User.id)))
     active = await db.execute(
-        select(func.count(User.id)).where(User.is_active == True)
+        select(func.count(User.id)).where(User.is_active.is_(True))
     )
     inactive = await db.execute(
-        select(func.count(User.id)).where(User.is_active == False)
+        select(func.count(User.id)).where(User.is_active.is_(False))
     )
     policies = await db.execute(select(func.count(Policy.id)))
     insurers = await db.execute(select(func.count(Insurer.id)))
     categories = await db.execute(select(func.count(InsuranceCategory.id)))
     return {
-        "total_users": total.scalar(),
-        "active_users": active.scalar(),
-        "inactive_users": inactive.scalar(),
-        "total_policies": policies.scalar(),
-        "total_insurers": insurers.scalar(),
-        "total_categories": categories.scalar(),
+        TOTAL_USERS_KEY: total.scalar(),
+        ACTIVE_USERS_KEY: active.scalar(),
+        INACTIVE_USERS_KEY: inactive.scalar(),
+        TOTAL_POLICIES_KEY: policies.scalar(),
+        TOTAL_INSURERS_KEY: insurers.scalar(),
+        TOTAL_CATEGORIES_KEY: categories.scalar(),
     }
 
 
-async def get_all_users(db, page: int, limit: int, is_active: bool | None = None) -> dict:
-    query = select(User).options(selectinload(User.role)).order_by(User.created_at.desc())
+async def get_all_users(
+    db: AsyncSession,
+    page: int,
+    limit: int,
+    is_active: bool | None = None,
+) -> dict[str, object]:
+    """Fetch users with optional active-state filtering."""
+    query = (
+        select(User).options(selectinload(User.role)).order_by(User.created_at.desc())
+    )
     count_query = select(func.count(User.id)).select_from(User)
 
     if is_active is not None:
@@ -52,54 +78,63 @@ async def get_all_users(db, page: int, limit: int, is_active: bool | None = None
     users = result.scalars().all()
 
     return {
-        "users": users,
-        "total": total,
-        "page": page,
-        "limit": limit,
+        USERS_KEY: users,
+        TOTAL_KEY: total,
+        PAGE_KEY: page,
+        LIMIT_KEY: limit,
     }
 
 
-async def get_user_by_id(db, user_id: UUID):
+async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
+    """Fetch a user by ID with role loaded."""
     result = await db.execute(
-        select(User)
-        .options(selectinload(User.role))
-        .where(User.id == user_id)
+        select(User).options(selectinload(User.role)).where(User.id == user_id)
     )
     return result.scalar_one_or_none()
 
 
-async def update_user_status(db, user_id: UUID, is_active: bool) -> User | None:
+async def update_user_status(
+    db: AsyncSession,
+    user_id: UUID,
+    is_active: bool,
+) -> User | None:
+    """Update and persist a user's active state."""
     user = await get_user_by_id(db, user_id)
     if not user:
         return None
     user.is_active = is_active
     db.add(user)
-    await db.flush()
+    await db.commit()
     await db.refresh(user)
     return user
 
 
-async def get_knowledge_documents(db) -> list:
+async def get_knowledge_documents(db: AsyncSession) -> list[object]:
+    """Fetch uploaded knowledge-base documents with chunk counts."""
     result = await db.execute(
         select(
             PolicyDocument.id,
             PolicyDocument.file_name,
             PolicyDocument.file_size,
             PolicyDocument.created_at,
-            func.count(CustomerSupportChunk.id).label("chunks_count"),
+            func.count(CustomerSupportChunk.id).label(CHUNKS_COUNT_LABEL),
         )
         .outerjoin(
             CustomerSupportChunk,
             CustomerSupportChunk.document_id == PolicyDocument.id,
         )
-        .where(PolicyDocument.doc_type == "knowledge_base")
+        .where(PolicyDocument.doc_type == DOCUMENT_TYPE_KNOWLEDGE_BASE)
         .group_by(PolicyDocument.id)
         .order_by(PolicyDocument.created_at.desc())
     )
     return result.all()
 
 
-async def delete_knowledge_document(db, document_id: UUID):
+async def delete_knowledge_document(
+    db: AsyncSession,
+    document_id: UUID,
+) -> PolicyDocument | None:
+    """Delete a knowledge document and its support chunks."""
     stmt = sa_delete(CustomerSupportChunk).where(
         CustomerSupportChunk.document_id == document_id
     )
