@@ -28,6 +28,10 @@ class ConflictException(Exception):
     """Raised when resource conflict occurs."""
 
 
+class TooManyRequestsException(Exception):
+    """Raised when a request exceeds an allowed rate limit."""
+
+
 # Global Exception Handlers
 
 
@@ -44,9 +48,7 @@ async def http_exception_handler(
 
     return JSONResponse(
         status_code=exc.status_code,
-        content=APIResponse.error_response(
-            message=str(exc.detail)
-        ).model_dump(),
+        content=APIResponse.error_response(message=str(exc.detail)).model_dump(),
     )
 
 
@@ -60,18 +62,14 @@ async def validation_exception_handler(
 
     for error in exc.errors():
         field = ".".join(
-            str(location)
-            for location in error["loc"]
-            if location != "body"
+            str(location) for location in error["loc"] if location != "body"
         )
         message = error["msg"].removeprefix("Value error, ")
 
         if field == "email":
             message = "Invalid email"
 
-        validation_errors.append(
-            f"{message}" if field else message
-        )
+        validation_errors.append(f"{message}" if field else message)
 
     logger.warning(
         "Validation error occurred: %s",
@@ -96,9 +94,7 @@ async def bad_request_exception_handler(
 
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
-        content=APIResponse.error_response(
-            message=str(exc)
-        ).model_dump(),
+        content=APIResponse.error_response(message=str(exc)).model_dump(),
     )
 
 
@@ -112,9 +108,7 @@ async def unauthorized_exception_handler(
 
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        content=APIResponse.error_response(
-            message=str(exc)
-        ).model_dump(),
+        content=APIResponse.error_response(message=str(exc)).model_dump(),
     )
 
 
@@ -128,9 +122,7 @@ async def not_found_exception_handler(
 
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
-        content=APIResponse.error_response(
-            message=str(exc)
-        ).model_dump(),
+        content=APIResponse.error_response(message=str(exc)).model_dump(),
     )
 
 
@@ -144,9 +136,21 @@ async def conflict_exception_handler(
 
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
-        content=APIResponse.error_response(
-            message=str(exc)
-        ).model_dump(),
+        content=APIResponse.error_response(message=str(exc)).model_dump(),
+    )
+
+
+async def too_many_requests_exception_handler(
+    request: Request,
+    exc: TooManyRequestsException,
+) -> JSONResponse:
+    """Handle custom rate-limit exceptions."""
+
+    logger.warning(str(exc))
+
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content=APIResponse.error_response(message=str(exc)).model_dump(),
     )
 
 
@@ -156,9 +160,7 @@ async def generic_exception_handler(
 ) -> JSONResponse:
     """Handle unexpected exceptions."""
 
-    logger.exception(
-        "Unhandled exception occurred"
-    )
+    logger.exception("Unhandled exception occurred")
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -207,6 +209,11 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         ConflictException,
         conflict_exception_handler,
+    )
+
+    app.add_exception_handler(
+        TooManyRequestsException,
+        too_many_requests_exception_handler,
     )
 
     app.add_exception_handler(
