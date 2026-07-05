@@ -1,34 +1,64 @@
+"""Service layer for RAG workflows."""
+
+from typing import Any, cast
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.config import settings
-from app.core.logging import get_logger
-from app.ai.rag_pipeline import retrieve_chunks
+
 from app.ai.llm_providers import generate_response
-from app.modules.rag.schemas import RagQueryRequest, RagQueryResponse, ChunkResult
+from app.ai.rag_pipeline import retrieve_chunks
+from app.core.config import settings
+from app.core.exceptions import BadRequestException
+from app.core.logging import get_logger
+from app.modules.rag.constants import (
+    CONTEXT_PART_TEMPLATE,
+    CONTEXT_SEPARATOR,
+    EMPTY_VALUE,
+    INSURANCE_CATEGORY_KEY,
+    INSURER_KEY,
+    LLM_DISABLED_MESSAGE_TEMPLATE,
+    LLM_ERROR_LOG_MESSAGE,
+    LLM_FAILED_MESSAGE_TEMPLATE,
+    METADATA_KEY,
+    NO_RELEVANT_DOCUMENTS_MESSAGE,
+    NOT_AVAILABLE_VALUE,
+    POLICY_NAME_KEY,
+    PROVIDER_ERROR,
+    PROVIDER_GROQ,
+    PROVIDER_NONE,
+    QUERY_EMPTY_MESSAGE,
+    RAG_COMPLETED_MESSAGE,
+    RAG_LOG_MESSAGE,
+    SECTION_NAME_KEY,
+    SECTION_TYPE_KEY,
+    SIMILARITY_KEY,
+    SYSTEM_PROMPT,
+    TEXT_KEY,
+    USER_PROMPT_TEMPLATE,
+)
+from app.modules.rag.schemas import ChunkResult, RagQueryRequest, RagQueryResponse
+from app.shared.response import APIResponse
 
 logger = get_logger(__name__)
 
-SYSTEM_PROMPT = """You are an expert insurance policy analyst. Your role is to answer questions 
-based strictly on the provided policy document excerpts.
-
-Rules:
-1. Answer ONLY using the provided context. If the context doesn't contain enough information, say so.
-2. Always mention the specific policy name and insurer when referencing information.
-3. If comparing policies across insurers, highlight key differences clearly.
-4. Use simple language that a policyholder can understand.
-5. Cite the section name for each piece of information you provide."""
-
 
 class RAGService:
+    """Service for RAG queries."""
 
     async def query(
         self,
         db: AsyncSession,
         user_id: str,
         request: RagQueryRequest,
-    ) -> RagQueryResponse:
+    ) -> APIResponse[dict[str, object]]:
+        """Answer a RAG query."""
+        if not request.query.strip():
+            raise BadRequestException(QUERY_EMPTY_MESSAGE)
+
         logger.info(
-            "RAG query: user=%s query=%s categories=%s",
-            user_id, request.query, request.insurance_categories,
+            RAG_LOG_MESSAGE,
+            user_id,
+            request.query,
+            request.insurance_categories,
         )
 
         chunks = await retrieve_chunks(
@@ -41,59 +71,91 @@ class RAGService:
         )
 
         if not chunks:
-            return RagQueryResponse(
-                answer="No relevant policy documents found for your query.",
+            result = RagQueryResponse(
+                answer=NO_RELEVANT_DOCUMENTS_MESSAGE,
                 chunks=[],
-                provider="none",
+                provider=PROVIDER_NONE,
+            )
+            return APIResponse.success_response(
+                message=RAG_COMPLETED_MESSAGE,
+                data=result.model_dump(),
             )
 
-        chunk_results = [
-            ChunkResult(
-                text=c["text"],
-                policy_name=c["metadata"].get("policy_name", ""),
-                insurer=c["metadata"].get("insurer", ""),
-                insurance_category=c["metadata"].get("insurance_category", ""),
-                section_name=c["metadata"].get("section_name", ""),
-                section_type=c["metadata"].get("section_type", ""),
-                similarity=c["similarity"],
-            )
-            for c in chunks
-        ]
+        chunk_results = self._build_chunk_results(chunks)
 
         if settings.GROQ_API_KEY:
-            context_parts = []
-            for i, c in enumerate(chunks, 1):
-                meta = c["metadata"]
-                context_parts.append(
-                    f"[{i}] Policy: {meta.get('policy_name', 'N/A')} | "
-                    f"Insurer: {meta.get('insurer', 'N/A')} | "
-                    f"Section: {meta.get('section_name', 'N/A')}\n"
-                    f"{c['text']}"
-                )
-            context = "\n\n".join(context_parts)
+            context = self._build_context(chunks)
 
             try:
                 answer = generate_response(
                     system_prompt=SYSTEM_PROMPT,
-                    user_prompt=f"Context:\n{context}\n\nQuestion: {request.query}",
+                    user_prompt=USER_PROMPT_TEMPLATE.format(
+                        context=context,
+                        question=request.query,
+                    ),
                 )
-                provider = "groq"
-            except Exception as e:
-                logger.error("LLM generation failed: %s", e)
-                answer = f"Retrieved {len(chunks)} chunks but LLM generation failed: {e}"
-                provider = "error"
+                provider = PROVIDER_GROQ
+            except Exception as exc:
+                logger.error(LLM_ERROR_LOG_MESSAGE, exc)
+                answer = LLM_FAILED_MESSAGE_TEMPLATE.format(
+                    chunk_count=len(chunks),
+                    error=exc,
+                )
+                provider = PROVIDER_ERROR
         else:
-            answer = (
-                f"Retrieved {len(chunks)} relevant chunks. "
-                "Add GROQ_API_KEY to .env to enable AI-generated answers."
+            answer = LLM_DISABLED_MESSAGE_TEMPLATE.format(
+                chunk_count=len(chunks),
             )
-            provider = "none"
+            provider = PROVIDER_NONE
 
-        return RagQueryResponse(
+        result = RagQueryResponse(
             answer=answer,
             chunks=chunk_results,
             provider=provider,
         )
+        return APIResponse.success_response(
+            message=RAG_COMPLETED_MESSAGE,
+            data=result.model_dump(),
+        )
+
+    @staticmethod
+    def _build_chunk_results(chunks: list[dict[str, Any]]) -> list[ChunkResult]:
+        """Convert retrieved chunks to response schemas."""
+        chunk_results = []
+        for chunk in chunks:
+            metadata = cast(dict[str, Any], chunk[METADATA_KEY])
+            chunk_results.append(
+                ChunkResult(
+                    text=chunk[TEXT_KEY],
+                    policy_name=metadata.get(POLICY_NAME_KEY, EMPTY_VALUE),
+                    insurer=metadata.get(INSURER_KEY, EMPTY_VALUE),
+                    insurance_category=metadata.get(
+                        INSURANCE_CATEGORY_KEY,
+                        EMPTY_VALUE,
+                    ),
+                    section_name=metadata.get(SECTION_NAME_KEY, EMPTY_VALUE),
+                    section_type=metadata.get(SECTION_TYPE_KEY, EMPTY_VALUE),
+                    similarity=chunk[SIMILARITY_KEY],
+                )
+            )
+        return chunk_results
+
+    @staticmethod
+    def _build_context(chunks: list[dict[str, Any]]) -> str:
+        """Build LLM context from retrieved chunks."""
+        context_parts = []
+        for index, chunk in enumerate(chunks, 1):
+            metadata = cast(dict[str, Any], chunk[METADATA_KEY])
+            context_parts.append(
+                CONTEXT_PART_TEMPLATE.format(
+                    index=index,
+                    policy_name=metadata.get(POLICY_NAME_KEY, NOT_AVAILABLE_VALUE),
+                    insurer=metadata.get(INSURER_KEY, NOT_AVAILABLE_VALUE),
+                    section_name=metadata.get(SECTION_NAME_KEY, NOT_AVAILABLE_VALUE),
+                    text=chunk[TEXT_KEY],
+                )
+            )
+        return CONTEXT_SEPARATOR.join(context_parts)
 
 
 Service = RAGService()
