@@ -15,6 +15,7 @@ from app.models import (
     PolicyDocument,
     Recommendation,
 )
+from app.modules.recommendations.constants import DEFAULT_SEGMENT
 
 
 async def get_business_risk_scores(
@@ -79,7 +80,7 @@ async def get_policies_for_insurance_categories(
             or_(
                 Policy.target_segment.is_(None),
                 Policy.target_segment == segment,
-                Policy.target_segment == "both",
+                Policy.target_segment == DEFAULT_SEGMENT,
             ),
         )
         .order_by(Policy.policy_name)
@@ -202,7 +203,7 @@ async def get_candidate_chunks_for_risk_categories(
             or_(
                 Policy.target_segment.is_(None),
                 Policy.target_segment == segment,
-                Policy.target_segment == "both",
+                Policy.target_segment == DEFAULT_SEGMENT,
             ),
             or_(*filters),
         )

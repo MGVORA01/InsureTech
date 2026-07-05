@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import BusinessProfile, ProfilingSession, Report
+from app.modules.reports.constants import REPORT_STATUS_COMPLETED
 
 
 async def get_session_with_business(
@@ -37,7 +38,7 @@ async def create_completed_report(
         business_id=business_id,
         session_id=session_id,
         report_type=report_type,
-        status="completed",
+        status=REPORT_STATUS_COMPLETED,
         generated_at=datetime.now(timezone.utc),
     )
     db.add(report)

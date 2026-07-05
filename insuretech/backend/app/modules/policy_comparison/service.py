@@ -12,9 +12,23 @@ from app.models import User
 from app.modules.businesses.service import Service as BusinessService
 from app.modules.policy_comparison.constants import (
     ADVANTAGE_TERMS,
+    BUSINESS_PROFILE_NOT_FOUND_MESSAGE,
+    CHAT_RESPONSE_GENERATED_MESSAGE,
+    COMPARISON_COMPLETED_MESSAGE,
     COMPARISON_SECTIONS,
+    CONFIDENCE_LOW,
+    CONFIDENCE_MEDIUM,
+    INFO_NOT_AVAILABLE_MESSAGE,
     LIMITATION_TERMS,
     LLM_MODEL,
+    LLM_TEMPERATURE,
+    POLICY_A_NOT_FOUND_MESSAGE,
+    POLICY_B_NOT_FOUND_MESSAGE,
+    SAME_POLICY_COMPARISON_MESSAGE,
+    SESSION_BUSINESS_MISMATCH_MESSAGE,
+    SESSION_POLICY_MISMATCH_MESSAGE,
+    STRONGER_INSUFFICIENT_EVIDENCE,
+    UNKNOWN_LABEL,
 )
 from app.modules.policy_comparison.provider import Provider
 from app.modules.policy_comparison.prompts import (
@@ -55,7 +69,7 @@ class ComparisonService:
     ):
         profile = await BusinessService.get_business_by_id(business_profile_id, db)
         if profile.user_id != user.id:
-            raise NotFoundException("Business profile not found")
+            raise NotFoundException(BUSINESS_PROFILE_NOT_FOUND_MESSAGE)
 
     @staticmethod
     def _policy_id_from_recommendation(rec) -> UUID | None:
@@ -80,7 +94,7 @@ class ComparisonService:
 
         business_id = await repository.get_session_business_id(db, request.session_id)
         if business_id != request.business_profile_id:
-            raise BadRequestException("Selected session does not match this business")
+            raise BadRequestException(SESSION_BUSINESS_MISMATCH_MESSAGE)
 
         recs = await repository.get_active_recommendations_for_session(
             db,
@@ -99,9 +113,7 @@ class ComparisonService:
             return
         selected = {request.policy_id_a, request.policy_id_b}
         if not selected.issubset(recommended_policy_ids):
-            raise BadRequestException(
-                "Selected policies must be from this recommendation session"
-            )
+            raise BadRequestException(SESSION_POLICY_MISMATCH_MESSAGE)
 
     @staticmethod
     def _shorten_text(text: str, limit: int = 900) -> str:
@@ -138,7 +150,7 @@ class ComparisonService:
 
     def _format_pointwise_value(self, chunks: list[dict]) -> str:
         if not chunks:
-            return "Information not available in the selected policies."
+            return INFO_NOT_AVAILABLE_MESSAGE
 
         points = []
         for chunk in chunks[:2]:
@@ -149,15 +161,11 @@ class ComparisonService:
                 points.append(f"{section_name}: {item}")
                 if len(points) >= 3:
                     return "\n".join(points)
-        return (
-            "\n".join(points)
-            if points
-            else "Information not available in the selected policies."
-        )
+        return "\n".join(points) if points else INFO_NOT_AVAILABLE_MESSAGE
 
     def _format_retrieved_value(self, chunks: list[dict]) -> str:
         if not chunks:
-            return "Information not available in the selected policies."
+            return INFO_NOT_AVAILABLE_MESSAGE
 
         return self._format_pointwise_value(chunks)
 
@@ -180,10 +188,7 @@ class ComparisonService:
                 f"Policy B evidence ({meta.get('section_name') or section_name}): "
                 f"{self._shorten_text(policy_b_chunks[0].get('text', ''), 350)}"
             )
-        return (
-            "\n\n".join(evidence_parts)
-            or "Information not available in the selected policies."
-        )
+        return "\n\n".join(evidence_parts) or INFO_NOT_AVAILABLE_MESSAGE
 
     def _chunks_to_compare_response(
         self,
@@ -191,7 +196,7 @@ class ComparisonService:
         policy_b_name: str,
         section_chunks: dict[str, dict[str, list[dict]]],
     ) -> CompareResponse:
-        unavailable = "Information not available in the selected policies."
+        unavailable = INFO_NOT_AVAILABLE_MESSAGE
         comparisons = []
         missing_information = []
 
@@ -210,13 +215,15 @@ class ComparisonService:
                     "category": section_name,
                     "policy_a_value": self._format_retrieved_value(policy_a_chunks),
                     "policy_b_value": self._format_retrieved_value(policy_b_chunks),
-                    "stronger": "insufficient_evidence",
+                    "stronger": STRONGER_INSUFFICIENT_EVIDENCE,
                     "evidence": self._format_evidence(
                         section_name,
                         policy_a_chunks,
                         policy_b_chunks,
                     ),
-                    "confidence": "medium" if has_a and has_b else "low",
+                    "confidence": CONFIDENCE_MEDIUM
+                    if has_a and has_b
+                    else CONFIDENCE_LOW,
                 }
             )
 
@@ -285,12 +292,14 @@ class ComparisonService:
                 "supporting wording."
             ),
             missing_information=missing_information,
-            overall_confidence="medium" if available_sections else "low",
+            overall_confidence=CONFIDENCE_MEDIUM
+            if available_sections
+            else CONFIDENCE_LOW,
         )
 
     def _compact_chunks_for_prompt(self, chunks: list[dict], limit: int = 550) -> str:
         if not chunks:
-            return "Information not available in the selected policies."
+            return INFO_NOT_AVAILABLE_MESSAGE
 
         entries = []
         for chunk in chunks[:1]:
@@ -320,7 +329,7 @@ class ComparisonService:
             if len(points) >= limit:
                 break
         deduped = list(dict.fromkeys(points))[:limit]
-        return deduped or ["Information not available in the selected policies."]
+        return deduped or [INFO_NOT_AVAILABLE_MESSAGE]
 
     def _normalize_compare_response(
         self,
@@ -428,14 +437,14 @@ class ComparisonService:
     ) -> APIResponse[dict]:
         policy_a = await get_policy_with_relations(db, request.policy_id_a)
         if not policy_a:
-            raise NotFoundException("Policy A not found")
+            raise NotFoundException(POLICY_A_NOT_FOUND_MESSAGE)
 
         policy_b = await get_policy_with_relations(db, request.policy_id_b)
         if not policy_b:
-            raise NotFoundException("Policy B not found")
+            raise NotFoundException(POLICY_B_NOT_FOUND_MESSAGE)
 
         if request.policy_id_a == request.policy_id_b:
-            raise BadRequestException("Cannot compare a policy with itself")
+            raise BadRequestException(SAME_POLICY_COMPARISON_MESSAGE)
 
         await self._verify_business_ownership(db, user, request.business_profile_id)
         await self._verify_session_scope(db, request)
@@ -480,9 +489,9 @@ class ComparisonService:
             }
 
         policy_a_name = f"{policy_a.policy_name}"
-        policy_a_insurer = policy_a.insurer.name if policy_a.insurer else "Unknown"
+        policy_a_insurer = policy_a.insurer.name if policy_a.insurer else UNKNOWN_LABEL
         policy_b_name = f"{policy_b.policy_name}"
-        policy_b_insurer = policy_b.insurer.name if policy_b.insurer else "Unknown"
+        policy_b_insurer = policy_b.insurer.name if policy_b.insurer else UNKNOWN_LABEL
 
         prompt_sections = self._build_compact_prompt_sections(section_chunks)
         user_prompt = build_user_prompt(
@@ -499,13 +508,13 @@ class ComparisonService:
                 system_prompt=SYSTEM_PROMPT,
                 user_prompt=user_prompt,
                 model=LLM_MODEL,
-                temperature=0.05,
+                temperature=LLM_TEMPERATURE,
             )
             clean = self._strip_json_fences(llm_response)
             parsed = CompareResponse.model_validate_json(clean)
             result = self._normalize_compare_response(parsed, section_chunks)
             return APIResponse.success_response(
-                message="Comparison completed successfully",
+                message=COMPARISON_COMPLETED_MESSAGE,
                 data=result.model_dump(),
             )
         except (ValidationError, ValueError) as exc:
@@ -521,7 +530,7 @@ class ComparisonService:
             section_chunks=section_chunks,
         )
         return APIResponse.success_response(
-            message="Comparison completed successfully",
+            message=COMPARISON_COMPLETED_MESSAGE,
             data=result.model_dump(),
         )
 
@@ -533,14 +542,14 @@ class ComparisonService:
     ) -> APIResponse[dict]:
         policy_a = await get_policy_with_relations(db, request.policy_id_a)
         if not policy_a:
-            raise NotFoundException("Policy A not found")
+            raise NotFoundException(POLICY_A_NOT_FOUND_MESSAGE)
 
         policy_b = await get_policy_with_relations(db, request.policy_id_b)
         if not policy_b:
-            raise NotFoundException("Policy B not found")
+            raise NotFoundException(POLICY_B_NOT_FOUND_MESSAGE)
 
         if request.policy_id_a == request.policy_id_b:
-            raise BadRequestException("Cannot compare a policy with itself")
+            raise BadRequestException(SAME_POLICY_COMPARISON_MESSAGE)
 
         await self._verify_business_ownership(db, user, request.business_profile_id)
         await self._verify_session_scope(db, request)
@@ -571,21 +580,21 @@ class ComparisonService:
         except Exception as exc:
             logger.warning("Comparison chat retrieval failed: %s", exc)
             result = CompareChatResponse(
-                answer="Information not available in the selected policies.",
+                answer=INFO_NOT_AVAILABLE_MESSAGE,
                 sources=[],
             )
             return APIResponse.success_response(
-                message="Chat response generated",
+                message=CHAT_RESPONSE_GENERATED_MESSAGE,
                 data=result.model_dump(),
             )
 
         if not chunks:
             result = CompareChatResponse(
-                answer="Information not available in the selected policies.",
+                answer=INFO_NOT_AVAILABLE_MESSAGE,
                 sources=[],
             )
             return APIResponse.success_response(
-                message="Chat response generated",
+                message=CHAT_RESPONSE_GENERATED_MESSAGE,
                 data=result.model_dump(),
             )
 
@@ -611,9 +620,9 @@ class ComparisonService:
         context_text = "\n\n".join(context_parts)
 
         policy_a_name = f"{policy_a.policy_name}"
-        policy_a_insurer = policy_a.insurer.name if policy_a.insurer else "Unknown"
+        policy_a_insurer = policy_a.insurer.name if policy_a.insurer else UNKNOWN_LABEL
         policy_b_name = f"{policy_b.policy_name}"
-        policy_b_insurer = policy_b.insurer.name if policy_b.insurer else "Unknown"
+        policy_b_insurer = policy_b.insurer.name if policy_b.insurer else UNKNOWN_LABEL
 
         messages = build_chat_messages(
             policy_a_name=policy_a_name,
@@ -631,7 +640,7 @@ class ComparisonService:
                 system_prompt="",
                 user_prompt="",
                 model=LLM_MODEL,
-                temperature=0.05,
+                temperature=LLM_TEMPERATURE,
                 messages=messages,
             )
         except Exception as exc:
@@ -643,7 +652,7 @@ class ComparisonService:
             sources=sources,
         )
         return APIResponse.success_response(
-            message="Chat response generated",
+            message=CHAT_RESPONSE_GENERATED_MESSAGE,
             data=result.model_dump(),
         )
 
