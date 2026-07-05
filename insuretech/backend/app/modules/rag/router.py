@@ -1,34 +1,31 @@
+"""Route definitions for RAG workflows."""
+
 from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from app.core.database import get_db
-from app.core.exceptions import BadRequestException
+from app.models import User
+from app.modules.rag.constants import ASK_ROUTE, RAG_PREFIX, RAG_TAG
+from app.modules.rag.schemas import RagQueryRequest
+from app.modules.rag.service import Service
 from app.shared.dependency.get_current_user import get_current_user
 from app.shared.response import APIResponse
-from app.models import User
-from app.modules.rag.schemas import RagQueryRequest, RagQueryResponse
-from app.modules.rag.service import Service
 
-router = APIRouter(prefix="/rag", tags=["RAG"])
+router = APIRouter(prefix=RAG_PREFIX, tags=[RAG_TAG])
 
 
-@router.post("/ask", status_code=200)
+@router.post(ASK_ROUTE, status_code=status.HTTP_200_OK)
 async def ask_rag(
     body: RagQueryRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> APIResponse[RagQueryResponse]:
-    if not body.query.strip():
-        raise BadRequestException("Query cannot be empty")
-
-    result = await Service.query(
+) -> APIResponse:
+    """Ask a RAG question."""
+    return await Service.query(
         db=db,
         user_id=str(current_user.id),
         request=body,
-    )
-
-    return APIResponse.success_response(
-        message="RAG query completed",
-        data=result,
     )
