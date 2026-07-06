@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import BusinessProfile, Industry, Segment
-from app.modules.businesses.schemas import CreateBusinessRequest
 from app.shared import base_repository as Base
 
 
@@ -45,13 +44,33 @@ async def get_industries_by_segment(
 async def create_business(
     db: AsyncSession,
     user_id: UUID,
-    data: CreateBusinessRequest,
+    industry_id: UUID,
+    segment_id: UUID,
+    business_name: str,
+    business_description: str | None = None,
+    city: str | None = None,
+    state: str | None = None,
+    address: str | None = None,
+    pincode: str | None = None,
+    year_established: int | None = None,
+    employee_count: int | None = None,
+    annual_turnover_range: str | None = None,
 ) -> BusinessProfile:
     """Create a new business profile.
 
     Args:
         user_id: UUID of the owning user.
-        data: Validated create-business payload.
+        industry_id: UUID of the industry.
+        segment_id: UUID of the segment.
+        business_name: Name of the business.
+        business_description: Optional description.
+        city: Optional city.
+        state: Optional state.
+        address: Optional address.
+        pincode: Optional pincode.
+        year_established: Optional year established.
+        employee_count: Optional employee count.
+        annual_turnover_range: Optional turnover range.
 
     Returns:
         The newly created BusinessProfile ORM instance.
@@ -60,17 +79,17 @@ async def create_business(
         db,
         BusinessProfile,
         user_id=user_id,
-        industry_id=data.industry_id,
-        segment_id=data.segment_id,
-        business_name=data.business_name,
-        business_description=data.business_description,
-        city=data.city,
-        state=data.state,
-        address=data.address,
-        pincode=data.pincode,
-        year_established=data.year_established,
-        employee_count=data.employee_count,
-        annual_turnover_range=data.annual_turnover_range,
+        industry_id=industry_id,
+        segment_id=segment_id,
+        business_name=business_name,
+        business_description=business_description,
+        city=city,
+        state=state,
+        address=address,
+        pincode=pincode,
+        year_established=year_established,
+        employee_count=employee_count,
+        annual_turnover_range=annual_turnover_range,
     )
 
     # Eagerly load relationships for serialization
