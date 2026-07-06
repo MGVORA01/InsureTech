@@ -1,6 +1,6 @@
 """Database access layer for the profiling module."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import and_, or_, select
@@ -383,7 +383,7 @@ async def complete_session(
 
     if session:
         session.status = SESSION_STATUS_COMPLETED
-        session.completed_at = datetime.now()
+        session.completed_at = datetime.now(timezone.utc)
         await db.flush()
         await db.refresh(session)
 

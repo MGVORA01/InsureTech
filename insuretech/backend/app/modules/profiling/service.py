@@ -37,6 +37,7 @@ from app.modules.profiling.constants import (
     SECTIONS_ORDER,
     SESSION_STARTED_MESSAGE,
     SESSION_STATE_FETCHED_MESSAGE,
+    SESSION_STATUS_COMPLETED,
     TIER2_QUESTIONS_FETCHED_MESSAGE,
     UNKNOWN_LABEL,
     UNKNOWN_LEVEL_LABEL,
@@ -185,20 +186,12 @@ class ProfilingService:
     ) -> APIResponse:
         """Fetch the full state of a profiling session.
 
-        If ``section`` is provided the session's current section pointer
-        is advanced to that section (acting as navigation).
-
         Args:
             tier: If set, filter questions by tier (1 or 2).
         """
         session, business = await self._resolve_session(session_id, user, db)
 
         target = section or session.current_section
-        if target and target != session.current_section:
-            updated = await repository.update_session_section(db, session.id, target)
-            if updated:
-                session = updated
-            await db.commit()
 
         state = await self._build_section_state(
             db, session, business, target, tier=tier
@@ -221,6 +214,8 @@ class ProfilingService:
         """
         session, business = await self._resolve_session(session_id, user, db)
 
+        if session.status == SESSION_STATUS_COMPLETED:
+            raise BadRequestException("Session is already completed")
         await repository.save_answer(db, session.id, data.question_id, data.answer_value)
         logger.info(
             "Answer saved for session %s, question %s", session.id, data.question_id
@@ -252,6 +247,8 @@ class ProfilingService:
         """Save multiple answers in a batch."""
         session, business = await self._resolve_session(session_id, user, db)
 
+        if session.status == SESSION_STATUS_COMPLETED:
+            raise BadRequestException("Session is already completed")
         for ans_data in data.answers:
             await repository.save_answer(db, session.id, ans_data.question_id, ans_data.answer_value)
 
@@ -286,6 +283,8 @@ class ProfilingService:
         """Complete a profiling session and compute risk scores."""
         session, business = await self._resolve_session(session_id, user, db)
 
+        if session.status == SESSION_STATUS_COMPLETED:
+            raise BadRequestException("Session is already completed")
         risk_scores = await self._compute_risk_scores(db, session, business)
         saved = await repository.save_risk_scores(db, risk_scores)
 
