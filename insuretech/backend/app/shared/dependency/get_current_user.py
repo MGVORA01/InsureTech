@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.exceptions import UnauthorizedException
 
-from app.modules.auth.jwt_halper import decode_token
+from app.modules.auth.jwt_helper import decode_token
 from app.modules.auth.repository import get_user_by_id
 from app.modules.auth.cookie_helper import (
     get_access_token_from_cookie

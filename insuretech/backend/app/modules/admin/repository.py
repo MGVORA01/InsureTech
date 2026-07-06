@@ -96,7 +96,6 @@ async def update_user_status(
     if not user:
         return None
     user.is_active = is_active
-    db.add(user)
     await db.commit()
     await db.refresh(user)
     return user
