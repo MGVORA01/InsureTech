@@ -35,7 +35,7 @@ from app.shared.response import APIResponse
 
 class ReportService:
     def __init__(self, recommendation_service=None) -> None:
-        self._recommendation_service = recommendation_service or RecommendationService()
+        self._recommendation_service = recommendation_service or RecommendationService
         self._pdf_builder = PdfReportBuilder()
 
     async def generate_risk_advisory_report(

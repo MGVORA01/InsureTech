@@ -36,8 +36,8 @@ logger = get_logger(__name__)
 
 class RecommendationService:
     def __init__(self, business_service=None, profiling_service=None) -> None:
-        self._business_service = business_service or BusinessService()
-        self._profiling_service = profiling_service or ProfilingService()
+        self._business_service = business_service or BusinessService
+        self._profiling_service = profiling_service or ProfilingService
         self._presenter = RecommendationPresenter()
 
     async def get_recommendations(
