@@ -15,7 +15,7 @@ from app.modules.auth.cookie_helper import (
     get_refresh_token_from_cookie,
     set_auth_cookies,
 )
-from app.modules.auth.jwt_halper import (
+from app.modules.auth.jwt_helper import (
     create_access_token,
     create_password_reset_token,
     create_refresh_token,

@@ -364,7 +364,6 @@ async def update_session_section(
 
     if session:
         session.current_section = section
-        db.add(session)
         await db.flush()
         await db.refresh(session)
 
@@ -394,7 +393,6 @@ async def complete_session(
     if session:
         session.status = SESSION_STATUS_COMPLETED
         session.completed_at = datetime.now()
-        db.add(session)
         await db.flush()
         await db.refresh(session)
 

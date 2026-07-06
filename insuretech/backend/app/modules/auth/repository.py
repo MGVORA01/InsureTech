@@ -66,7 +66,6 @@ async def update_user_password(
         return None
 
     user.password_hash = new_password_hash
-    db.add(user)
     await db.commit()
     await db.refresh(user)
     return user
@@ -111,7 +110,6 @@ async def mark_reset_token_used(
 ) -> PasswordResetToken:
     """Mark and commit a password reset token as used."""
     reset_token.used_at = datetime.now(timezone.utc)
-    db.add(reset_token)
     await db.commit()
     await db.refresh(reset_token)
     return reset_token
