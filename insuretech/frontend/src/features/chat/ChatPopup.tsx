@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { sendChatMessage } from './chatApi'
 import type { ChatMessage } from './chat.types'
-import './ChatPopup.css'
 
 interface ChatPopupProps {
   onClose: () => void
@@ -44,7 +43,7 @@ function ChatPopup({ onClose }: ChatPopupProps) {
     setLoading(true)
 
     try {
-      const history = messages.slice(1).map(m => ({ role: m.role, content: m.content }))
+      const history = messages.slice(1).map((m) => ({ role: m.role, content: m.content }))
       const res = await sendChatMessage(q, sessionRef.current, history)
       sessionRef.current = res.session_id
 
@@ -70,11 +69,11 @@ function ChatPopup({ onClose }: ChatPopupProps) {
   }
 
   return (
-    <div className="chat-popup" role="dialog" aria-modal="true" aria-label="Chat assistant">
-      <div className="chat-popup-card">
-        <div className="chat-popup-header">
-          <div className="chat-popup-header-left">
-            <div className="chat-popup-avatar">
+    <div className="fixed bottom-[90px] right-6 z-[60] animate-fadeIn" role="dialog" aria-modal="true" aria-label="Chat assistant">
+      <div className="flex h-[70vh] w-[calc(100vw-24px)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-[0_16px_48px_rgba(16,42,69,0.28)] sm:h-[600px] sm:w-[400px]">
+        <div className="flex items-center justify-between bg-primary px-4 py-3.5 text-white">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-full bg-cta">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12a8.5 8.5 0 1 1-3.6-6.9" />
                 <path d="M21 4l-9.4 9.4" />
@@ -82,15 +81,15 @@ function ChatPopup({ onClose }: ChatPopupProps) {
               </svg>
             </div>
             <div>
-              <p className="chat-popup-title">InsureTech Assistant</p>
-              <p className="chat-popup-status">
-                <span className="chat-popup-dot" />
+              <p className="text-sm font-semibold leading-tight">InsureTech Assistant</p>
+              <p className="flex items-center gap-1.5 text-[11px] leading-tight text-white/65">
+                <span className="inline-block h-[7px] w-[7px] rounded-full bg-emerald-400" />
                 Online
               </p>
             </div>
           </div>
           <button
-            className="chat-popup-close"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-none bg-transparent text-white/75 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70"
             onClick={onClose}
             aria-label="Close chat"
             type="button"
@@ -102,27 +101,29 @@ function ChatPopup({ onClose }: ChatPopupProps) {
           </button>
         </div>
 
-        <div className="chat-popup-messages">
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto bg-background p-4">
           {messages.map((msg, i) => (
-            <div key={i} className={`chat-popup-row ${msg.role === 'user' ? 'is-user' : 'is-assistant'}`}>
-              <div className={`chat-popup-bubble ${msg.role === 'user' ? 'bubble-user' : 'bubble-assistant'}`}>
-                <p className="chat-popup-text">{msg.content}</p>
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] rounded-[var(--radius-md)] px-3.5 py-2.5 text-sm leading-6 ${msg.role === 'user' ? 'rounded-br-[2px] bg-secondary text-white' : 'rounded-bl-[2px] border border-border bg-surface text-text-primary'}`}>
+                <p className="whitespace-pre-wrap leading-6">{msg.content}</p>
               </div>
             </div>
           ))}
 
           {loading && (
-            <div className="chat-popup-row is-assistant">
-              <div className="chat-popup-bubble bubble-assistant">
-                <div className="chat-popup-typing">
-                  <span /><span /><span />
+            <div className="flex justify-start">
+              <div className="max-w-[85%] rounded-[var(--radius-md)] rounded-bl-[2px] border border-border bg-surface px-3.5 py-2.5 text-sm leading-6 text-text-primary">
+                <div className="flex gap-1 py-1">
+                  <span className="h-[7px] w-[7px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary" />
+                  <span className="h-[7px] w-[7px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary [animation-delay:0.15s]" />
+                  <span className="h-[7px] w-[7px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary [animation-delay:0.3s]" />
                 </div>
               </div>
             </div>
           )}
 
           {error && (
-            <div className="chat-popup-error">
+            <div className="rounded-[var(--radius-sm)] bg-[rgba(231,76,60,0.08)] px-2.5 py-1.5 text-center text-[13px] text-[#e74c3c]">
               {error}
             </div>
           )}
@@ -130,9 +131,9 @@ function ChatPopup({ onClose }: ChatPopupProps) {
           <div ref={endRef} />
         </div>
 
-        <div className="chat-popup-input-bar">
+        <div className="flex items-center gap-2 border-t border-border bg-surface px-4 py-3">
           <input
-            className="chat-popup-input"
+            className="flex-1 rounded-[var(--radius-md)] border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-tertiary focus:border-secondary"
             type="text"
             placeholder="Ask about your coverage..."
             value={input}
@@ -141,7 +142,7 @@ function ChatPopup({ onClose }: ChatPopupProps) {
             disabled={loading}
           />
           <button
-            className="chat-popup-send"
+            className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] border-none bg-cta text-cta-contrast transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleSend}
             disabled={loading || !input.trim()}
             aria-label="Send message"

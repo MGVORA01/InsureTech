@@ -10,7 +10,6 @@ import type {
   Tier2QuestionOut,
 } from './profiling.types'
 import QuestionRenderer from './QuestionRenderer'
-import styles from './ProfilingWizard.module.css'
 
 interface ProfilingWizardProps {
   onComplete: (data: ProfilingCompleteOut) => void
@@ -382,9 +381,9 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
   const renderTier1Wizard = () => {
     if (loading && !section) {
       return (
-        <div className={styles.container}>
-          <div className={styles.loadingState}>
-            <div className={styles.spinner} />
+        <div className="w-full min-h-[20rem] pb-20">
+          <div className="flex min-h-[14rem] flex-col items-center justify-center gap-3 px-0 py-8 text-sm text-text-secondary">
+            <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-border border-t-primary" />
             <p>Loading profiling session...</p>
           </div>
         </div>
@@ -393,15 +392,17 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
 
     if (error && !section) {
       return (
-        <div className={styles.container}>
-          <div className={styles.errorBanner}>
-            <p>{error}</p>
-            <button type="button" className={styles.retryBtn} onClick={() => initSession(1)}>
-              Retry
-            </button>
-            <button type="button" className={styles.cancelBtn} onClick={onCancel}>
-              Cancel
-            </button>
+        <div className="w-full min-h-[20rem] pb-20">
+          <div className="mb-4 flex items-center justify-between gap-4 rounded-[14px] border border-risk-high bg-risk-high-bg px-3.5 py-3 text-sm text-risk-high">
+            <p className="m-0">{error}</p>
+            <div className="flex gap-2">
+              <button type="button" className="rounded-[var(--radius-md)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high" onClick={() => initSession(1)}>
+                Retry
+              </button>
+              <button type="button" className="rounded-[var(--radius-md)] border border-border bg-transparent px-3 py-1.5 text-[13px] font-semibold text-text-secondary" onClick={onCancel}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )
@@ -423,40 +424,40 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
     const isLastSection = currentIdx === totalSections - 1
 
     return (
-      <div className={styles.container}>
-        <header className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Insurance Risk Assessment</h1>
-          <p className={styles.pageSubtitle}>
+      <div className="w-full min-h-[20rem] pb-20">
+        <header className="mb-4">
+          <h1 className="m-0 max-w-[46rem] text-[clamp(2.125rem,3.5vw,2.5rem)] font-extrabold leading-[1.05] tracking-[-0.02em] text-text-primary">Insurance Risk Assessment</h1>
+          <p className="mt-2 max-w-[52rem] text-[0.9375rem] font-medium leading-6 text-text-muted">
             Progress through each section at your own pace. Your answers shape the final risk profile and policy recommendations.
           </p>
         </header>
 
-        <div className={styles.progressSection}>
-          <div className={styles.progressHeader}>
+        <div className="mb-5 rounded-[18px] border border-[rgba(20,20,19,0.06)] bg-surface-alt p-4 shadow-[0_14px_40px_rgba(20,20,19,0.045)]">
+          <div className="mb-3 flex items-start justify-between gap-4">
             <div>
-              <span className={styles.sectionLabel}>{sectionLabel}</span>
-              <span className={styles.progressCount}>Step {currentIdx + 1} of {totalSections}</span>
+              <span className="block text-[0.9375rem] font-extrabold text-text-primary">{sectionLabel}</span>
+              <span className="mt-0.5 block text-[0.8125rem] font-semibold text-text-muted">Step {currentIdx + 1} of {totalSections}</span>
             </div>
-            <span className={styles.progressPercent}>{Math.round(progressPct)}% Complete</span>
+            <span className="whitespace-nowrap text-sm font-extrabold text-text-primary">{Math.round(progressPct)}% Complete</span>
           </div>
-          <div className={styles.progressBar}>
-            <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
+          <div className="h-2.5 overflow-hidden rounded-full border border-[rgba(20,20,19,0.06)] bg-surface">
+            <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${progressPct}%` }} />
           </div>
         </div>
 
         {error && (
-          <div className={styles.errorBanner}>
+          <div className="mb-4 flex items-center justify-between gap-4 rounded-[14px] border border-risk-high bg-risk-high-bg px-3.5 py-3 text-sm text-risk-high">
             <span>{error}</span>
-            <button type="button" className={styles.retryBtn} onClick={() => setError(null)}>
+            <button type="button" className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high" onClick={() => setError(null)}>
               Dismiss
             </button>
           </div>
         )}
 
-        <div className={styles.questionsSection}>
+        <div className="flex flex-col gap-[1.125rem]">
           {loading ? (
-            <div className={styles.loadingState}>
-              <div className={styles.spinner} />
+            <div className="flex min-h-[14rem] flex-col items-center justify-center gap-3 px-0 py-8 text-sm text-text-secondary">
+              <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-border border-t-primary" />
               <p>Loading questions...</p>
             </div>
           ) : (
@@ -472,20 +473,20 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
           )}
         </div>
 
-        <div className={styles.nav}>
+        <div className="sticky bottom-0 z-20 mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4 bg-[linear-gradient(to_top,var(--color-background)_78%,rgba(243,240,238,0))] py-3">
           <button
             type="button"
-            className={styles.backBtn}
+            className="justify-self-start rounded-[var(--radius-md)] border border-[rgba(20,20,19,0.1)] bg-surface-alt px-5 py-2.5 text-sm font-bold text-text-primary transition-all hover:-translate-y-0.5 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
             onClick={handleTier1Back}
             disabled={submitting || loading}
           >
             {isFirstSection ? 'Cancel' : 'Back'}
           </button>
-          <span className={styles.navProgress}>Step {currentIdx + 1} of {totalSections}</span>
+          <span className="justify-self-center rounded-full border border-[rgba(20,20,19,0.06)] bg-[rgba(252,251,250,0.92)] px-3 py-1.5 text-[13px] font-extrabold text-text-secondary shadow-[0_10px_30px_rgba(20,20,19,0.05)]">Step {currentIdx + 1} of {totalSections}</span>
           {isLastSection ? (
             <button
               type="button"
-              className={styles.finishBtn}
+              className="justify-self-end rounded-[var(--radius-md)] border border-cta bg-cta px-5 py-2.5 text-sm font-bold text-cta-contrast shadow-cta transition-all hover:-translate-y-0.5 hover:bg-cta-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
               onClick={handleTier1Finish}
               disabled={submitting || loading}
             >
@@ -494,7 +495,7 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
           ) : (
             <button
               type="button"
-              className={styles.nextBtn}
+              className="justify-self-end rounded-[var(--radius-md)] border border-cta bg-cta px-5 py-2.5 text-sm font-bold text-cta-contrast shadow-cta transition-all hover:-translate-y-0.5 hover:bg-cta-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
               onClick={handleTier1Next}
               disabled={submitting || loading}
             >
@@ -514,59 +515,56 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
     const hasHighRisk = filteredScores.some(s => s.risk_level === 'high' || s.risk_level === 'critical')
 
     return (
-      <div className={`${styles.container} ${styles.previewContainer}`}>
-        <div className={styles.previewHeader}>
-          <h2 className={styles.previewTitle}>Your Risk Assessment Results</h2>
-          <p className={styles.previewSubtitle}>
+      <div className="w-full max-w-[1180px]">
+        <div className="mb-5">
+          <h2 className="m-0 mb-2.5 text-[clamp(1.75rem,2.4vw,2.125rem)] font-extrabold leading-[1.15] tracking-[-0.02em] text-text-primary">Your Risk Assessment Results</h2>
+          <p className="m-0 max-w-[42rem] text-[0.9375rem] font-semibold leading-6 text-text-secondary">
             Based on your answers, here is your preliminary risk profile
           </p>
         </div>
 
         {error && (
-          <div className={styles.errorBanner}>
+          <div className="mb-4 flex items-center justify-between gap-4 rounded-[14px] border border-risk-high bg-risk-high-bg px-3.5 py-3 text-sm text-risk-high">
             <span>{error}</span>
-            <button type="button" className={styles.retryBtn} onClick={() => setError(null)}>
+            <button type="button" className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high" onClick={() => setError(null)}>
               Dismiss
             </button>
           </div>
         )}
 
         {filteredScores.length > 0 ? (
-          <div className={styles.scoreGrid}>
+          <div className="mb-4 flex flex-col gap-3">
             {filteredScores.map(s => (
               <div
                 key={s.risk_category_name}
-                className={`${styles.scoreCard} ${s.risk_level === 'high' || s.risk_level === 'critical' ? styles.scoreCardHigh : ''}`}
+                className={`grid min-h-[4rem] items-center gap-4 rounded-[18px] border border-[rgba(20,20,19,0.08)] bg-surface-alt px-4 py-3.5 shadow-[0_14px_40px_rgba(20,20,19,0.04)] md:grid-cols-[minmax(0,1fr)_auto_auto] ${s.risk_level === 'high' || s.risk_level === 'critical' ? 'border-[rgba(220,38,38,0.28)] bg-risk-high-bg' : ''}`}
               >
-                <span className={styles.scoreCardName}>{s.risk_category_name}</span>
-                <span className={`${styles.scoreCardLevel} ${styles[`level${s.risk_level.charAt(0).toUpperCase() + s.risk_level.slice(1)}` as keyof typeof styles] || ''}`}>
+                <span className="text-base font-extrabold text-text-primary">{s.risk_category_name}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[13px] font-extrabold uppercase ${s.risk_level === 'critical' || s.risk_level === 'high' ? 'bg-risk-high-bg text-risk-high' : s.risk_level === 'medium' ? 'bg-risk-medium-bg text-risk-medium' : 'bg-risk-low-bg text-risk-low'}`}>
                   {s.risk_level.toUpperCase()}
                 </span>
-                <span className={styles.scoreCardValue}>{Math.round(s.score * 100)}%</span>
+                <span className="text-right text-[1.5rem] font-extrabold text-text-primary md:text-left">{Math.round(s.score * 100)}%</span>
                 {s.has_tier2_questions && (
-                  <span className={styles.scoreCardTag}>Refinement available</span>
+                  <span className="md:col-span-3 text-[13px] font-bold text-secondary">Refinement available</span>
                 )}
               </div>
             ))}
           </div>
         ) : (
-          <p className={styles.previewSubtitle} style={{ marginBottom: '1.5rem' }}>
+          <p className="mb-6 text-[0.9375rem] font-semibold text-text-secondary">
             Excellent! All your risk categories are below 20%. No significant risks detected.
           </p>
         )}
 
         {hasHighRisk && uniqueT2Questions.length > 0 && (
-          <div className={styles.refinePrompt}>
-            <p className={styles.refineText}>
-              We found <strong>areas</strong> that
-              need closer attention.
-              Answer <strong>{uniqueT2Questions.length} more question{uniqueT2Questions.length !== 1 ? 's' : ''}</strong>
-              {' '}for a more precise assessment.
+          <div className="rounded-[18px] border border-[rgba(20,20,19,0.08)] bg-surface-alt p-4 shadow-[0_14px_40px_rgba(20,20,19,0.04)]">
+            <p className="m-0 mb-3 text-sm leading-6 text-text-primary">
+              We found <strong>areas</strong> that need closer attention. Answer <strong>{uniqueT2Questions.length} more question{uniqueT2Questions.length !== 1 ? 's' : ''}</strong>{' '}for a more precise assessment.
             </p>
-            <div className={styles.refineActions}>
+            <div className="flex flex-wrap gap-2.5">
               <button
                 type="button"
-                className={styles.refineBtn}
+                className="inline-flex min-h-[2.5rem] items-center justify-center rounded-[var(--radius-md)] border border-cta bg-cta px-4 py-2 text-sm font-bold text-cta-contrast transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={handleStartTier2}
                 disabled={submitting}
               >
@@ -574,7 +572,7 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
               </button>
               <button
                 type="button"
-                className={styles.skipBtn}
+                className="inline-flex min-h-[2.5rem] items-center justify-center rounded-[var(--radius-md)] border border-[rgba(20,20,19,0.1)] bg-surface-alt px-4 py-2 text-sm font-bold text-text-primary transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={handleSkipToComplete}
                 disabled={submitting}
               >
@@ -585,13 +583,13 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
         )}
 
         {!hasHighRisk && (
-          <div className={styles.refinePrompt}>
-            <p className={styles.refineText}>
+          <div className="rounded-[18px] border border-[rgba(20,20,19,0.08)] bg-surface-alt p-4 shadow-[0_14px_40px_rgba(20,20,19,0.04)]">
+            <p className="m-0 mb-3 text-sm leading-6 text-text-primary">
               All risk categories are at a Low or Medium level. Your recommendations are ready.
             </p>
             <button
               type="button"
-              className={styles.refineBtn}
+              className="inline-flex min-h-[2.5rem] items-center justify-center rounded-[var(--radius-md)] border border-cta bg-cta px-4 py-2 text-sm font-bold text-cta-contrast transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleSkipToComplete}
               disabled={submitting}
             >
@@ -608,28 +606,28 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
     const categories = Array.from(new Set(tier2Questions.map(t => t.risk_category_name)))
 
     return (
-      <div className={styles.container}>
-        <header className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Precision Refinement</h1>
-          <p className={styles.tier2Subtitle}>
+      <div className="w-full min-h-[20rem] pb-20">
+        <header className="mb-4">
+          <h1 className="m-0 text-[clamp(2.125rem,3.5vw,2.5rem)] font-extrabold leading-[1.05] tracking-[-0.02em] text-text-primary">Precision Refinement</h1>
+          <p className="mt-2 text-[0.9375rem] font-semibold leading-6 text-text-secondary">
             Answer {questions.length} more question{questions.length !== 1 ? 's' : ''} to refine your risk scores
           </p>
         </header>
 
         {error && (
-          <div className={styles.errorBanner}>
+          <div className="mb-4 flex items-center justify-between gap-4 rounded-[14px] border border-risk-high bg-risk-high-bg px-3.5 py-3 text-sm text-risk-high">
             <span>{error}</span>
-            <button type="button" className={styles.retryBtn} onClick={() => setError(null)}>
+            <button type="button" className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high" onClick={() => setError(null)}>
               Dismiss
             </button>
           </div>
         )}
 
-        <div className={styles.questionsSection}>
+        <div className="flex flex-col gap-[1.125rem]">
           {categories.length > 0 && (
-            <div className={styles.tier2Context}>
+            <div className="flex min-h-auto flex-wrap items-center gap-2 text-sm font-bold text-text-primary">
               Refining: {categories.map(cat => (
-                <span key={cat} className={styles.tier2CatTag}>{cat}</span>
+                <span key={cat} className="inline-block rounded-full bg-risk-high-bg px-2.5 py-1 text-[13px] font-bold text-risk-high">{cat}</span>
               ))}
             </div>
           )}
@@ -644,19 +642,19 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
           ))}
         </div>
 
-        <div className={styles.nav}>
+        <div className="sticky bottom-0 z-20 mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4 bg-[linear-gradient(to_top,var(--color-background)_78%,rgba(243,240,238,0))] py-3">
           <button
             type="button"
-            className={styles.backBtn}
+            className="justify-self-start rounded-[var(--radius-md)] border border-[rgba(20,20,19,0.1)] bg-surface-alt px-5 py-2.5 text-sm font-bold text-text-primary transition-all hover:-translate-y-0.5 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleSkipToComplete}
             disabled={submitting}
           >
             Skip
           </button>
-          <span className={styles.navProgress}>{questions.length} follow-up question{questions.length !== 1 ? 's' : ''}</span>
+          <span className="justify-self-center rounded-full border border-[rgba(20,20,19,0.06)] bg-[rgba(252,251,250,0.92)] px-3 py-1.5 text-[13px] font-extrabold text-text-secondary shadow-[0_10px_30px_rgba(20,20,19,0.05)]">{questions.length} follow-up question{questions.length !== 1 ? 's' : ''}</span>
           <button
             type="button"
-            className={styles.finishBtn}
+            className="justify-self-end rounded-[var(--radius-md)] border border-cta bg-cta px-5 py-2.5 text-sm font-bold text-cta-contrast shadow-cta transition-all hover:-translate-y-0.5 hover:bg-cta-hover disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleTier2Finish}
             disabled={submitting}
           >

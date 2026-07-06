@@ -5,7 +5,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import SendIcon from '@mui/icons-material/Send'
 import { sendChatMessage } from '../features/chat/chatApi'
 import type { ChatMessage } from '../features/chat/chat.types'
-import UserLayout from '../layout/UserLayout'
+import UserLayout from '../layouts/UserLayout'
 import type { Section } from '../components/UserSidebar'
 
 function createSessionId() {

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { compareChat } from './comparisonApi'
 import type { CompareChatRequest, CompareChatResponse, CompareRequest } from './comparison.types'
-import './ComparisonChatPopUp.css'
 
 interface ComparisonChatPopUpProps {
   compareParams: CompareRequest
@@ -116,7 +115,7 @@ export default function ComparisonChatPopUp({
     <>
       <button
         type="button"
-        className="comparison-chat-toggle"
+        className="fixed bottom-6 right-6 z-[50] flex h-14 w-14 items-center justify-center rounded-full border-none bg-secondary text-white shadow-[0_4px_16px_rgba(13,115,119,0.3)] transition-transform duration-200 hover:scale-105 hover:shadow-[0_6px_24px_rgba(13,115,119,0.4)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
         onClick={() => setOpen(!open)}
         aria-label={open ? 'Close chat' : 'Open chat'}
         disabled={!compareParams.policy_id_a || !compareParams.policy_id_b}
@@ -135,107 +134,107 @@ export default function ComparisonChatPopUp({
       </button>
 
       {open && (
-        <div className="comparison-chat-backdrop">
-        <div className="comparison-chat-popup" role="dialog" aria-modal="true" aria-label="Policy comparison chat">
-          <div className="comparison-chat-header">
-            <div className="comparison-chat-header-left">
-              <div className="comparison-chat-avatar">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12a8.5 8.5 0 1 1-3.6-6.9" />
-                  <path d="M21 4l-9.4 9.4" />
-                  <path d="M17 4h4v4" />
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35 p-6">
+          <div className="flex h-[min(76vh,720px)] min-h-[520px] w-[min(760px,calc(100vw-48px))] flex-col overflow-hidden rounded-[var(--radius-md)] border border-border bg-surface shadow-card animation-[chat-slide-in_0.25s_ease-out]" role="dialog" aria-modal="true" aria-label="Policy comparison chat">
+            <div className="flex items-center justify-between border-b border-border bg-surface px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-cta">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12a8.5 8.5 0 1 1-3.6-6.9" />
+                    <path d="M21 4l-9.4 9.4" />
+                    <path d="M17 4h4v4" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[18px] font-semibold leading-tight text-text-primary">Policy Comparison Chat</p>
+                  <p className="mt-0.5 text-[12px] leading-tight text-text-secondary">Answers use only the selected policy PDFs</p>
+                </div>
+              </div>
+              <button
+                className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-none bg-transparent text-text-tertiary transition-colors hover:bg-background hover:text-text-primary"
+                onClick={() => setOpen(false)}
+                aria-label="Close chat"
+                type="button"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
-              </div>
-              <div>
-                <p className="comparison-chat-title">Policy Comparison Chat</p>
-                <p className="comparison-chat-subtitle">Answers use only the selected policy PDFs</p>
-              </div>
+              </button>
             </div>
-            <button
-              className="comparison-chat-close"
-              onClick={() => setOpen(false)}
-              aria-label="Close chat"
-              type="button"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
 
-          <div className="comparison-chat-messages">
-            {messages.map((msg, i) => (
-              <div key={i} className={`comparison-chat-row ${msg.role === 'user' ? 'is-user' : 'is-assistant'}`}>
-                <div className={`comparison-chat-bubble ${msg.role === 'user' ? 'bubble-user' : 'bubble-assistant'}`}>
-                  {msg.role === 'assistant' ? (
-                    <ul className="comparison-chat-points">
-                      {splitAssistantText(msg.content).map((point, index) => (
-                        <li key={`${point}-${index}`}>{point}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="comparison-chat-text">{msg.content}</p>
-                  )}
-                  {msg.sources && msg.sources.length > 0 && (
-                    <details className="comparison-chat-sources">
-                      <summary>Sources ({msg.sources.length})</summary>
-                      <ul>
-                        {msg.sources.map((s, j) => (
-                          <li key={j}>
-                            <strong>Policy {s.policy_label}</strong>
-                            {s.section_name && <> &mdash; {s.section_name}</>}
-                            <br />
-                            {s.text.slice(0, 120)}{s.text.length > 120 ? '...' : ''}
-                          </li>
+            <div className="flex flex-1 flex-col gap-4 overflow-y-auto bg-background p-5">
+              {messages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[82%] rounded-[var(--radius-md)] px-4 py-3 text-sm leading-[1.65] ${msg.role === 'user' ? 'rounded-br-[2px] bg-secondary text-white' : 'rounded-bl-[2px] border border-border bg-surface text-text-primary'}`}>
+                    {msg.role === 'assistant' ? (
+                      <ul className="ml-0 list-disc space-y-1 pl-[1.1rem]">
+                        {splitAssistantText(msg.content).map((point, index) => (
+                          <li key={`${point}-${index}`}>{point}</li>
                         ))}
                       </ul>
-                    </details>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {loading && (
-              <div className="comparison-chat-row is-assistant">
-                <div className="comparison-chat-bubble bubble-assistant">
-                  <div className="comparison-chat-typing">
-                    <span /><span /><span />
+                    ) : (
+                      <p className="whitespace-pre-wrap leading-6">{msg.content}</p>
+                    )}
+                    {msg.sources && msg.sources.length > 0 && (
+                      <details className="mt-1.5 text-[11px] text-text-tertiary">
+                        <summary className="cursor-pointer font-medium text-secondary">Sources ({msg.sources.length})</summary>
+                        <ul className="mt-1 space-y-1 pl-[14px]">
+                          {msg.sources.map((s, j) => (
+                            <li key={j}>
+                              <strong>Policy {s.policy_label}</strong>
+                              {s.section_name && <> &mdash; {s.section_name}</>}
+                              <br />
+                              {s.text.slice(0, 120)}{s.text.length > 120 ? '...' : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
                   </div>
                 </div>
-              </div>
-            )}
+              ))}
 
-            {error && (
-              <div className="comparison-chat-error">{error}</div>
-            )}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="max-w-[82%] rounded-[var(--radius-md)] rounded-bl-[2px] border border-border bg-surface px-4 py-3">
+                    <div className="flex gap-1 py-1">
+                      <span className="h-[6px] w-[6px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary" />
+                      <span className="h-[6px] w-[6px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary [animation-delay:0.15s]" />
+                      <span className="h-[6px] w-[6px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary [animation-delay:0.3s]" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
-            <div ref={endRef} />
+              {error && <div className="rounded-[var(--radius-sm)] bg-[rgba(231,76,60,0.08)] px-2 py-1 text-center text-[12px] text-[#e74c3c]">{error}</div>}
+
+              <div ref={endRef} />
+            </div>
+
+            <form className="flex items-center gap-3 border-t border-border bg-surface p-4" onSubmit={handleSend}>
+              <input
+                className="flex-1 rounded-[var(--radius-md)] border border-border bg-background px-3.5 py-3 text-sm text-text-primary outline-none placeholder:text-text-tertiary focus:border-secondary"
+                type="text"
+                placeholder="Ask about these policies..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={loading}
+              />
+              <button
+                className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] border-none bg-cta text-cta-contrast transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+                type="submit"
+                disabled={loading || !input.trim()}
+                aria-label="Send message"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
+            </form>
           </div>
-
-          <form className="comparison-chat-input-bar" onSubmit={handleSend}>
-            <input
-              className="comparison-chat-input"
-              type="text"
-              placeholder="Ask about these policies..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={loading}
-            />
-            <button
-              className="comparison-chat-send"
-              type="submit"
-              disabled={loading || !input.trim()}
-              aria-label="Send message"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          </form>
-        </div>
         </div>
       )}
     </>

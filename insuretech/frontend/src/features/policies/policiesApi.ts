@@ -1,4 +1,4 @@
-import baseApi from '../../api/baseApi'
+import baseApi from '../../config/api'
 import { API } from './policies.constants'
 import type {
   ApiResponse,

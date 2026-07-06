@@ -16,7 +16,7 @@ import {
 import { downloadRecommendationReportPdf } from '../features/recommendations/recommendationReportPdf'
 import { profileApi } from '../features/profile/profileApi'
 import type { RecommendationListOut, RecommendationOut, RiskScoreOut } from '../features/recommendations/recommendations.types'
-import UserLayout from '../layout/UserLayout'
+import UserLayout from '../layouts/UserLayout'
 import type { Section } from '../components/UserSidebar'
 
 type Status = 'loading' | 'empty' | 'error' | 'ready'
