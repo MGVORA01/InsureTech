@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.core.database import get_db
-from app.modules.chat import service
+from app.modules.chat.service import Service
 from app.modules.chat.schemas import ChatRequest
 
 router = APIRouter(
@@ -19,4 +19,4 @@ async def chat(
     data: ChatRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    return await service.chat(data, db)
+    return await Service.chat(data, db)
