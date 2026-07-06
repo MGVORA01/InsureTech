@@ -10,6 +10,11 @@ from app.models import BusinessProfile, Industry, Segment
 from app.shared import base_repository as Base
 
 
+async def commit(db: AsyncSession) -> None:
+    """Commit the current transaction on the session."""
+    await Base.commit(db)
+
+
 async def get_all_segments(db: AsyncSession) -> list[Segment]:
     """Fetch all active segments ordered by name.
 

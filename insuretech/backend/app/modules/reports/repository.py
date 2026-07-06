@@ -10,6 +10,11 @@ from app.modules.reports.constants import REPORT_STATUS_COMPLETED, REPORT_STATUS
 from app.shared import base_repository as Base
 
 
+async def commit(db: AsyncSession) -> None:
+    """Commit the current transaction on the session."""
+    await Base.commit(db)
+
+
 async def get_session_with_business(
     db: AsyncSession,
     session_id: UUID,

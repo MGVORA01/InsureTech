@@ -168,7 +168,7 @@ class ProfilingService:
             )
 
         session = await repository.create_session(db, business.id)
-        await db.commit()
+        await repository.commit(db)
         logger.info(
             "Created profiling session %s for business %s", session.id, business.id
         )
@@ -230,7 +230,7 @@ class ProfilingService:
             updated = await repository.update_session_section(db, session.id, target)
             if updated:
                 session = updated
-        await db.commit()
+        await repository.commit(db)
 
         state = await self._build_section_state(db, session, business, target)
         return APIResponse.success_response(
@@ -267,7 +267,7 @@ class ProfilingService:
             updated = await repository.update_session_section(db, session.id, target)
             if updated:
                 session = updated
-        await db.commit()
+        await repository.commit(db)
 
         state = await self._build_section_state(db, session, business, target)
         return APIResponse.success_response(

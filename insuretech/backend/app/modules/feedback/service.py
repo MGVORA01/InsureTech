@@ -47,7 +47,7 @@ class FeedbackService:
             rating=data.rating,
             recommendations_helpful=data.recommendations_helpful,
         )
-        await db.commit()
+        await repository.commit(db)
         logger.info(
             FEEDBACK_SUBMITTED_LOG_MESSAGE,
             feedback.id,
