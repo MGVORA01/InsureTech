@@ -3,8 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import desc, func, or_, select, and_
-from sqlalchemy.orm import contains_eager
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -18,17 +17,13 @@ from app.models import (
     RiskCategory,
     RiskFactor,
 )
+from app.modules.profiling.constants import (
+    DEFAULT_SECTION,
+    DEFAULT_SEGMENT,
+    SESSION_STATUS_COMPLETED,
+    SESSION_STATUS_IN_PROGRESS,
+)
 from app.modules.profiling.schemas import ProfilingAnswerCreate
-
-SECTIONS_ORDER: list[str] = [
-    "business_profile",
-    "premises_building",
-    "assets_stock",
-    "machinery_operations",
-    "safety_security",
-    "claims_history",
-    "transit_logistics",
-]
 
 
 async def get_questions_by_section(
@@ -53,9 +48,9 @@ async def get_questions_by_section(
     """
     conditions = [
         Question.section == section,
-        Question.is_active == True,
+        Question.is_active.is_(True),
         or_(
-            Question.applicable_segment == "both",
+            Question.applicable_segment == DEFAULT_SEGMENT,
             Question.applicable_segment == segment,
         ),
     ]
@@ -84,7 +79,7 @@ async def has_completed_session(
         select(ProfilingSession.id)
         .where(
             ProfilingSession.business_id == business_id,
-            ProfilingSession.status == "completed",
+            ProfilingSession.status == SESSION_STATUS_COMPLETED,
         )
         .limit(1)
     )
@@ -112,11 +107,11 @@ async def get_conditional_questions_for_section(
         select(Question)
         .where(
             Question.section == section,
-            Question.is_active == True,
-            Question.is_conditional == True,
+            Question.is_active.is_(True),
+            Question.is_conditional.is_(True),
             Question.parent_question_id.isnot(None),
             or_(
-                Question.applicable_segment == "both",
+                Question.applicable_segment == DEFAULT_SEGMENT,
                 Question.applicable_segment == segment,
             ),
         )
@@ -144,7 +139,7 @@ async def get_conditional_questions(
         .where(
             Question.parent_question_id == parent_question_id,
             Question.parent_answer_value == parent_answer_value,
-            Question.is_active == True,
+            Question.is_active.is_(True),
         )
         .order_by(Question.order_index)
     )
@@ -165,11 +160,11 @@ async def create_session(
     """
     session = ProfilingSession(
         business_id=business_id,
-        status="in_progress",
-        current_section="business_profile",
+        status=SESSION_STATUS_IN_PROGRESS,
+        current_section=DEFAULT_SECTION,
     )
     db.add(session)
-    await db.flush()
+    await db.commit()
     await db.refresh(session)
     return session
 
@@ -190,7 +185,7 @@ async def get_active_session(
         select(ProfilingSession)
         .where(
             ProfilingSession.business_id == business_id,
-            ProfilingSession.status == "in_progress",
+            ProfilingSession.status == SESSION_STATUS_IN_PROGRESS,
         )
         .order_by(ProfilingSession.created_at.desc())
         .limit(1)
@@ -212,30 +207,6 @@ async def get_session_by_id(
     """
     result = await db.execute(
         select(ProfilingSession).where(ProfilingSession.id == session_id)
-    )
-    return result.scalar_one_or_none()
-
-
-async def get_latest_completed_session(
-    db: AsyncSession,
-    business_id: UUID,
-) -> ProfilingSession | None:
-    """Fetch the most recently completed session for a business profile.
-
-    Args:
-        business_id: UUID of the business profile.
-
-    Returns:
-        The latest completed ProfilingSession, or None if none exist.
-    """
-    result = await db.execute(
-        select(ProfilingSession)
-        .where(
-            ProfilingSession.business_id == business_id,
-            ProfilingSession.status == "completed",
-        )
-        .order_by(desc(ProfilingSession.completed_at))
-        .limit(1)
     )
     return result.scalar_one_or_none()
 
@@ -275,7 +246,7 @@ async def save_answer(
         )
         db.add(existing)
 
-    await db.flush()
+    await db.commit()
     await db.refresh(existing)
     return existing
 
@@ -309,7 +280,7 @@ async def get_active_risk_categories(db: AsyncSession) -> list[RiskCategory]:
     result = await db.execute(
         select(RiskCategory)
         .options(selectinload(RiskCategory.risk_factors))
-        .where(RiskCategory.is_active == True)
+        .where(RiskCategory.is_active.is_(True))
         .order_by(RiskCategory.name)
     )
     return list(result.scalars().all())
@@ -331,7 +302,7 @@ async def get_latest_completed_session(
         select(ProfilingSession)
         .where(
             ProfilingSession.business_id == business_id,
-            ProfilingSession.status == "completed",
+            ProfilingSession.status == SESSION_STATUS_COMPLETED,
         )
         .order_by(ProfilingSession.completed_at.desc())
         .limit(1)
@@ -366,7 +337,7 @@ async def get_answer_score_rules_for_session(
         )
         .where(
             AnswerScoreRule.question_id.in_(answered_qids),
-            AnswerScoreRule.is_active == True,
+            AnswerScoreRule.is_active.is_(True),
         )
     )
     return list(result.scalars().all())
@@ -393,7 +364,8 @@ async def update_session_section(
 
     if session:
         session.current_section = section
-        await db.flush()
+        db.add(session)
+        await db.commit()
         await db.refresh(session)
 
     return session
@@ -420,9 +392,10 @@ async def complete_session(
     session = result.scalar_one_or_none()
 
     if session:
-        session.status = "completed"
+        session.status = SESSION_STATUS_COMPLETED
         session.completed_at = datetime.now()
-        await db.flush()
+        db.add(session)
+        await db.commit()
         await db.refresh(session)
 
     return session
@@ -459,7 +432,9 @@ async def save_risk_scores(
         else:
             db.add(score)
             saved.append(score)
-    await db.flush()
+    await db.commit()
+    for score in saved:
+        await db.refresh(score)
     return saved
 
 
@@ -508,14 +483,16 @@ async def get_tier2_questions_for_categories(
     result = await db.execute(
         select(Question)
         .options(
-            selectinload(Question.factor_mappings).selectinload(QuestionFactorMapping.risk_factor),
+            selectinload(Question.factor_mappings).selectinload(
+                QuestionFactorMapping.risk_factor
+            ),
         )
         .where(
             Question.id.in_(select(subq.c.question_id)),
             Question.tier == 2,
-            Question.is_active == True,
+            Question.is_active.is_(True),
             or_(
-                Question.applicable_segment == "both",
+                Question.applicable_segment == DEFAULT_SEGMENT,
                 Question.applicable_segment == segment,
             ),
         )

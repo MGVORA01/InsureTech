@@ -1,3 +1,5 @@
+"""Database access layer for feedback workflows."""
+
 from uuid import UUID
 
 from sqlalchemy import select
@@ -13,6 +15,17 @@ async def create_feedback(
     business_id: UUID,
     data: CreateFeedbackRequest,
 ) -> Feedback:
+    """Create a feedback record.
+
+    Args:
+        db: Active database session.
+        user_id: ID of the user submitting feedback.
+        business_id: ID of the business receiving feedback.
+        data: Validated feedback payload.
+
+    Returns:
+        The newly created feedback record.
+    """
     feedback = Feedback(
         user_id=user_id,
         business_id=business_id,
@@ -21,7 +34,7 @@ async def create_feedback(
         recommendations_helpful=data.recommendations_helpful,
     )
     db.add(feedback)
-    await db.flush()
+    await db.commit()
     await db.refresh(feedback)
     return feedback
 
@@ -30,6 +43,15 @@ async def get_business_feedbacks(
     db: AsyncSession,
     business_id: UUID,
 ) -> list[Feedback]:
+    """Fetch feedback records for a business.
+
+    Args:
+        db: Active database session.
+        business_id: ID of the business whose feedback is requested.
+
+    Returns:
+        Feedback records ordered newest first.
+    """
     result = await db.execute(
         select(Feedback)
         .where(Feedback.business_id == business_id)

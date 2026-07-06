@@ -4,8 +4,8 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException
-from app.modules.businesses.repository import get_business_by_id
-from app.modules.profiling.repository import get_latest_completed_session, get_risk_scores_for_session
+from app.modules.businesses.service import Service as BusinessService
+from app.modules.profiling.service import Service as ProfilingService
 
 
 @dataclass
@@ -52,7 +52,7 @@ class BusinessContextProvider:
         business_profile_id: UUID,
         session_id: UUID | None = None,
     ) -> BusinessContext:
-        profile = await get_business_by_id(db, business_profile_id)
+        profile = await BusinessService.get_business_by_id(business_profile_id, db)
         if not profile:
             raise NotFoundException("Business profile not found")
 
@@ -74,10 +74,16 @@ class BusinessContextProvider:
 
         risk_session_id = session_id
         if not risk_session_id:
-            session = await get_latest_completed_session(db, business_profile_id)
+            session = await ProfilingService.get_latest_completed_session_for_business(
+                business_profile_id,
+                db,
+            )
             risk_session_id = session.id if session else None
         if risk_session_id:
-            scores = await get_risk_scores_for_session(db, risk_session_id)
+            scores = await ProfilingService.get_risk_scores_for_session(
+                risk_session_id,
+                db,
+            )
             context.risk_scores = [
                 RiskScoreInfo(
                     category=rs.risk_category.name if rs.risk_category else "Unknown",

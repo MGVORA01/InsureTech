@@ -10,6 +10,38 @@ from app.core.logging import get_logger
 from app.models import BusinessRiskScore, ProfilingSession, User
 from app.modules.businesses.service import Service as BusinessService
 from app.modules.profiling import repository
+from app.modules.profiling.constants import (
+    ANSWER_SUBMITTED_MESSAGE,
+    BATCH_ANSWERS_SUBMITTED_MESSAGE,
+    BUSINESS_RESULTS_FETCHED_MESSAGE,
+    DEFAULT_SEGMENT,
+    HIGH_RISK_LEVELS,
+    LOADED_COMPLETED_SESSION_MESSAGE,
+    MULTI_SELECT_DELIMITERS,
+    NO_BUSINESS_PROFILE_MESSAGE,
+    NO_COMPLETED_SESSION_MESSAGE,
+    NO_HIGH_RISK_CATEGORIES_MESSAGE,
+    PREVIEW_SCORES_COMPUTED_MESSAGE,
+    PROFILING_COMPLETED_MESSAGE,
+    PROFILING_SESSION_NOT_FOUND_MESSAGE,
+    PROFILING_STATUS_FETCHED_MESSAGE,
+    QUESTION_TYPE_MULTI_SELECT,
+    RESUMED_SESSION_MESSAGE,
+    RISK_LEVEL_CRITICAL,
+    RISK_LEVEL_HIGH,
+    RISK_LEVEL_LOW,
+    RISK_LEVEL_MEDIUM,
+    RISK_THRESHOLD_CRITICAL,
+    RISK_THRESHOLD_HIGH,
+    RISK_THRESHOLD_MEDIUM,
+    SECTIONS_ORDER,
+    SESSION_STARTED_MESSAGE,
+    SESSION_STATE_FETCHED_MESSAGE,
+    TIER2_QUESTIONS_FETCHED_MESSAGE,
+    UNKNOWN_LABEL,
+    UNKNOWN_LEVEL_LABEL,
+    UNKNOWN_SECTION_MESSAGE_TEMPLATE,
+)
 from app.modules.profiling.schemas import (
     PreviewScoreOut,
     PreviewScoresOut,
@@ -43,12 +75,14 @@ class _ProfilingService:
         """Return profiling status for the authenticated user's business."""
         try:
             if business_id:
-                business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+                business = await BusinessService.get_business_by_id_for_user(
+                    business_id, user, db
+                )
             else:
                 business = await BusinessService.get_business_by_user(user, db)
         except NotFoundException:
             return APIResponse.success_response(
-                "No business profile found",
+                NO_BUSINESS_PROFILE_MESSAGE,
                 {
                     "profiling_completed": False,
                     "has_active_session": False,
@@ -58,11 +92,13 @@ class _ProfilingService:
             )
 
         active = await repository.get_active_session(db, business.id)
-        latest_completed = await repository.get_latest_completed_session(db, business.id)
+        latest_completed = await repository.get_latest_completed_session(
+            db, business.id
+        )
         completed = latest_completed is not None
 
         return APIResponse.success_response(
-            "Profiling status fetched successfully",
+            PROFILING_STATUS_FETCHED_MESSAGE,
             {
                 "profiling_completed": completed,
                 "has_active_session": active is not None,
@@ -91,19 +127,25 @@ class _ProfilingService:
             business_id: Target business. Falls back to user's first business if omitted.
         """
         if business_id:
-            business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+            business = await BusinessService.get_business_by_id_for_user(
+                business_id, user, db
+            )
         else:
             business = await BusinessService.get_business_by_user(user, db)
 
         active = await repository.get_active_session(db, business.id)
         if active:
-            logger.info("Resuming active session %s for business %s", active.id, business.id)
+            logger.info(
+                "Resuming active session %s for business %s", active.id, business.id
+            )
             state = await self._build_section_state(db, active, business, tier=tier)
             return APIResponse.success_response(
-                "Resumed active profiling session", state.model_dump()
+                RESUMED_SESSION_MESSAGE, state.model_dump()
             )
 
-        latest_completed = await repository.get_latest_completed_session(db, business.id)
+        latest_completed = await repository.get_latest_completed_session(
+            db, business.id
+        )
         if latest_completed:
             logger.info(
                 "Reopening completed session %s for business %s",
@@ -114,21 +156,20 @@ class _ProfilingService:
                 db,
                 latest_completed,
                 business,
-                repository.SECTIONS_ORDER[0],
+                SECTIONS_ORDER[0],
                 tier=tier,
             )
             return APIResponse.success_response(
-                "Loaded completed profiling session", state.model_dump()
+                LOADED_COMPLETED_SESSION_MESSAGE, state.model_dump()
             )
 
         session = await repository.create_session(db, business.id)
-        await db.commit()
-        logger.info("Created profiling session %s for business %s", session.id, business.id)
+        logger.info(
+            "Created profiling session %s for business %s", session.id, business.id
+        )
 
         state = await self._build_section_state(db, session, business, tier=tier)
-        return APIResponse.success_response(
-            "Profiling session started successfully", state.model_dump()
-        )
+        return APIResponse.success_response(SESSION_STARTED_MESSAGE, state.model_dump())
 
     async def get_session_state(
         self,
@@ -154,9 +195,11 @@ class _ProfilingService:
             if updated:
                 session = updated
 
-        state = await self._build_section_state(db, session, business, target, tier=tier)
+        state = await self._build_section_state(
+            db, session, business, target, tier=tier
+        )
         return APIResponse.success_response(
-            "Session state fetched successfully", state.model_dump()
+            SESSION_STATE_FETCHED_MESSAGE, state.model_dump()
         )
 
     async def submit_answer(
@@ -174,20 +217,23 @@ class _ProfilingService:
         session, business = await self._resolve_session(session_id, user, db)
 
         await repository.save_answer(db, session.id, data)
-        logger.info("Answer saved for session %s, question %s", session.id, data.question_id)
+        logger.info(
+            "Answer saved for session %s, question %s", session.id, data.question_id
+        )
 
         target = data.advance_to_section or session.current_section
         if target and target != session.current_section:
-            if target not in repository.SECTIONS_ORDER:
-                raise BadRequestException(f"Unknown section: {target}")
+            if target not in SECTIONS_ORDER:
+                raise BadRequestException(
+                    UNKNOWN_SECTION_MESSAGE_TEMPLATE.format(section=target)
+                )
             updated = await repository.update_session_section(db, session.id, target)
             if updated:
                 session = updated
 
-        await db.commit()
         state = await self._build_section_state(db, session, business, target)
         return APIResponse.success_response(
-            "Answer submitted successfully", state.model_dump()
+            ANSWER_SUBMITTED_MESSAGE, state.model_dump()
         )
 
     async def submit_answers_batch(
@@ -203,20 +249,25 @@ class _ProfilingService:
         for ans_data in data.answers:
             await repository.save_answer(db, session.id, ans_data)
 
-        logger.info("Batch answers saved for session %s, count: %d", session.id, len(data.answers))
+        logger.info(
+            "Batch answers saved for session %s, count: %d",
+            session.id,
+            len(data.answers),
+        )
 
         target = data.advance_to_section or session.current_section
         if target and target != session.current_section:
-            if target not in repository.SECTIONS_ORDER:
-                raise BadRequestException(f"Unknown section: {target}")
+            if target not in SECTIONS_ORDER:
+                raise BadRequestException(
+                    UNKNOWN_SECTION_MESSAGE_TEMPLATE.format(section=target)
+                )
             updated = await repository.update_session_section(db, session.id, target)
             if updated:
                 session = updated
 
-        await db.commit()
         state = await self._build_section_state(db, session, business, target)
         return APIResponse.success_response(
-            "Batch answers submitted successfully", state.model_dump()
+            BATCH_ANSWERS_SUBMITTED_MESSAGE, state.model_dump()
         )
 
     async def complete_session(
@@ -233,16 +284,15 @@ class _ProfilingService:
 
         completed = await repository.complete_session(db, session.id)
         if not completed:
-            raise NotFoundException("Profiling session not found")
+            raise NotFoundException(PROFILING_SESSION_NOT_FOUND_MESSAGE)
 
         # Build scores before commit while relationships are still in-memory
         scores_out = [self._score_to_out(s) for s in saved]
 
-        await db.commit()
         logger.info("Session %s completed with %d risk scores", session.id, len(saved))
 
         return APIResponse.success_response(
-            "Profiling completed successfully",
+            PROFILING_COMPLETED_MESSAGE,
             ProfilingCompleteOut(
                 session=ProfilingSessionOut.model_validate(completed),
                 scores=scores_out,
@@ -267,10 +317,12 @@ class _ProfilingService:
         # Check which categories have tier-2 questions available
         high_cat_ids: list[UUID] = []
         for rs in risk_scores:
-            if rs.risk_level in ("high", "critical"):
+            if rs.risk_level in HIGH_RISK_LEVELS:
                 high_cat_ids.append(rs.risk_category_id)
 
-        segment_name = business.segment.name.lower() if business.segment else "both"
+        segment_name = (
+            business.segment.name.lower() if business.segment else DEFAULT_SEGMENT
+        )
         tier2_available: set[UUID] = set()
         if high_cat_ids:
             t2_questions = await repository.get_tier2_questions_for_categories(
@@ -286,12 +338,12 @@ class _ProfilingService:
         for rs in risk_scores:
             cat_id = rs.risk_category_id
             level = rs.risk_level
-            if level in ("high", "critical"):
+            if level in HIGH_RISK_LEVELS:
                 has_high = True
             scores_out.append(
                 PreviewScoreOut(
                     risk_category_name=(
-                        rs.risk_category.name if rs.risk_category else "Unknown"
+                        rs.risk_category.name if rs.risk_category else UNKNOWN_LABEL
                     ),
                     score=float(rs.score),
                     risk_level=level,
@@ -301,7 +353,7 @@ class _ProfilingService:
             )
 
         return APIResponse.success_response(
-            "Preview scores computed",
+            PREVIEW_SCORES_COMPUTED_MESSAGE,
             PreviewScoresOut(scores=scores_out, has_high_risk=has_high).model_dump(),
         )
 
@@ -325,7 +377,7 @@ class _ProfilingService:
         cat_levels: dict[UUID, str] = {}
         cat_names: dict[UUID, str] = {}
         for rs in risk_scores:
-            if rs.risk_level in ("high", "critical"):
+            if rs.risk_level in HIGH_RISK_LEVELS:
                 high_cat_ids.append(rs.risk_category_id)
                 cat_levels[rs.risk_category_id] = rs.risk_level
                 if rs.risk_category:
@@ -333,10 +385,12 @@ class _ProfilingService:
 
         if not high_cat_ids:
             return APIResponse.success_response(
-                "No high-risk categories found", {"questions": []}
+                NO_HIGH_RISK_CATEGORIES_MESSAGE, {"questions": []}
             )
 
-        segment_name = business.segment.name.lower() if business.segment else "both"
+        segment_name = (
+            business.segment.name.lower() if business.segment else DEFAULT_SEGMENT
+        )
         questions = await repository.get_tier2_questions_for_categories(
             db, segment_name, high_cat_ids
         )
@@ -351,15 +405,17 @@ class _ProfilingService:
                     tier2_out.append(
                         Tier2QuestionOut(
                             question=QuestionOut.model_validate(q),
-                            risk_category_name=cat_names.get(rcat_id, "Unknown"),
+                            risk_category_name=cat_names.get(rcat_id, UNKNOWN_LABEL),
                             factor_name=mapping.risk_factor.factor_name,
-                            current_risk_level=cat_levels.get(rcat_id, "unknown"),
+                            current_risk_level=cat_levels.get(
+                                rcat_id, UNKNOWN_LEVEL_LABEL
+                            ),
                             answer_value=answers_dict.get(str(q.id)),
                         )
                     )
 
         return APIResponse.success_response(
-            "Tier 2 questions fetched",
+            TIER2_QUESTIONS_FETCHED_MESSAGE,
             {"questions": [t.model_dump() for t in tier2_out]},
         )
 
@@ -382,22 +438,48 @@ class _ProfilingService:
         Raises:
             NotFoundException if no completed session exists.
         """
-        business = await BusinessService.get_business_by_id_for_user(business_id, user, db)
+        business = await BusinessService.get_business_by_id_for_user(
+            business_id, user, db
+        )
 
         session = await repository.get_latest_completed_session(db, business.id)
         if not session:
-            raise NotFoundException("No completed profiling session found for this business")
+            raise NotFoundException(NO_COMPLETED_SESSION_MESSAGE)
 
         scores = await repository.get_risk_scores_for_session(db, session.id)
         scores_out = [self._score_to_out(s) for s in scores]
 
         return APIResponse.success_response(
-            "Business profiling results fetched successfully",
+            BUSINESS_RESULTS_FETCHED_MESSAGE,
             ProfilingCompleteOut(
                 session=ProfilingSessionOut.model_validate(session),
                 scores=scores_out,
             ).model_dump(),
         )
+
+    async def get_latest_completed_session_for_business(
+        self,
+        business_id: UUID,
+        db: AsyncSession,
+    ) -> ProfilingSession | None:
+        """Fetch the latest completed session for cross-module service use."""
+        return await repository.get_latest_completed_session(db, business_id)
+
+    async def get_risk_scores_for_session(
+        self,
+        session_id: UUID,
+        db: AsyncSession,
+    ) -> list[BusinessRiskScore]:
+        """Fetch risk scores for cross-module service use."""
+        return await repository.get_risk_scores_for_session(db, session_id)
+
+    async def get_session_by_id(
+        self,
+        session_id: UUID,
+        db: AsyncSession,
+    ) -> ProfilingSession | None:
+        """Fetch a profiling session by ID for cross-module service use."""
+        return await repository.get_session_by_id(db, session_id)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -407,7 +489,7 @@ class _ProfilingService:
     def _score_to_out(score: BusinessRiskScore) -> RiskScoreOut:
         return RiskScoreOut(
             risk_category_name=(
-                score.risk_category.name if score.risk_category else "Unknown"
+                score.risk_category.name if score.risk_category else UNKNOWN_LABEL
             ),
             score=float(score.score),
             risk_level=score.risk_level,
@@ -429,9 +511,11 @@ class _ProfilingService:
         """
         session = await repository.get_session_by_id(db, session_id)
         if not session:
-            raise NotFoundException("Profiling session not found")
+            raise NotFoundException(PROFILING_SESSION_NOT_FOUND_MESSAGE)
 
-        business = await BusinessService.get_business_by_id_for_user(session.business_id, user, db)
+        business = await BusinessService.get_business_by_id_for_user(
+            session.business_id, user, db
+        )
 
         return session, business
 
@@ -448,24 +532,22 @@ class _ProfilingService:
         Args:
             tier: If set, filter questions by tier (1 or 2).
         """
-        target = section or session.current_section or repository.SECTIONS_ORDER[0]
-        segment_name = business.segment.name.lower() if business.segment else "both"
+        target = section or session.current_section or SECTIONS_ORDER[0]
+        segment_name = (
+            business.segment.name.lower() if business.segment else DEFAULT_SEGMENT
+        )
 
         answers = await repository.get_answers_for_session(db, session.id)
         answers_dict = {str(a.question_id): a.answer_value for a in answers}
 
         visible = await self._get_visible_questions(db, segment_name, target, tier=tier)
 
-        section_index = (
-            repository.SECTIONS_ORDER.index(target)
-            if target in repository.SECTIONS_ORDER
-            else 0
-        )
+        section_index = SECTIONS_ORDER.index(target) if target in SECTIONS_ORDER else 0
 
         return SectionQuestionsOut(
             section=target,
             section_index=section_index,
-            total_sections=len(repository.SECTIONS_ORDER),
+            total_sections=len(SECTIONS_ORDER),
             questions=[QuestionOut.model_validate(q) for q in visible],
             answers=answers_dict,
             session=ProfilingSessionOut.model_validate(session),
@@ -483,12 +565,14 @@ class _ProfilingService:
         Frontend handles conditional visibility via is_conditional,
         parent_unified_id, and parent_answer_value.
         """
-        return await repository.get_questions_by_section(db, segment, section, tier=tier)
+        return await repository.get_questions_by_section(
+            db, segment, section, tier=tier
+        )
 
     @staticmethod
     def _rule_matches_answer(rule, answers_dict: dict[str, str]) -> bool:
         """Check if a scoring rule's answer_value matches the user's answer.
-        
+
         For single-select questions the match is exact. For multi-select the
         stored answer is a delimiter-separated list and the match succeeds if
         any element equals the rule's ``answer_value``. Both the new ``|||``
@@ -499,8 +583,8 @@ class _ProfilingService:
         if not user_answer:
             return False
 
-        if rule.question.question_type == 'multi_select':
-            for delim in ('|||', ','):
+        if rule.question.question_type == QUESTION_TYPE_MULTI_SELECT:
+            for delim in MULTI_SELECT_DELIMITERS:
                 parts = [p for p in user_answer.split(delim) if p]
                 if rule.answer_value in parts:
                     return True
@@ -553,7 +637,7 @@ class _ProfilingService:
                         risk_category_id=cat.id,
                         risk_category=cat,
                         score=0.0,
-                        risk_level="low",
+                        risk_level=RISK_LEVEL_LOW,
                         factor_breakdown=None,
                     )
                 )
@@ -566,13 +650,13 @@ class _ProfilingService:
             weighted = sum(factor_avg[f.id] * float(f.weight) for f in matched)
             category_score = weighted / total_weight
 
-            risk_level = "low"
-            if category_score >= 0.8:
-                risk_level = "critical"
-            elif category_score >= 0.6:
-                risk_level = "high"
-            elif category_score >= 0.3:
-                risk_level = "medium"
+            risk_level = RISK_LEVEL_LOW
+            if category_score >= RISK_THRESHOLD_CRITICAL:
+                risk_level = RISK_LEVEL_CRITICAL
+            elif category_score >= RISK_THRESHOLD_HIGH:
+                risk_level = RISK_LEVEL_HIGH
+            elif category_score >= RISK_THRESHOLD_MEDIUM:
+                risk_level = RISK_LEVEL_MEDIUM
 
             breakdown = {f.factor_name: factor_avg[f.id] for f in matched}
 
