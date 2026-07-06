@@ -59,7 +59,10 @@ class ReportService:
         if not recommendation_data.get("recommendations"):
             recommendations_response = (
                 await self._recommendation_service.generate_recommendations(
-                    session_id, user, db
+                    session_id,
+                    user,
+                    db,
+                    commit=False,
                 )
             )
             recommendation_data = recommendations_response.data or {}
