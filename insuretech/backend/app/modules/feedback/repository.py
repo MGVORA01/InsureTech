@@ -41,6 +41,9 @@ async def create_feedback(
     )
 
 
+FEEDBACK_ACTIVE_STATUSES = ("pending", "approved")
+
+
 async def get_business_feedbacks(
     db: AsyncSession,
     business_id: UUID,
@@ -56,7 +59,10 @@ async def get_business_feedbacks(
     """
     result = await db.execute(
         select(Feedback)
-        .where(Feedback.business_id == business_id)
+        .where(
+            Feedback.business_id == business_id,
+            Feedback.status.in_(FEEDBACK_ACTIVE_STATUSES),
+        )
         .order_by(Feedback.created_at.desc())
     )
     return list(result.scalars().all())
