@@ -5,10 +5,9 @@ import os
 from typing import Any
 from uuid import UUID
 
-from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import BadRequestException, NotFoundException
+from app.core.exceptions import NotFoundException
 from app.modules.admin import repository as Repository
 from app.modules.admin.constants import (
     CREATED_AT_FIELD,
@@ -19,8 +18,6 @@ from app.modules.admin.constants import (
     DOCUMENTS_FETCHED_MESSAGE,
     LIMIT_KEY,
     PAGE_KEY,
-    PDF_EXTENSION,
-    PDF_ONLY_MESSAGE,
     PDFS_DIR,
     TOTAL_KEY,
     UPDATED_AT_FIELD,
@@ -28,7 +25,6 @@ from app.modules.admin.constants import (
     USER_STATUS_UPDATED_MESSAGE,
     USERS_FETCHED_MESSAGE,
     USERS_KEY,
-    WRITE_BINARY_MODE,
 )
 from app.modules.admin.schemas import KnowledgeDocumentItem, UserListItem
 from app.modules.chat.service import Service as ChatService
@@ -80,24 +76,10 @@ class AdminService:
 
     async def upload_pdf_file_service(
         self,
-        file: UploadFile,
+        file_path: str,
         db: AsyncSession,
     ) -> APIResponse:
-        """Persist and ingest an uploaded PDF file."""
-        if not file.filename or not file.filename.lower().endswith(PDF_EXTENSION):
-            raise BadRequestException(PDF_ONLY_MESSAGE)
-
-        os.makedirs(PDFS_DIR, exist_ok=True)
-        file_path = os.path.join(PDFS_DIR, file.filename)
-
-        content = await file.read()
-
-        def _write_file(path: str, data: bytes) -> None:
-            with open(path, WRITE_BINARY_MODE) as f:
-                f.write(data)
-
-        await asyncio.to_thread(_write_file, file_path, content)
-
+        """Ingest a PDF file already persisted by the router."""
         return await self._chat_service.process_pdf_upload(file_path, db)
 
     async def update_user_status_service(
