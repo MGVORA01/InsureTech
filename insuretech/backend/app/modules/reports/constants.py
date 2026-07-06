@@ -19,6 +19,7 @@ DOWNLOAD_REPORT_ROUTE = "/{report_id}/download"
 
 REPORT_TYPE_RISK_ADVISORY = "risk_advisory"
 REPORT_STATUS_COMPLETED = "completed"
+REPORT_STATUS_PROCESSING = "processing"
 REPORTS_DIR = Path(__file__).resolve().parents[3] / "generated_reports"
 
 RISK_ADVISORY_PDF_FILENAME_TEMPLATE = "risk-advisory-report-{report_id}.pdf"

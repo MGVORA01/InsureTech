@@ -35,7 +35,7 @@ from app.shared.response import APIResponse
 
 class ReportService:
     def __init__(self, recommendation_service=None) -> None:
-        self._recommendation_service = recommendation_service or RecommendationService
+        self._recommendation_service = recommendation_service or RecommendationService()
         self._pdf_builder = PdfReportBuilder()
 
     async def generate_risk_advisory_report(
@@ -122,9 +122,10 @@ class ReportService:
             self._pdf_builder.build, out, REPORTS_DIR, RISK_ADVISORY_PDF_FILENAME_TEMPLATE
         )
         file_url = REPORT_DOWNLOAD_URL_TEMPLATE.format(report_id=report.id)
-        report = await repository.update_report_file_url(db, report, file_url)
+        report = await repository.complete_report(db, report, file_url)
         await db.commit()
 
+        out.status = report.status
         out.file_url = report.file_url
         return APIResponse.success_response(
             message=RISK_ADVISORY_GENERATED_MESSAGE,
