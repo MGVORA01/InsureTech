@@ -67,7 +67,7 @@ class ComparisonService:
         user: User,
         business_profile_id: UUID,
     ):
-        profile = await BusinessService.get_business_by_id(business_profile_id, db)
+        profile = await self._business_service.get_business_by_id(business_profile_id, db)
         if profile.user_id != user.id:
             raise NotFoundException(BUSINESS_PROFILE_NOT_FOUND_MESSAGE)
 
