@@ -1,5 +1,7 @@
 """Constants for recommendation scoring."""
 
+from app.shared.constants import DEFAULT_SEGMENT, UNKNOWN_LABEL
+
 RECOMMENDATIONS_PREFIX = "/recommendations"
 RECOMMENDATIONS_TAG = "recommendations"
 GET_RECOMMENDATIONS_ROUTE = "/{session_id}"
@@ -10,9 +12,6 @@ PRIORITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 MAX_RECOMMENDATIONS = 5
 HIGH_RISK_THRESHOLD = 0.70
 PRIORITY_WEIGHTS = [1.0, 0.75, 0.55, 0.4, 0.3, 0.25, 0.2]
-
-DEFAULT_SEGMENT = "both"
-UNKNOWN_LABEL = "Unknown"
 
 NO_RECOMMENDATIONS_YET_MESSAGE = (
     "No recommendations generated yet. Use /generate to create them."

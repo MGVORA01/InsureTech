@@ -6,14 +6,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Feedback
-from app.modules.feedback.schemas import CreateFeedbackRequest
+from app.shared import base_repository as Base
 
 
 async def create_feedback(
     db: AsyncSession,
     user_id: UUID,
     business_id: UUID,
-    data: CreateFeedbackRequest,
+    message: str,
+    rating: int | None = None,
+    recommendations_helpful: bool | None = None,
 ) -> Feedback:
     """Create a feedback record.
 
@@ -21,22 +23,25 @@ async def create_feedback(
         db: Active database session.
         user_id: ID of the user submitting feedback.
         business_id: ID of the business receiving feedback.
-        data: Validated feedback payload.
+        message: Feedback message text.
+        rating: Optional numeric rating.
+        recommendations_helpful: Whether recommendations were helpful.
 
     Returns:
         The newly created feedback record.
     """
-    feedback = Feedback(
+    return await Base.create(
+        db,
+        Feedback,
         user_id=user_id,
         business_id=business_id,
-        message=data.message,
-        rating=data.rating,
-        recommendations_helpful=data.recommendations_helpful,
+        message=message,
+        rating=rating,
+        recommendations_helpful=recommendations_helpful,
     )
-    db.add(feedback)
-    await db.commit()
-    await db.refresh(feedback)
-    return feedback
+
+
+FEEDBACK_ACTIVE_STATUSES = ("pending", "approved")
 
 
 async def get_business_feedbacks(
@@ -54,7 +59,10 @@ async def get_business_feedbacks(
     """
     result = await db.execute(
         select(Feedback)
-        .where(Feedback.business_id == business_id)
+        .where(
+            Feedback.business_id == business_id,
+            Feedback.status.in_(FEEDBACK_ACTIVE_STATUSES),
+        )
         .order_by(Feedback.created_at.desc())
     )
     return list(result.scalars().all())

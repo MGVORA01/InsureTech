@@ -29,6 +29,7 @@ from app.modules.admin.constants import (
     TOTAL_USERS_KEY,
     USERS_KEY,
 )
+from app.shared import base_repository as Base
 
 
 async def get_user_stats(db: AsyncSession) -> dict[str, int | None]:
@@ -85,26 +86,17 @@ async def get_all_users(
     }
 
 
-async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
-    """Fetch a user by ID with role loaded."""
-    result = await db.execute(
-        select(User).options(selectinload(User.role)).where(User.id == user_id)
-    )
-    return result.scalar_one_or_none()
-
-
 async def update_user_status(
     db: AsyncSession,
     user_id: UUID,
     is_active: bool,
 ) -> User | None:
     """Update and persist a user's active state."""
-    user = await get_user_by_id(db, user_id)
+    user = await Base.get_by_id(db, User, user_id, options=[selectinload(User.role)])
     if not user:
         return None
     user.is_active = is_active
-    db.add(user)
-    await db.commit()
+    await db.flush()
     await db.refresh(user)
     return user
 
@@ -147,5 +139,5 @@ async def delete_knowledge_document(
     if doc:
         await db.delete(doc)
 
-    await db.commit()
+    await db.flush()
     return doc

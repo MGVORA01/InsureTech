@@ -1,5 +1,7 @@
 """Constants for authentication workflows."""
 
+from app.shared.constants import USER_ROLE_NAME
+
 AUTH_PREFIX = "/auth"
 AUTH_TAG = "auth"
 
@@ -11,8 +13,6 @@ RESET_PASSWORD_ROUTE = "/reset-password"
 REFRESH_ROUTE = "/refresh"
 ME_ROUTE = "/me"
 LOGOUT_ROUTE = "/logout"
-
-USER_ROLE_NAME = "USER"
 PASSWORD_RESET_TOKEN_TYPE = "password_reset"
 REFRESH_TOKEN_TYPE = "refresh"
 TOKEN_TYPE_CLAIM = "type"

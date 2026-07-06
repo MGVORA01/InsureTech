@@ -26,6 +26,6 @@ async def ask_rag(
     """Ask a RAG question."""
     return await Service.query(
         db=db,
-        user_id=str(current_user.id),
+        user=current_user,
         request=body,
     )

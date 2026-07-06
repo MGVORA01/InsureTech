@@ -1,8 +1,9 @@
 """Constants for policy workflows."""
 
+from app.shared.constants import ADMIN_ROLE
+
 POLICIES_PREFIX = "/policies"
 POLICIES_TAG = "policies"
-ADMIN_ROLE = "ADMIN"
 
 INSURERS_ROUTE = "/insurers"
 INSURER_DETAIL_ROUTE = "/insurers/{insurer_id}"

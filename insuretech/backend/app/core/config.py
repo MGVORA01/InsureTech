@@ -18,20 +18,24 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str
 
-    # PROJECT_NAME: str
-    # ENVIRONMENT: str
+    PROJECT_NAME: str = "Insuretech"
+    ENVIRONMENT: str = "development"
     LOG_LEVEL: str
+    ECHO_SQL: bool = False
 
-    # GROQ_API_KEY: str = ""
     EMBEDDING_MODEL: str = "BAAI/bge-base-en-v1.5"
 
     GROQ_API_KEY: str
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_TEMPERATURE: float = 0.7
 
+    COOKIE_SECURE: bool = True
+
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
+
+    LLAMA_PARSE_API_KEY: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

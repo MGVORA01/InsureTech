@@ -1,5 +1,6 @@
-from pydantic import BaseModel
-from typing import Optional
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
 
 
 class AdminDashboardStats(BaseModel):
@@ -12,14 +13,14 @@ class AdminDashboardStats(BaseModel):
 
 
 class UserListItem(BaseModel):
-    id: str
+    id: UUID
     email: str
     full_name: str
-    phone: Optional[str] = None
+    phone: str | None = None
     role: str
     is_active: bool
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class UserListResponse(BaseModel):
@@ -38,9 +39,9 @@ class UploadRequest(BaseModel):
 
 
 class KnowledgeDocumentItem(BaseModel):
-    id: str
+    id: UUID
     file_name: str
-    file_size: Optional[int] = None
+    file_size: int | None = None
     chunks_count: int
     created_at: str
 

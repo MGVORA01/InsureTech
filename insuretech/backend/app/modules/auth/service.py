@@ -2,20 +2,13 @@
 
 from typing import Any
 
-from fastapi import BackgroundTasks, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import ConflictException, UnauthorizedException
-from app.core.mail import send_reset_password_email
 from app.models import User
 from app.modules.auth import repository as Repository
-from app.modules.auth.cookie_helper import (
-    delete_auth_cookies,
-    get_refresh_token_from_cookie,
-    set_auth_cookies,
-)
-from app.modules.auth.jwt_halper import (
+from app.modules.auth.jwt_helper import (
     create_access_token,
     create_password_reset_token,
     create_refresh_token,
@@ -44,7 +37,6 @@ from app.modules.auth.constants import (
     TOKEN_REFRESHED_MESSAGE,
     TOKEN_SUBJECT_CLAIM,
     TOKEN_TYPE_CLAIM,
-    USER_EMAIL_NOT_FOUND_MESSAGE,
     USER_EXISTS_MESSAGE,
     USER_FETCHED_MESSAGE,
     USER_ID_KEY,
@@ -53,7 +45,7 @@ from app.modules.auth.constants import (
     USER_REGISTERED_MESSAGE,
     USER_ROLE_NAME,
 )
-from app.modules.auth.password_hashing import hash, verify_hash
+from app.modules.auth.password_hashing import async_hash, async_verify_hash
 from app.modules.auth.schemas import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
@@ -83,9 +75,10 @@ class AuthService:
             email=data.email,
             full_name=data.full_name,
             phone_no=data.phone_no,
-            password_hash=hash(data.password),
+            password_hash=await async_hash(data.password),
             role_id=role.id,
         )
+        await db.commit()
 
         return APIResponse.success_response(
             message=USER_REGISTERED_MESSAGE,
@@ -100,29 +93,24 @@ class AuthService:
         self,
         data: LoginRequest,
         db: AsyncSession,
-        response: Response,
-    ) -> APIResponse[dict[str, Any]]:
-        """Authenticate a user and set auth cookies."""
+    ) -> tuple[APIResponse[dict[str, Any]], str, str]:
+        """Authenticate a user and return auth tokens for the router."""
         user = await Repository.get_user_by_email(db, data.email)
-        if not user:
-            raise UnauthorizedException(USER_EMAIL_NOT_FOUND_MESSAGE)
-        if not user.is_active:
-            raise UnauthorizedException(ACCOUNT_INACTIVE_MESSAGE)
-        if not verify_hash(data.password, user.password_hash):
+        if not user or not user.is_active:
+            raise UnauthorizedException(INVALID_EMAIL_OR_PASSWORD_MESSAGE)
+        if not await async_verify_hash(data.password, user.password_hash):
             raise UnauthorizedException(INVALID_EMAIL_OR_PASSWORD_MESSAGE)
 
         access_token = create_access_token(user)
         refresh_token = create_refresh_token(user)
-        set_auth_cookies(
-            response,
+
+        return (
+            APIResponse.success_response(
+                message=USER_LOGGED_IN_MESSAGE,
+                data=self._user_payload(user),
+            ),
             access_token,
             refresh_token,
-            remember_me=data.remember_me,
-        )
-
-        return APIResponse.success_response(
-            message=USER_LOGGED_IN_MESSAGE,
-            data=self._user_payload(user),
         )
 
     async def change_password_service(
@@ -132,16 +120,17 @@ class AuthService:
         db: AsyncSession,
     ) -> APIResponse[None]:
         """Change the current user's password."""
-        if not verify_hash(data.current_password, current_user.password_hash):
+        if not await async_verify_hash(data.current_password, current_user.password_hash):
             raise UnauthorizedException(CURRENT_PASSWORD_INCORRECT_MESSAGE)
-        if verify_hash(data.new_password, current_user.password_hash):
+        if await async_verify_hash(data.new_password, current_user.password_hash):
             raise ConflictException(SAME_PASSWORD_MESSAGE)
 
         await Repository.update_user_password(
             db,
             current_user.id,
-            hash(data.new_password),
+            await async_hash(data.new_password),
         )
+        await db.commit()
         return APIResponse.success_response(
             message=PASSWORD_CHANGED_MESSAGE,
             data=None,
@@ -151,12 +140,18 @@ class AuthService:
         self,
         data: ForgotPasswordRequest,
         db: AsyncSession,
-        background_tasks: BackgroundTasks,
-    ) -> APIResponse[None]:
-        """Create a password reset token and email it to the user."""
+    ) -> tuple[APIResponse[None], str | None, str | None]:
+        """Create password reset email details without leaking account existence."""
         user = await Repository.get_user_by_email(db, data.email)
-        if not user:
-            raise UnauthorizedException(USER_EMAIL_NOT_FOUND_MESSAGE)
+        if not user or not user.is_active:
+            return (
+                APIResponse.success_response(
+                    message=PASSWORD_RESET_EMAIL_SENT_MESSAGE,
+                    data=None,
+                ),
+                None,
+                None,
+            )
 
         active_token = await Repository.get_active_password_reset_token(db, user.id)
         if active_token:
@@ -166,17 +161,21 @@ class AuthService:
         await Repository.store_password_reset_token(
             db,
             user.id,
-            hash(password_reset_token),
+            await async_hash(password_reset_token),
         )
+        await db.commit()
 
         reset_url = (
             f"{settings.FRONTEND_URL}{RESET_PASSWORD_QUERY_PATH}{password_reset_token}"
         )
-        background_tasks.add_task(send_reset_password_email, user.email, reset_url)
 
-        return APIResponse.success_response(
-            message=PASSWORD_RESET_EMAIL_SENT_MESSAGE,
-            data=None,
+        return (
+            APIResponse.success_response(
+                message=PASSWORD_RESET_EMAIL_SENT_MESSAGE,
+                data=None,
+            ),
+            user.email,
+            reset_url,
         )
 
     async def reset_password_service(
@@ -201,21 +200,20 @@ class AuthService:
         reset_token = await Repository.get_active_password_reset_token(db, user.id)
         if not reset_token:
             raise UnauthorizedException(RESET_TOKEN_NOT_FOUND_MESSAGE)
-        if not verify_hash(data.token, reset_token.token_hash):
+        if not await async_verify_hash(data.token, reset_token.token_hash):
             raise UnauthorizedException(INVALID_TOKEN_MESSAGE)
 
-        await Repository.update_user_password(db, user.id, hash(data.new_password))
+        await Repository.update_user_password(db, user.id, await async_hash(data.new_password))
         await Repository.mark_reset_token_used(db, reset_token)
+        await db.commit()
         return APIResponse.success_response(message=PASSWORD_CHANGED_MESSAGE)
 
     async def refresh_token_service(
         self,
-        request: Request,
-        response: Response,
+        refresh_token: str,
         db: AsyncSession,
-    ) -> APIResponse[dict[str, Any]]:
-        """Refresh the access token using the refresh cookie."""
-        refresh_token = get_refresh_token_from_cookie(request)
+    ) -> tuple[APIResponse[dict[str, Any]], str]:
+        """Refresh an access token from a validated refresh token string."""
         payload = decode_token(refresh_token)
         if not payload:
             raise UnauthorizedException(INVALID_REFRESH_TOKEN_MESSAGE)
@@ -228,10 +226,13 @@ class AuthService:
         if not user.is_active:
             raise UnauthorizedException(ACCOUNT_INACTIVE_MESSAGE)
 
-        set_auth_cookies(response, create_access_token(user), refresh_token)
-        return APIResponse.success_response(
-            message=TOKEN_REFRESHED_MESSAGE,
-            data=self._user_payload(user),
+        access_token = create_access_token(user)
+        return (
+            APIResponse.success_response(
+                message=TOKEN_REFRESHED_MESSAGE,
+                data=self._user_payload(user),
+            ),
+            access_token,
         )
 
     async def get_current_user_me_service(
@@ -244,9 +245,8 @@ class AuthService:
             data=self._user_payload(current_user),
         )
 
-    async def logout_service(self, response: Response) -> APIResponse[None]:
-        """Clear auth cookies for logout."""
-        delete_auth_cookies(response)
+    async def logout_service(self) -> APIResponse[None]:
+        """Return the logout response payload."""
         return APIResponse.success_response(
             message=LOGGED_OUT_MESSAGE,
             data=None,

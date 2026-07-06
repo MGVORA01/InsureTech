@@ -1,5 +1,7 @@
 """Constants for policy comparison."""
 
+from app.shared.constants import UNKNOWN_LABEL
+
 COMPARISON_SECTIONS = [
     (
         "What is Covered",
@@ -47,7 +49,6 @@ COMPARE_CHAT_ROUTE = "/chat"
 CONFIDENCE_MEDIUM = "medium"
 CONFIDENCE_LOW = "low"
 STRONGER_INSUFFICIENT_EVIDENCE = "insufficient_evidence"
-UNKNOWN_LABEL = "Unknown"
 
 INFO_NOT_AVAILABLE_MESSAGE = "Information not available in the selected policies."
 

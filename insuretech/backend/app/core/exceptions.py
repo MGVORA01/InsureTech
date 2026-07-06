@@ -28,6 +28,10 @@ class ConflictException(Exception):
     """Raised when resource conflict occurs."""
 
 
+class ForbiddenException(Exception):
+    """Raised when the user is authenticated but lacks permission."""
+
+
 class TooManyRequestsException(Exception):
     """Raised when a request exceeds an allowed rate limit."""
 
@@ -140,6 +144,20 @@ async def conflict_exception_handler(
     )
 
 
+async def forbidden_exception_handler(
+    request: Request,
+    exc: ForbiddenException,
+) -> JSONResponse:
+    """Handle custom forbidden exceptions."""
+
+    logger.warning(str(exc))
+
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content=APIResponse.error_response(message=str(exc)).model_dump(),
+    )
+
+
 async def too_many_requests_exception_handler(
     request: Request,
     exc: TooManyRequestsException,
@@ -214,6 +232,11 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         TooManyRequestsException,
         too_many_requests_exception_handler,
+    )
+
+    app.add_exception_handler(
+        ForbiddenException,
+        forbidden_exception_handler,
     )
 
     app.add_exception_handler(

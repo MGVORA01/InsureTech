@@ -1,27 +1,22 @@
+import asyncio
+
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash(input: str) -> str:
-    """Hash a plain-text input.
-
-    Args:
-        input: Plain-text input to hash.
-
-    Returns:
-        The hashed input string.
-    """
+    """Hash a plain-text input."""
     return pwd_context.hash(input)
 
 def verify_hash(plain: str, hashed: str) -> bool:
-    """Verify a plain input against a hashed value.
-
-    Args:
-        plain: Plain-text input provided by the user.
-        hashed: Stored hashed input.
-
-    Returns:
-        True if the input matches, otherwise False.
-    """
+    """Verify a plain input against a hashed value."""
     return pwd_context.verify(plain, hashed)
+
+async def async_hash(input: str) -> str:
+    """Hash a plain-text input (async, runs bcrypt in a thread)."""
+    return await asyncio.to_thread(pwd_context.hash, input)
+
+async def async_verify_hash(plain: str, hashed: str) -> bool:
+    """Verify a plain input against a hashed value (async)."""
+    return await asyncio.to_thread(pwd_context.verify, plain, hashed)
 
