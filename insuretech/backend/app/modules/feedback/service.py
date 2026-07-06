@@ -23,6 +23,9 @@ logger = get_logger(__name__)
 class FeedbackService:
     """Service for feedback workflows."""
 
+    def __init__(self, business_service=None):
+        self._business_service = business_service or BusinessService
+
     async def submit_feedback(
         self,
         data: CreateFeedbackRequest,
@@ -32,13 +35,18 @@ class FeedbackService:
     ) -> APIResponse[dict[str, Any]]:
         """Submit feedback for the user's business."""
         if business_id:
-            business = await BusinessService.get_business_by_id_for_user(
+            business = await self._business_service.get_business_by_id_for_user(
                 business_id, user, db
             )
         else:
-            business = await BusinessService.get_business_by_user(user, db)
+            business = await self._business_service.get_business_by_user(user, db)
 
-        feedback = await repository.create_feedback(db, user.id, business.id, data)
+        feedback = await repository.create_feedback(
+            db, user.id, business.id,
+            message=data.message,
+            rating=data.rating,
+            recommendations_helpful=data.recommendations_helpful,
+        )
         await db.commit()
         logger.info(
             FEEDBACK_SUBMITTED_LOG_MESSAGE,
@@ -59,11 +67,11 @@ class FeedbackService:
     ) -> APIResponse[list[dict[str, Any]]]:
         """List feedback for the user's business."""
         if business_id:
-            business = await BusinessService.get_business_by_id_for_user(
+            business = await self._business_service.get_business_by_id_for_user(
                 business_id, user, db
             )
         else:
-            business = await BusinessService.get_business_by_user(user, db)
+            business = await self._business_service.get_business_by_user(user, db)
 
         feedbacks = await repository.get_business_feedbacks(db, business.id)
         return APIResponse.success_response(
