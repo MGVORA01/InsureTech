@@ -164,6 +164,7 @@ class _ProfilingService:
             )
 
         session = await repository.create_session(db, business.id)
+        await db.commit()
         logger.info(
             "Created profiling session %s for business %s", session.id, business.id
         )
@@ -194,6 +195,7 @@ class _ProfilingService:
             updated = await repository.update_session_section(db, session.id, target)
             if updated:
                 session = updated
+            await db.commit()
 
         state = await self._build_section_state(
             db, session, business, target, tier=tier
@@ -230,6 +232,7 @@ class _ProfilingService:
             updated = await repository.update_session_section(db, session.id, target)
             if updated:
                 session = updated
+        await db.commit()
 
         state = await self._build_section_state(db, session, business, target)
         return APIResponse.success_response(
@@ -264,6 +267,7 @@ class _ProfilingService:
             updated = await repository.update_session_section(db, session.id, target)
             if updated:
                 session = updated
+        await db.commit()
 
         state = await self._build_section_state(db, session, business, target)
         return APIResponse.success_response(
@@ -285,6 +289,8 @@ class _ProfilingService:
         completed = await repository.complete_session(db, session.id)
         if not completed:
             raise NotFoundException(PROFILING_SESSION_NOT_FOUND_MESSAGE)
+
+        await db.commit()
 
         # Build scores before commit while relationships are still in-memory
         scores_out = [self._score_to_out(s) for s in saved]

@@ -164,7 +164,7 @@ async def create_session(
         current_section=DEFAULT_SECTION,
     )
     db.add(session)
-    await db.commit()
+    await db.flush()
     await db.refresh(session)
     return session
 
@@ -246,7 +246,7 @@ async def save_answer(
         )
         db.add(existing)
 
-    await db.commit()
+    await db.flush()
     await db.refresh(existing)
     return existing
 
@@ -365,7 +365,7 @@ async def update_session_section(
     if session:
         session.current_section = section
         db.add(session)
-        await db.commit()
+        await db.flush()
         await db.refresh(session)
 
     return session
@@ -395,7 +395,7 @@ async def complete_session(
         session.status = SESSION_STATUS_COMPLETED
         session.completed_at = datetime.now()
         db.add(session)
-        await db.commit()
+        await db.flush()
         await db.refresh(session)
 
     return session
@@ -432,7 +432,7 @@ async def save_risk_scores(
         else:
             db.add(score)
             saved.append(score)
-    await db.commit()
+    await db.flush()
     for score in saved:
         await db.refresh(score)
     return saved
