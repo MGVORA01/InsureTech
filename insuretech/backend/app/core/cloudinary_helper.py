@@ -1,3 +1,5 @@
+import asyncio
+
 import cloudinary
 import cloudinary.uploader
 from app.core.config import settings
@@ -18,7 +20,8 @@ def init_cloudinary():
 async def upload_pdf(file_bytes: bytes, public_id: str) -> str | None:
     if not init_cloudinary():
         return None
-    result = cloudinary.uploader.upload(
+    result = await asyncio.to_thread(
+        cloudinary.uploader.upload,
         file_bytes,
         public_id=public_id,
         resource_type="raw",
