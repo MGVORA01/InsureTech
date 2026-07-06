@@ -1,3 +1,0 @@
-# types
-
-Global TypeScript types.
