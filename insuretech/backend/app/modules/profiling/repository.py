@@ -24,6 +24,7 @@ from app.modules.profiling.constants import (
     SESSION_STATUS_IN_PROGRESS,
 )
 from app.modules.profiling.schemas import ProfilingAnswerCreate
+from app.shared import base_repository as Base
 
 
 async def get_questions_by_section(
@@ -75,15 +76,9 @@ async def has_completed_session(
     Returns:
         True if a completed session exists, False otherwise.
     """
-    result = await db.execute(
-        select(ProfilingSession.id)
-        .where(
-            ProfilingSession.business_id == business_id,
-            ProfilingSession.status == SESSION_STATUS_COMPLETED,
-        )
-        .limit(1)
+    return await Base.exists(
+        db, ProfilingSession, business_id=business_id, status=SESSION_STATUS_COMPLETED
     )
-    return result.scalar_one_or_none() is not None
 
 
 async def get_conditional_questions_for_section(
@@ -158,15 +153,13 @@ async def create_session(
     Returns:
         The newly created ProfilingSession ORM instance.
     """
-    session = ProfilingSession(
+    return await Base.create(
+        db,
+        ProfilingSession,
         business_id=business_id,
         status=SESSION_STATUS_IN_PROGRESS,
         current_section=DEFAULT_SECTION,
     )
-    db.add(session)
-    await db.flush()
-    await db.refresh(session)
-    return session
 
 
 async def get_active_session(
@@ -205,10 +198,7 @@ async def get_session_by_id(
     Returns:
         ProfilingSession if found, None otherwise.
     """
-    result = await db.execute(
-        select(ProfilingSession).where(ProfilingSession.id == session_id)
-    )
-    return result.scalar_one_or_none()
+    return await Base.get_by_id(db, ProfilingSession, session_id)
 
 
 async def save_answer(
@@ -411,15 +401,32 @@ async def save_risk_scores(
     Returns:
         The persisted list of BusinessRiskScore instances.
     """
-    saved: list[BusinessRiskScore] = []
-    for score in risk_scores:
-        result = await db.execute(
-            select(BusinessRiskScore).where(
-                BusinessRiskScore.session_id == score.session_id,
-                BusinessRiskScore.risk_category_id == score.risk_category_id,
+    if not risk_scores:
+        return []
+
+    pairs = [(s.session_id, s.risk_category_id) for s in risk_scores]
+    existing_result = await db.execute(
+        select(BusinessRiskScore).where(
+            or_(
+                *(
+                    and_(
+                        BusinessRiskScore.session_id == sid,
+                        BusinessRiskScore.risk_category_id == rcid,
+                    )
+                    for sid, rcid in pairs
+                )
             )
         )
-        existing = result.scalar_one_or_none()
+    )
+    existing_map = {
+        (r.session_id, r.risk_category_id): r
+        for r in existing_result.scalars().all()
+    }
+
+    saved: list[BusinessRiskScore] = []
+    for score in risk_scores:
+        key = (score.session_id, score.risk_category_id)
+        existing = existing_map.get(key)
         if existing:
             existing.business_id = score.business_id
             existing.score = score.score

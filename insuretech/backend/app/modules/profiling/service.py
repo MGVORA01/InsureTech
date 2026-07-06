@@ -59,7 +59,7 @@ from app.shared.response import APIResponse
 logger = get_logger(__name__)
 
 
-class _ProfilingService:
+class ProfilingService:
     """Service for business risk profiling operations."""
 
     # ------------------------------------------------------------------
@@ -681,4 +681,4 @@ class _ProfilingService:
         return risk_score_instances
 
 
-Service = _ProfilingService()
+Service = ProfilingService()
