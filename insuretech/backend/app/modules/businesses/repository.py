@@ -101,6 +101,7 @@ async def create_business(
             selectinload(BusinessProfile.industry),
             selectinload(BusinessProfile.segment),
         ],
+        active_only=True,
     )
 
 
@@ -168,6 +169,7 @@ async def get_business_by_id(
             selectinload(BusinessProfile.industry),
             selectinload(BusinessProfile.segment),
         ],
+        active_only=True,
     )
 
 

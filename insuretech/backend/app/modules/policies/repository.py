@@ -24,7 +24,7 @@ async def get_insurers(db: AsyncSession) -> list[Insurer]:
 
 async def get_insurer_by_id(db: AsyncSession, insurer_id: str) -> Insurer | None:
     """Fetch an active insurer by ID."""
-    return await Base.get_by_id(db, Insurer, insurer_id)
+    return await Base.get_by_id(db, Insurer, insurer_id, active_only=True)
 
 
 async def create_insurer(db: AsyncSession, data: dict[str, Any]) -> Insurer:
@@ -38,7 +38,7 @@ async def update_insurer(
     data: dict[str, Any],
 ) -> Insurer | None:
     """Update an insurer by mutating and flushing the ORM object."""
-    insurer = await Base.get_by_id(db, Insurer, insurer_id)
+    insurer = await Base.get_by_id(db, Insurer, insurer_id, active_only=True)
     if not insurer:
         return None
     for key, value in data.items():
@@ -67,7 +67,7 @@ async def get_category_by_id(
     db: AsyncSession, category_id: str
 ) -> InsuranceCategory | None:
     """Fetch an active insurance category by ID."""
-    return await Base.get_by_id(db, InsuranceCategory, category_id)
+    return await Base.get_by_id(db, InsuranceCategory, category_id, active_only=True)
 
 
 async def create_category(
@@ -84,7 +84,12 @@ async def update_category(
     data: dict[str, Any],
 ) -> InsuranceCategory | None:
     """Update an insurance category by mutating and flushing the ORM object."""
-    category = await Base.get_by_id(db, InsuranceCategory, category_id)
+    category = await Base.get_by_id(
+        db,
+        InsuranceCategory,
+        category_id,
+        active_only=True,
+    )
     if not category:
         return None
     for key, value in data.items():
@@ -164,6 +169,7 @@ async def update_policy(
     policy = await Base.get_by_id(
         db, Policy, policy_id,
         options=[selectinload(Policy.insurer), selectinload(Policy.insurance_category)],
+        active_only=True,
     )
     if not policy:
         return None
