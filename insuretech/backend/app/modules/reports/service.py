@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 import textwrap
 from uuid import UUID
@@ -124,9 +125,10 @@ class ReportService:
             },
         )
 
-        self._write_report_file(out)
+        await asyncio.to_thread(self._write_report_file, out)
         file_url = REPORT_DOWNLOAD_URL_TEMPLATE.format(report_id=report.id)
         report = await repository.update_report_file_url(db, report, file_url)
+        await db.commit()
 
         out.file_url = report.file_url
         return APIResponse.success_response(
