@@ -9,6 +9,7 @@ from sqlalchemy.sql import select
 
 from app.core.config import settings
 from app.models import PasswordResetToken, Role, User
+from app.shared import base_repository as Base
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
@@ -21,10 +22,9 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
 
 async def get_user_by_id(db: AsyncSession, user_id: UUID | str) -> User | None:
     """Fetch a user by ID with role loaded."""
-    result = await db.execute(
-        select(User).options(selectinload(User.role)).where(User.id == user_id)
+    return await Base.get_by_id(
+        db, User, user_id, options=[selectinload(User.role)]
     )
-    return result.scalar_one_or_none()
 
 
 async def get_role(db: AsyncSession, role_name: str) -> Role | None:
@@ -42,17 +42,15 @@ async def create_user(
     role_id: UUID,
 ) -> User:
     """Create and commit a user."""
-    user = User(
+    return await Base.create(
+        db,
+        User,
         email=email,
         full_name=full_name,
         phone=phone_no,
         password_hash=password_hash,
         role_id=role_id,
     )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
 
 
 async def update_user_password(
@@ -66,7 +64,7 @@ async def update_user_password(
         return None
 
     user.password_hash = new_password_hash
-    await db.commit()
+    await db.flush()
     await db.refresh(user)
     return user
 
@@ -84,7 +82,7 @@ async def store_password_reset_token(
         + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES),
     )
     db.add(reset_token)
-    await db.commit()
+    await db.flush()
     await db.refresh(reset_token)
     return reset_token
 
@@ -110,6 +108,6 @@ async def mark_reset_token_used(
 ) -> PasswordResetToken:
     """Mark and commit a password reset token as used."""
     reset_token.used_at = datetime.now(timezone.utc)
-    await db.commit()
+    await db.flush()
     await db.refresh(reset_token)
     return reset_token

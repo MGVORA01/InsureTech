@@ -86,6 +86,7 @@ class AuthService:
             password_hash=await async_hash(data.password),
             role_id=role.id,
         )
+        await db.commit()
 
         return APIResponse.success_response(
             message=USER_REGISTERED_MESSAGE,
@@ -142,6 +143,7 @@ class AuthService:
             current_user.id,
             await async_hash(data.new_password),
         )
+        await db.commit()
         return APIResponse.success_response(
             message=PASSWORD_CHANGED_MESSAGE,
             data=None,
@@ -168,6 +170,7 @@ class AuthService:
             user.id,
             await async_hash(password_reset_token),
         )
+        await db.commit()
 
         reset_url = (
             f"{settings.FRONTEND_URL}{RESET_PASSWORD_QUERY_PATH}{password_reset_token}"
@@ -206,6 +209,7 @@ class AuthService:
 
         await Repository.update_user_password(db, user.id, await async_hash(data.new_password))
         await Repository.mark_reset_token_used(db, reset_token)
+        await db.commit()
         return APIResponse.success_response(message=PASSWORD_CHANGED_MESSAGE)
 
     async def refresh_token_service(
