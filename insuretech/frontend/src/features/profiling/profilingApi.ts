@@ -1,5 +1,5 @@
 import axios, { type AxiosError } from 'axios'
-import baseApi from '../../api/baseApi'
+import baseApi from '../../config/api'
 import { PROFILING_MESSAGES } from './profiling.constants'
 import type {
   PreviewScoresOut,

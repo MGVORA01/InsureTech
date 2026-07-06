@@ -1,4 +1,4 @@
-import baseApi from '../../api/baseApi'
+import baseApi from '../../config/api'
 import type { RiskAdvisoryReport } from './reports.types'
 
 interface ApiEnvelope<T> {
