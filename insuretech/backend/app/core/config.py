@@ -18,8 +18,8 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str
 
-    # PROJECT_NAME: str
-    # ENVIRONMENT: str
+    PROJECT_NAME: str = "Insuretech"
+    ENVIRONMENT: str = "development"
     LOG_LEVEL: str
     ECHO_SQL: bool = False
 
