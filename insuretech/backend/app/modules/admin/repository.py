@@ -96,7 +96,7 @@ async def update_user_status(
     if not user:
         return None
     user.is_active = is_active
-    await db.commit()
+    await db.flush()
     await db.refresh(user)
     return user
 
@@ -139,5 +139,5 @@ async def delete_knowledge_document(
     if doc:
         await db.delete(doc)
 
-    await db.commit()
+    await db.flush()
     return doc

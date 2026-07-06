@@ -2,11 +2,12 @@
 
 import os
 
+from app.shared.constants import ADMIN_ROLE, USER_ROLE_NAME
+
 PDFS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat", "pdfs")
 
 ADMIN_PREFIX = "/admin"
 ADMIN_TAG = "admin"
-ADMIN_ROLE = "ADMIN"
 
 STATS_ROUTE = "/stats"
 USERS_ROUTE = "/users"
@@ -16,7 +17,7 @@ USER_STATUS_ROUTE = "/users/{user_id}/status"
 UPLOAD_ROUTE = "/upload"
 UPLOAD_FILE_ROUTE = "/upload/file"
 
-DEFAULT_ROLE_NAME = "USER"
+DEFAULT_ROLE_NAME = USER_ROLE_NAME
 DOCUMENT_TYPE_KNOWLEDGE_BASE = "knowledge_base"
 PDF_EXTENSION = ".pdf"
 WRITE_BINARY_MODE = "wb"

@@ -1,5 +1,6 @@
 """Service for admin workflows."""
 
+import asyncio
 import os
 from typing import Any
 from uuid import UUID
@@ -88,8 +89,12 @@ class AdminService:
         file_path = os.path.join(PDFS_DIR, file.filename)
 
         content = await file.read()
-        with open(file_path, WRITE_BINARY_MODE) as pdf_file:
-            pdf_file.write(content)
+
+        def _write_file(path: str, data: bytes) -> None:
+            with open(path, WRITE_BINARY_MODE) as f:
+                f.write(data)
+
+        await asyncio.to_thread(_write_file, file_path, content)
 
         return await ChatService.process_pdf_upload(file_path, db)
 
@@ -101,6 +106,7 @@ class AdminService:
     ) -> APIResponse[dict[str, Any]]:
         """Update a user's active status."""
         user = await Repository.update_user_status(db, UUID(user_id), is_active)
+        await db.commit()
         if not user:
             raise NotFoundException(USER_NOT_FOUND_MESSAGE)
         return APIResponse.success_response(
@@ -136,12 +142,13 @@ class AdminService:
     ) -> APIResponse[None]:
         """Delete a knowledge-base PDF document."""
         doc = await Repository.delete_knowledge_document(db, UUID(document_id))
+        await db.commit()
         if not doc:
             raise NotFoundException(DOCUMENT_NOT_FOUND_MESSAGE)
 
         file_path = os.path.join(PDFS_DIR, doc.file_name)
         try:
-            os.remove(file_path)
+            await asyncio.to_thread(os.remove, file_path)
         except OSError:
             pass
 
