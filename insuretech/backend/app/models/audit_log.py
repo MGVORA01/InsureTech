@@ -56,5 +56,10 @@ class TimestampMixin:
         Returns:
             Column: Nullable timestamp with timezone for last update.
         """
-        return Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+        return Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now(),
+            nullable=False,
+        )
     
