@@ -62,7 +62,21 @@ class BusinessService:
     ) -> APIResponse[dict[str, Any]]:
         """Create a new business profile for the authenticated user."""
 
-        business = await repository.create_business(db, user.id, data)
+        business = await repository.create_business(
+            db,
+            user.id,
+            industry_id=data.industry_id,
+            segment_id=data.segment_id,
+            business_name=data.business_name,
+            business_description=data.business_description,
+            city=data.city,
+            state=data.state,
+            address=data.address,
+            pincode=data.pincode,
+            year_established=data.year_established,
+            employee_count=data.employee_count,
+            annual_turnover_range=data.annual_turnover_range,
+        )
         await db.commit()
         logger.info(BUSINESS_CREATED_LOG_MESSAGE, user.id)
 
