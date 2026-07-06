@@ -89,6 +89,7 @@ class PoliciesService:
     ) -> APIResponse:
         """Create an insurer."""
         insurer = await Repo.create_insurer(db, body.model_dump(exclude_none=True))
+        await db.commit()
         data = InsurerResponse(
             id=str(insurer.id),
             name=insurer.name,
@@ -113,6 +114,7 @@ class PoliciesService:
         if not data:
             raise BadRequestException(NO_FIELDS_TO_UPDATE_MESSAGE)
         insurer = await Repo.update_insurer(db, insurer_id, data)
+        await db.commit()
         result = InsurerResponse(
             id=str(insurer.id),
             name=insurer.name,
@@ -135,6 +137,7 @@ class PoliciesService:
         if policy_count > 0:
             raise BadRequestException(INSURER_HAS_POLICIES_MESSAGE)
         await Repo.soft_delete_insurer(db, insurer_id)
+        await db.commit()
         return APIResponse.success_response(message=INSURER_DELETED_MESSAGE)
 
     async def list_categories(self, db: AsyncSession) -> APIResponse:
@@ -162,6 +165,7 @@ class PoliciesService:
     ) -> APIResponse:
         """Create an insurance category."""
         cat = await Repo.create_category(db, body.model_dump(exclude_none=True))
+        await db.commit()
         data = InsuranceCategoryResponse(
             id=str(cat.id),
             name=cat.name,
@@ -187,6 +191,7 @@ class PoliciesService:
         if not data:
             raise BadRequestException(NO_FIELDS_TO_UPDATE_MESSAGE)
         cat = await Repo.update_category(db, category_id, data)
+        await db.commit()
         result = InsuranceCategoryResponse(
             id=str(cat.id),
             name=cat.name,
@@ -210,6 +215,7 @@ class PoliciesService:
         if policy_count > 0:
             raise BadRequestException(CATEGORY_HAS_POLICIES_MESSAGE)
         await Repo.soft_delete_category(db, category_id)
+        await db.commit()
         return APIResponse.success_response(message=CATEGORY_DELETED_MESSAGE)
 
     async def list_policies(
@@ -302,6 +308,7 @@ class PoliciesService:
         if not cat:
             raise NotFoundException(INSURANCE_CATEGORY_NOT_FOUND_MESSAGE)
         policy = await Repo.create_policy(db, body.model_dump())
+        await db.commit()
         data = PolicyDetailResponse(
             id=str(policy.id),
             insurer_id=str(policy.insurer_id),
@@ -343,6 +350,7 @@ class PoliciesService:
             if not cat:
                 raise NotFoundException(INSURANCE_CATEGORY_NOT_FOUND_MESSAGE)
         policy = await Repo.update_policy(db, policy_id, data)
+        await db.commit()
         # Re-fetch to get loaded relationships
         policy = await Repo.get_policy_by_id(db, policy_id)
         result = PolicyDetailResponse(
@@ -374,6 +382,7 @@ class PoliciesService:
         await Repo.delete_chunks_for_policy(db, policy_id)
         await Repo.soft_delete_documents_for_policy(db, policy_id)
         await Repo.soft_delete_policy(db, policy_id)
+        await db.commit()
         return APIResponse.success_response(message=POLICY_DELETED_MESSAGE)
 
     async def upload_policy_pdf(
@@ -432,6 +441,8 @@ class PoliciesService:
 
         if file_url and file_url.startswith(HTTP_PREFIX):
             await Repo.update_document_file_url(db, doc_id, file_url)
+
+        await db.commit()
 
         data = PolicyUploadResponse(
             document_id=doc_id,
