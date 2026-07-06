@@ -87,7 +87,7 @@ class RAGService:
             context = self._build_context(chunks)
 
             try:
-                answer = generate_response(
+                answer = await generate_response(
                     system_prompt=SYSTEM_PROMPT,
                     user_prompt=USER_PROMPT_TEMPLATE.format(
                         context=context,

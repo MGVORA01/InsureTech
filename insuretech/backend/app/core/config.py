@@ -23,7 +23,6 @@ class Settings(BaseSettings):
     LOG_LEVEL: str
     ECHO_SQL: bool = False
 
-    # GROQ_API_KEY: str = ""
     EMBEDDING_MODEL: str = "BAAI/bge-base-en-v1.5"
 
     GROQ_API_KEY: str
@@ -35,6 +34,8 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
+
+    LLAMA_PARSE_API_KEY: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
