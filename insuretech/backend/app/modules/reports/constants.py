@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from app.shared.constants import (
+    PROFILING_SESSION_NOT_FOUND_MESSAGE,
     RISK_LEVEL_CRITICAL,
     RISK_LEVEL_HIGH,
     RISK_LEVEL_LOW,
@@ -46,7 +47,6 @@ KEY_BENEFITS_LIMIT = 5
 IMPORTANT_LIMITATIONS_LIMIT = 4
 MAX_LINES_PER_PAGE = 43
 
-PROFILING_SESSION_NOT_FOUND_MESSAGE = "Profiling session not found"
 REPORT_NOT_FOUND_MESSAGE = "Report not found"
 REPORT_FILE_NOT_FOUND_MESSAGE = "Report file not found"
 RISK_ADVISORY_GENERATED_MESSAGE = "Risk advisory report generated successfully"
