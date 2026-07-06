@@ -70,10 +70,9 @@ async def retrieve_chunks(
     detected_type = detect_section_type(query)
     final_section_type = section_type or detected_type
     query_embedding = await asyncio.to_thread(generate_embedding, query)
-    vector_literal = _format_vector(query_embedding)
 
     conditions = []
-    params = {"limit": top_k}
+    params = {"limit": top_k, "query_vector": _format_vector(query_embedding)}
 
     if insurance_categories:
         conditions.append(
@@ -98,10 +97,10 @@ async def retrieve_chunks(
         SELECT
             id, chunk_text, policy_id, document_id,
             chunk_index, page_number, document_metadata,
-            1 - (embedding <=> '{vector_literal}'::vector) AS similarity
+            1 - (embedding <=> :query_vector::vector) AS similarity
         FROM document_chunks
         WHERE {where_clause}
-        ORDER BY embedding <=> '{vector_literal}'::vector
+        ORDER BY embedding <=> :query_vector::vector
         LIMIT :limit
     """)
     if has_policy_filter:
