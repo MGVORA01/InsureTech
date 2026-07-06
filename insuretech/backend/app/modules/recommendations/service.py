@@ -36,8 +36,8 @@ logger = get_logger(__name__)
 
 class RecommendationService:
     def __init__(self, business_service=None, profiling_service=None) -> None:
-        self._business_service = business_service or BusinessService
-        self._profiling_service = profiling_service or ProfilingService
+        self._business_service = business_service or BusinessService()
+        self._profiling_service = profiling_service or ProfilingService()
         self._presenter = RecommendationPresenter()
 
     async def get_recommendations(
@@ -46,6 +46,7 @@ class RecommendationService:
         user: User,
         db: AsyncSession,
     ) -> APIResponse:
+        await self._resolve_session(session_id, user, db)
         existing = await repository.get_existing_recommendations(db, session_id)
         if not existing:
             return APIResponse.success_response(
