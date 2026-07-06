@@ -29,7 +29,7 @@ from app.modules.admin.constants import (
     TOTAL_USERS_KEY,
     USERS_KEY,
 )
-from app.modules.auth.repository import get_user_by_id
+from app.shared import base_repository as Base
 
 
 async def get_user_stats(db: AsyncSession) -> dict[str, int | None]:
@@ -92,7 +92,7 @@ async def update_user_status(
     is_active: bool,
 ) -> User | None:
     """Update and persist a user's active state."""
-    user = await get_user_by_id(db, user_id)
+    user = await Base.get_by_id(db, User, user_id, options=[selectinload(User.role)])
     if not user:
         return None
     user.is_active = is_active

@@ -36,6 +36,8 @@ from app.shared.response import APIResponse
 
 
 class AdminService:
+    def __init__(self, chat_service=None):
+        self._chat_service = chat_service or ChatService
 
     async def get_dashboard_stats_service(
         self,
@@ -74,7 +76,7 @@ class AdminService:
         db: AsyncSession,
     ) -> APIResponse:
         """Upload an existing PDF path into the knowledge base."""
-        return await ChatService.process_pdf_upload(file_path, db)
+        return await self._chat_service.process_pdf_upload(file_path, db)
 
     async def upload_pdf_file_service(
         self,
@@ -96,7 +98,7 @@ class AdminService:
 
         await asyncio.to_thread(_write_file, file_path, content)
 
-        return await ChatService.process_pdf_upload(file_path, db)
+        return await self._chat_service.process_pdf_upload(file_path, db)
 
     async def update_user_status_service(
         self,
@@ -122,7 +124,7 @@ class AdminService:
         rows = await Repository.get_knowledge_documents(db)
         documents = [
             KnowledgeDocumentItem(
-                id=str(row.id),
+                id=row.id,
                 file_name=row.file_name,
                 file_size=row.file_size,
                 chunks_count=row.chunks_count,
@@ -161,7 +163,7 @@ class AdminService:
     def _user_to_list_item(user: Any) -> dict[str, Any]:
         """Serialize a user ORM object for admin list responses."""
         return UserListItem(
-            id=str(user.id),
+            id=user.id,
             email=user.email,
             full_name=user.full_name,
             phone=user.phone,
