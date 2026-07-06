@@ -69,14 +69,7 @@ class PoliciesService:
         """List active insurers."""
         insurers = await Repo.get_insurers(db)
         data = [
-            InsurerResponse(
-                id=str(i.id),
-                name=i.name,
-                irdai_registration_no=i.irdai_registration_no,
-                website=i.website,
-                logo_url=i.logo_url,
-                is_active=i.is_active,
-            )
+            InsurerResponse.model_validate(i)
             for i in insurers
         ]
         return APIResponse.success_response(
@@ -90,14 +83,7 @@ class PoliciesService:
         """Create an insurer."""
         insurer = await Repo.create_insurer(db, body.model_dump(exclude_none=True))
         await db.commit()
-        data = InsurerResponse(
-            id=str(insurer.id),
-            name=insurer.name,
-            irdai_registration_no=insurer.irdai_registration_no,
-            website=insurer.website,
-            logo_url=insurer.logo_url,
-            is_active=insurer.is_active,
-        )
+        data = InsurerResponse.model_validate(insurer)
         return APIResponse.success_response(
             message=INSURER_CREATED_MESSAGE,
             data=data.model_dump(),
@@ -115,14 +101,7 @@ class PoliciesService:
             raise BadRequestException(NO_FIELDS_TO_UPDATE_MESSAGE)
         insurer = await Repo.update_insurer(db, insurer_id, data)
         await db.commit()
-        result = InsurerResponse(
-            id=str(insurer.id),
-            name=insurer.name,
-            irdai_registration_no=insurer.irdai_registration_no,
-            website=insurer.website,
-            logo_url=insurer.logo_url,
-            is_active=insurer.is_active,
-        )
+        result = InsurerResponse.model_validate(insurer)
         return APIResponse.success_response(
             message=INSURER_UPDATED_MESSAGE,
             data=result.model_dump(),
@@ -144,15 +123,7 @@ class PoliciesService:
         """List active insurance categories."""
         cats = await Repo.get_categories(db)
         data = [
-            InsuranceCategoryResponse(
-                id=str(c.id),
-                name=c.name,
-                description=c.description,
-                risk_category_id=str(c.risk_category_id)
-                if c.risk_category_id
-                else None,
-                is_active=c.is_active,
-            )
+            InsuranceCategoryResponse.model_validate(c)
             for c in cats
         ]
         return APIResponse.success_response(
@@ -166,15 +137,7 @@ class PoliciesService:
         """Create an insurance category."""
         cat = await Repo.create_category(db, body.model_dump(exclude_none=True))
         await db.commit()
-        data = InsuranceCategoryResponse(
-            id=str(cat.id),
-            name=cat.name,
-            description=cat.description,
-            risk_category_id=str(cat.risk_category_id)
-            if cat.risk_category_id
-            else None,
-            is_active=cat.is_active,
-        )
+        data = InsuranceCategoryResponse.model_validate(cat)
         return APIResponse.success_response(
             message=CATEGORY_CREATED_MESSAGE,
             data=data.model_dump(),
@@ -192,15 +155,7 @@ class PoliciesService:
             raise BadRequestException(NO_FIELDS_TO_UPDATE_MESSAGE)
         cat = await Repo.update_category(db, category_id, data)
         await db.commit()
-        result = InsuranceCategoryResponse(
-            id=str(cat.id),
-            name=cat.name,
-            description=cat.description,
-            risk_category_id=str(cat.risk_category_id)
-            if cat.risk_category_id
-            else None,
-            is_active=cat.is_active,
-        )
+        result = InsuranceCategoryResponse.model_validate(cat)
         return APIResponse.success_response(
             message=CATEGORY_UPDATED_MESSAGE,
             data=result.model_dump(),
@@ -238,10 +193,10 @@ class PoliciesService:
             doc_count = doc_counts.get(str(p.id), 0)
             items.append(
                 PolicyListResponse(
-                    id=str(p.id),
-                    insurer_id=str(p.insurer_id),
+                    id=p.id,
+                    insurer_id=p.insurer_id,
                     insurer_name=p.insurer.name if p.insurer else EMPTY_VALUE,
-                    insurance_category_id=str(p.insurance_category_id),
+                    insurance_category_id=p.insurance_category_id,
                     insurance_category_name=p.insurance_category.name
                     if p.insurance_category
                     else EMPTY_VALUE,
@@ -265,23 +220,14 @@ class PoliciesService:
         if not policy:
             raise NotFoundException(POLICY_NOT_FOUND_MESSAGE)
         docs = [
-            PolicyDocumentResponse(
-                id=str(d.id),
-                doc_type=d.doc_type,
-                file_name=d.file_name,
-                file_url=d.file_url,
-                file_size=d.file_size,
-                version=d.version,
-                is_active=d.is_active,
-                created_at=d.created_at,
-            )
+            PolicyDocumentResponse.model_validate(d)
             for d in (policy.documents or [])
         ]
         data = PolicyDetailResponse(
-            id=str(policy.id),
-            insurer_id=str(policy.insurer_id),
+            id=policy.id,
+            insurer_id=policy.insurer_id,
             insurer_name=policy.insurer.name if policy.insurer else EMPTY_VALUE,
-            insurance_category_id=str(policy.insurance_category_id),
+            insurance_category_id=policy.insurance_category_id,
             insurance_category_name=policy.insurance_category.name
             if policy.insurance_category
             else EMPTY_VALUE,
@@ -310,10 +256,10 @@ class PoliciesService:
         policy = await Repo.create_policy(db, body.model_dump())
         await db.commit()
         data = PolicyDetailResponse(
-            id=str(policy.id),
-            insurer_id=str(policy.insurer_id),
+            id=policy.id,
+            insurer_id=policy.insurer_id,
             insurer_name=insurer.name,
-            insurance_category_id=str(policy.insurance_category_id),
+            insurance_category_id=policy.insurance_category_id,
             insurance_category_name=cat.name,
             policy_name=policy.policy_name,
             policy_number=policy.policy_number,
@@ -351,13 +297,11 @@ class PoliciesService:
                 raise NotFoundException(INSURANCE_CATEGORY_NOT_FOUND_MESSAGE)
         policy = await Repo.update_policy(db, policy_id, data)
         await db.commit()
-        # Re-fetch to get loaded relationships
-        policy = await Repo.get_policy_by_id(db, policy_id)
         result = PolicyDetailResponse(
-            id=str(policy.id),
-            insurer_id=str(policy.insurer_id),
+            id=policy.id,
+            insurer_id=policy.insurer_id,
             insurer_name=policy.insurer.name if policy.insurer else EMPTY_VALUE,
-            insurance_category_id=str(policy.insurance_category_id),
+            insurance_category_id=policy.insurance_category_id,
             insurance_category_name=policy.insurance_category.name
             if policy.insurance_category
             else EMPTY_VALUE,
