@@ -23,7 +23,6 @@ from app.modules.profiling.constants import (
     SESSION_STATUS_COMPLETED,
     SESSION_STATUS_IN_PROGRESS,
 )
-from app.modules.profiling.schemas import ProfilingAnswerCreate
 from app.shared import base_repository as Base
 
 
@@ -204,7 +203,8 @@ async def get_session_by_id(
 async def save_answer(
     db: AsyncSession,
     session_id: UUID,
-    data: ProfilingAnswerCreate,
+    question_id: UUID,
+    answer_value: str,
 ) -> ProfilingAnswer:
     """Create or update an answer for a session+question pair.
 
@@ -213,7 +213,8 @@ async def save_answer(
 
     Args:
         session_id: UUID of the profiling session.
-        data: The validated answer payload.
+        question_id: UUID of the question being answered.
+        answer_value: The raw answer value as a string.
 
     Returns:
         The created or updated ProfilingAnswer ORM instance.
@@ -221,18 +222,18 @@ async def save_answer(
     result = await db.execute(
         select(ProfilingAnswer).where(
             ProfilingAnswer.session_id == session_id,
-            ProfilingAnswer.question_id == data.question_id,
+            ProfilingAnswer.question_id == question_id,
         )
     )
     existing = result.scalar_one_or_none()
 
     if existing:
-        existing.answer_value = data.answer_value
+        existing.answer_value = answer_value
     else:
         existing = ProfilingAnswer(
             session_id=session_id,
-            question_id=data.question_id,
-            answer_value=data.answer_value,
+            question_id=question_id,
+            answer_value=answer_value,
         )
         db.add(existing)
 
