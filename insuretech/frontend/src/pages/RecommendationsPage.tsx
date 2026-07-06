@@ -129,10 +129,9 @@ function RecommendationCard({
 
   return (
     <article
-      className={`overflow-hidden rounded-lg border bg-white shadow-sm transition ${
-        selected ? 'border-primary ring-2 ring-primary/20' : 'border-slate-200'
+      className={`overflow-hidden rounded-2xl border bg-surface shadow-card transition ${
+        selected ? 'border-primary ring-2 ring-primary/20' : 'border-border'
       } ${selectionDisabled ? 'opacity-70' : 'cursor-pointer hover:border-primary/60'}`}
-      style={{ background: 'var(--color-surface)', borderColor: selected ? 'var(--color-secondary)' : 'var(--color-border)' }}
       onClick={() => {
         if (!selectionDisabled || selected) onToggleSelect()
       }}
