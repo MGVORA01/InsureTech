@@ -114,12 +114,15 @@ class ChatService:
                 FILE_NOT_FOUND_MESSAGE_TEMPLATE.format(file_path=file_path)
             )
 
-        with open(file_path, READ_BINARY_MODE) as pdf_file:
-            reader = PdfReader(pdf_file)
-            pages = [
-                (i + 1, page.extract_text())
-                for i, page in enumerate(reader.pages)
-            ]
+        def _read_pdf(path: str) -> list[tuple[int, str]]:
+            with open(path, READ_BINARY_MODE) as pdf_file:
+                reader = PdfReader(pdf_file)
+                return [
+                    (i + 1, page.extract_text())
+                    for i, page in enumerate(reader.pages)
+                ]
+
+        pages = await asyncio.to_thread(_read_pdf, file_path)
 
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=SPLITTER_CHUNK_SIZE,
@@ -138,7 +141,7 @@ class ChatService:
         if not chunks:
             raise BadRequestException(NO_TEXT_EXTRACTED_MESSAGE)
 
-        model = _get_embed_model()
+        model = await asyncio.to_thread(_get_embed_model)
         texts = [chunk[CHUNK_TEXT_KEY] for chunk in chunks]
         embeddings = await asyncio.to_thread(model.encode, texts)
         for index, embedding in enumerate(embeddings):
@@ -150,6 +153,7 @@ class ChatService:
         )
         await Repo.delete_existing_chunks(db, document_id)
         await Repo.store_chunks(db, chunks, policy_id, document_id)
+        await db.commit()
 
         return APIResponse.success_response(
             message=PDF_PROCESSED_MESSAGE,
