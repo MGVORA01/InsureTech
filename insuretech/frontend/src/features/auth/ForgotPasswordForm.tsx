@@ -14,7 +14,6 @@ import {
   selectPasswordState,
 } from './passwordSlice'
 import { forgotPasswordSchema } from './validation/forgotPassword.schema'
-import styles from './LoginForm.module.css'
 
 interface ForgotPasswordFormProps {
   onLogin?: () => void
@@ -61,13 +60,13 @@ function ForgotPasswordForm({ onLogin }: ForgotPasswordFormProps) {
   }
 
   return (
-    <form className={styles.form} noValidate onSubmit={handleSubmit(onSubmit)}>
-      <header className={styles.header}>
-        <h2>Forgot Password</h2>
-        <p>Enter your email address to receive a password reset link.</p>
+    <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+      <header className="flex flex-col gap-2 text-center">
+        <h2 className="m-0 text-[1.375rem] font-semibold text-text-primary">Forgot Password</h2>
+        <p className="m-0 text-sm leading-6 text-text-secondary">Enter your email address to receive a password reset link.</p>
       </header>
 
-      <div className={styles.fields}>
+      <div className="flex flex-col gap-3">
         <Input
           autoComplete="email"
           error={errors.email?.message}
@@ -79,13 +78,13 @@ function ForgotPasswordForm({ onLogin }: ForgotPasswordFormProps) {
       </div>
 
       {error ? (
-        <p className={styles.formError} role="alert">
+        <p className="rounded-[var(--radius-md)] border border-[rgba(220,38,38,0.2)] bg-[rgba(220,38,38,0.08)] px-3 py-2 text-sm text-risk-high" role="alert">
           {error}
         </p>
       ) : null}
 
       {message ? (
-        <p className={styles.formSuccess} role="status">
+        <p className="rounded-[var(--radius-md)] border border-[rgba(46,125,50,0.2)] bg-[rgba(46,125,50,0.08)] px-3 py-2 text-sm text-green-700" role="status">
           {message}
         </p>
       ) : null}
@@ -102,14 +101,14 @@ function ForgotPasswordForm({ onLogin }: ForgotPasswordFormProps) {
             : 'Send Reset Link'}
       </Button>
 
-      <p className={styles.footer}>
+      <p className="mt-1 text-center text-sm text-text-secondary">
         Remembered your password?{' '}
         {onLogin ? (
-          <button className={styles.linkButton} onClick={onLogin} type="button">
+          <button className="ml-1 border-none bg-transparent p-0 font-semibold text-primary underline-offset-2 hover:underline" onClick={onLogin} type="button">
             {AUTH_MESSAGES.loginLink}
           </button>
         ) : (
-          <Link to="/login">{AUTH_MESSAGES.loginLink}</Link>
+          <Link className="ml-1 font-semibold text-primary underline-offset-2 hover:underline" to="/login">{AUTH_MESSAGES.loginLink}</Link>
         )}
       </p>
     </form>

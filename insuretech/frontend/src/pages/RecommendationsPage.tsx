@@ -16,7 +16,7 @@ import {
 import { downloadRecommendationReportPdf } from '../features/recommendations/recommendationReportPdf'
 import { profileApi } from '../features/profile/profileApi'
 import type { RecommendationListOut, RecommendationOut, RiskScoreOut } from '../features/recommendations/recommendations.types'
-import UserLayout from '../layout/UserLayout'
+import UserLayout from '../layouts/UserLayout'
 import type { Section } from '../components/UserSidebar'
 
 type Status = 'loading' | 'empty' | 'error' | 'ready'
@@ -129,10 +129,9 @@ function RecommendationCard({
 
   return (
     <article
-      className={`overflow-hidden rounded-lg border bg-white shadow-sm transition ${
-        selected ? 'border-primary ring-2 ring-primary/20' : 'border-slate-200'
+      className={`overflow-hidden rounded-2xl border bg-surface shadow-card transition ${
+        selected ? 'border-primary ring-2 ring-primary/20' : 'border-border'
       } ${selectionDisabled ? 'opacity-70' : 'cursor-pointer hover:border-primary/60'}`}
-      style={{ background: 'var(--color-surface)', borderColor: selected ? 'var(--color-secondary)' : 'var(--color-border)' }}
       onClick={() => {
         if (!selectionDisabled || selected) onToggleSelect()
       }}

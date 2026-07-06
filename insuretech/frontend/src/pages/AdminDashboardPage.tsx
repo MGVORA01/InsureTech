@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import baseApi from '../api/baseApi'
+import baseApi from '../config/api'
 import {
   AdminDesktopSidebar,
   AdminMobileDrawer,

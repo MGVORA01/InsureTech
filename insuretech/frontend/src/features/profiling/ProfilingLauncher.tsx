@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { profilingApi, getProfilingErrorMessage } from './profilingApi'
 import { PROFILING_MESSAGES, SECTION_LABELS } from './profiling.constants'
 import type { ProfilingStatus } from './profiling.types'
-import styles from './ProfilingLauncher.module.css'
 
 interface ProfilingLauncherProps {
   onStartWizard: () => void
@@ -33,9 +32,9 @@ export default function ProfilingLauncher({ onStartWizard, businessId }: Profili
 
   if (loading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loadingState}>
-          <div className={styles.spinner} />
+      <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center gap-3 px-0 py-12 text-sm text-text-secondary">
+          <div className="h-6 w-6 animate-spin rounded-full border-[3px] border-border border-t-primary" />
           <p>Checking profiling status...</p>
         </div>
       </div>
@@ -44,10 +43,10 @@ export default function ProfilingLauncher({ onStartWizard, businessId }: Profili
 
   if (error) {
     return (
-      <div className={styles.container}>
-        <div className={styles.errorBanner}>
+      <div className="flex flex-col items-center">
+        <div className="my-4 flex items-center gap-4 rounded-[var(--radius-md)] border border-risk-high bg-risk-high-bg px-4 py-3 text-[13px] text-risk-high">
           <span>{error}</span>
-          <button type="button" className={styles.retryBtn} onClick={fetchStatus}>
+          <button type="button" className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high" onClick={fetchStatus}>
             Retry
           </button>
         </div>
@@ -59,11 +58,11 @@ export default function ProfilingLauncher({ onStartWizard, businessId }: Profili
   const sectionLabel = currentSection ? SECTION_LABELS[currentSection] || currentSection : null
 
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
-        <div className={styles.iconWrap}>
+    <div className="flex flex-col items-center">
+      <div className="flex max-w-[28rem] flex-col items-center gap-4 px-4 py-8 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-light text-white">
           <svg
-            className={styles.icon}
+            className="h-7 w-7"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -77,8 +76,8 @@ export default function ProfilingLauncher({ onStartWizard, businessId }: Profili
           </svg>
         </div>
 
-        <h3 className={styles.title}>Risk Profiling</h3>
-        <p className={styles.description}>
+        <h3 className="m-0 text-lg font-bold text-text-primary">Risk Profiling</h3>
+        <p className="m-0 text-sm leading-6 text-text-secondary">
           Complete a comprehensive risk assessment for your business.
           {status?.has_active_session && sectionLabel
             ? ` You have an active session (${sectionLabel}).`
@@ -88,14 +87,14 @@ export default function ProfilingLauncher({ onStartWizard, businessId }: Profili
         </p>
 
         {status?.has_active_session && (
-          <p className={styles.resumeInfo}>
+          <p className="m-0 text-[13px] text-text-tertiary">
             You were on section: <strong>{sectionLabel}</strong>
           </p>
         )}
 
         <button
           type="button"
-          className={styles.startBtn}
+          className="mt-2 inline-flex items-center justify-center rounded-[var(--radius-md)] bg-primary px-8 py-3 text-[15px] font-bold text-text-onPrimary transition-colors hover:bg-primary-dark"
           onClick={onStartWizard}
         >
           {status?.has_active_session

@@ -1,4 +1,4 @@
-import baseApi from '../../api/baseApi'
+import baseApi from '../../config/api'
 import type { APIResponse, ChatResponse, ChatRequest } from './chat.types'
 
 export async function sendChatMessage(

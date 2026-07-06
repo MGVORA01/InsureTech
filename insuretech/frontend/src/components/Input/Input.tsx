@@ -1,5 +1,4 @@
 import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react'
-import styles from './Input.module.css'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string
@@ -15,23 +14,23 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const errorId = error && inputId ? `${inputId}-error` : undefined
 
   return (
-    <div className={styles.field}>
-      <label className={styles.label} htmlFor={inputId}>
+    <div className="grid gap-2">
+      <label className="text-[0.92rem] font-bold text-[var(--color-text-primary)]" htmlFor={inputId}>
         {label}
       </label>
-      <div className={`${styles.inputShell} ${error ? styles.invalid : ''}`}>
+      <div className={`flex min-h-[46px] items-center overflow-hidden rounded-[var(--radius-md)] border bg-[var(--color-surface)] transition duration-160 ease-out focus-within:border-[var(--color-secondary)] focus-within:shadow-[0_0_0_3px_var(--focus-ring-secondary-soft)] ${error ? 'border-[var(--color-risk-high)] focus-within:border-[var(--color-risk-high)] focus-within:shadow-[0_0_0_3px_var(--focus-ring-danger)]' : 'border-[var(--color-border-strong)]'}`}>
         <input
           aria-describedby={errorId}
           aria-invalid={Boolean(error)}
-          className={`${styles.input} ${className}`}
+          className={`w-full min-w-0 border-0 bg-transparent px-[14px] py-3 text-[var(--color-text-primary)] outline-0 placeholder:text-[var(--color-text-tertiary)] ${className}`}
           id={inputId}
           ref={ref}
           {...props}
         />
-        {rightElement ? <div className={styles.rightElement}>{rightElement}</div> : null}
+        {rightElement ? <div className="inline-flex flex-none items-center pr-[6px]">{rightElement}</div> : null}
       </div>
       {error ? (
-        <p className={styles.error} id={errorId} role="alert">
+        <p className="m-0 text-[0.84rem] leading-[1.35] text-[var(--color-risk-high)]" id={errorId} role="alert">
           {error}
         </p>
       ) : null}

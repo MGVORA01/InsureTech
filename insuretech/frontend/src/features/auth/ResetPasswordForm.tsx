@@ -6,7 +6,6 @@ import Button from '../../components/Button'
 import { resetPasswordSchema } from './validation/resetPassword.schema'
 import PasswordInput from './PasswordInput'
 import { authApi, getAuthErrorMessage } from './authApi'
-import styles from './LoginForm.module.css'
 
 type PageState = 'form' | 'submitting' | 'success' | 'invalidToken' | 'tokenUsed'
 
@@ -78,8 +77,8 @@ function ResetPasswordForm() {
 
   if (!token || pageState === 'invalidToken') {
     return (
-      <div className={styles.form}>
-        <header className={styles.header} style={{ textAlign: 'center' }}>
+      <div className="grid w-full max-w-[440px] justify-self-center gap-6 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-card)] sm:p-8">
+        <header className="grid gap-2 text-center">
           <div
             style={{
               width: 56, height: 56, borderRadius: '50%', backgroundColor: '#dc2626',
@@ -90,8 +89,8 @@ function ResetPasswordForm() {
               <line x1="18" x2="6" y1="6" y2="18" /><line x1="6" x2="18" y1="6" y2="18" />
             </svg>
           </div>
-          <h2>Link Expired</h2>
-          <p>Reset password link has expired. Please try again.</p>
+          <h2 className="m-0 text-[1.85rem] leading-[1.15] text-[var(--color-primary)]">Link Expired</h2>
+          <p className="m-0 leading-[1.55] text-[var(--color-text-secondary)]">Reset password link has expired. Please try again.</p>
         </header>
         {/*<Link to="/forgot-password">*/}
         {/*  <Button fullWidth>Go to Forgot Password</Button>*/}
@@ -102,8 +101,8 @@ function ResetPasswordForm() {
 
   if (pageState === 'tokenUsed') {
     return (
-      <div className={styles.form}>
-        <header className={styles.header} style={{ textAlign: 'center' }}>
+      <div className="grid w-full max-w-[440px] justify-self-center gap-6 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-card)] sm:p-8">
+        <header className="grid gap-2 text-center">
           <div
             style={{
               width: 56, height: 56, borderRadius: '50%', backgroundColor: '#dc2626',
@@ -114,8 +113,8 @@ function ResetPasswordForm() {
               <line x1="18" x2="6" y1="6" y2="18" /><line x1="6" x2="18" y1="6" y2="18" />
             </svg>
           </div>
-          <h2>Link Already Used</h2>
-          <p>This link has already been used. Please generate a new one.</p>
+          <h2 className="m-0 text-[1.85rem] leading-[1.15] text-[var(--color-primary)]">Link Already Used</h2>
+          <p className="m-0 leading-[1.55] text-[var(--color-text-secondary)]">This link has already been used. Please generate a new one.</p>
         </header>
         {/*<Link to="/forgot-password">*/}
         {/*  <Button fullWidth>Go to Forgot Password</Button>*/}
@@ -126,8 +125,8 @@ function ResetPasswordForm() {
 
   if (pageState === 'success') {
     return (
-      <div className={styles.form}>
-        <header className={styles.header} style={{ textAlign: 'center' }}>
+      <div className="grid w-full max-w-[440px] justify-self-center gap-6 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-card)] sm:p-8">
+        <header className="grid gap-2 text-center">
           <div
             style={{
               width: 56, height: 56, borderRadius: '50%', backgroundColor: '#16a34a',
@@ -138,8 +137,8 @@ function ResetPasswordForm() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h2>Password Reset Successfully</h2>
-          <p>Your password has been reset successfully. Now you can login with your new password.</p>
+          <h2 className="m-0 text-[1.85rem] leading-[1.15] text-[var(--color-primary)]">Password Reset Successfully</h2>
+          <p className="m-0 leading-[1.55] text-[var(--color-text-secondary)]">Your password has been reset successfully. Now you can login with your new password.</p>
         </header>
         {/*<Link to="/login">*/}
         {/*  <Button fullWidth>Login</Button>*/}
@@ -149,13 +148,13 @@ function ResetPasswordForm() {
   }
 
   return (
-    <form className={styles.form} noValidate onSubmit={handleSubmit(onSubmit)}>
-      <header className={styles.header}>
-        <h2>Reset Password</h2>
-        <p>Create a new strong password for your account.</p>
+    <form className="grid w-full max-w-[440px] justify-self-center gap-6 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-card)] sm:p-8" noValidate onSubmit={handleSubmit(onSubmit)}>
+      <header className="grid gap-2">
+        <h2 className="m-0 text-[1.85rem] leading-[1.15] text-[var(--color-primary)]">Reset Password</h2>
+        <p className="m-0 leading-[1.55] text-[var(--color-text-secondary)]">Create a new strong password for your account.</p>
       </header>
 
-      <div className={styles.fields}>
+      <div className="grid gap-[18px]">
         <PasswordInput
           autoComplete="new-password"
           error={errors.password?.message}
@@ -173,7 +172,7 @@ function ResetPasswordForm() {
       </div>
 
       {error ? (
-        <p className={styles.formError} role="alert">{error}</p>
+        <p className="m-0 rounded-[var(--radius-md)] bg-[var(--color-risk-high-bg)] p-3 text-sm font-bold text-[var(--color-risk-high)]" role="alert">{error}</p>
       ) : null}
 
       <Button disabled={pageState === 'submitting'} fullWidth type="submit">

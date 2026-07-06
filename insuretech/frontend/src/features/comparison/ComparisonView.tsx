@@ -4,7 +4,6 @@ import { comparePolicies } from './comparisonApi'
 import type { PolicyListItem } from '../policies/policies.types'
 import type { CompareRequest, CompareResponse } from './comparison.types'
 import ComparisonChatPopUp from './ComparisonChatPopUp'
-import styles from './ComparisonView.module.css'
 
 interface ComparisonViewProps {
   businessProfileId: string
@@ -54,9 +53,11 @@ function splitIntoPoints(value: string): string[] {
 function PointList({ value }: { value: string }) {
   const points = splitIntoPoints(value)
   return (
-    <ul className={styles.pointList}>
+    <ul className="m-0 list-disc pl-[1.1rem]">
       {points.map((point, index) => (
-        <li key={`${point}-${index}`}>{point}</li>
+        <li key={`${point}-${index}`} className="mb-1.5 last:mb-0">
+          {point}
+        </li>
       ))}
     </ul>
   )
@@ -66,7 +67,7 @@ function renderListItems(items: string[]) {
   const safeItems = items.length > 0
     ? items.flatMap((item) => splitIntoPoints(item))
     : [UNAVAILABLE_TEXT]
-  return safeItems.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)
+  return safeItems.map((item, index) => <li key={`${item}-${index}`} className="mb-1 text-sm leading-6 text-text-primary">{item}</li>)
 }
 
 export default function ComparisonView({
@@ -154,8 +155,8 @@ export default function ComparisonView({
 
   function renderPlaceholder() {
     return (
-      <div className={styles.placeholder}>
-        <svg className={styles.placeholderIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <div className="flex flex-col items-center gap-3 px-8 py-12 text-center">
+        <svg className="h-12 w-12 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 20V10" />
           <path d="M18 20V4" />
           <path d="M6 20v-4" />
@@ -163,8 +164,8 @@ export default function ComparisonView({
           <path d="M12 10l4-6" />
           <path d="M12 10l-4-6" />
         </svg>
-        <h3 className={styles.placeholderTitle}>Policy Comparison</h3>
-        <p className={styles.placeholderText}>
+        <h3 className="text-base font-semibold text-text-primary">Policy Comparison</h3>
+        <p className="max-w-[28rem] text-sm text-text-tertiary">
           Select two insurance policies above and click Compare to see a detailed side-by-side analysis across coverage, exclusions, claims, financials, and terms.
         </p>
       </div>
@@ -175,47 +176,44 @@ export default function ComparisonView({
     if (!result) return null
 
     return (
-      <div className={styles.results}>
-        {/* Policy name labels */}
+      <div className="flex flex-col gap-6">
         {policyAMeta && policyBMeta && (
-          <div className={styles.policyLabels}>
-            <div className={`${styles.policyLabel} ${styles.policyLabelA}`}>
+          <div className="mb-2 flex gap-4">
+            <div className="flex-1 rounded-[var(--radius-md)] border border-risk-low bg-risk-low-bg px-3 py-2 text-center text-[13px] font-semibold text-risk-low">
               A: {policyAMeta.policy_name} ({policyAMeta.insurer_name})
             </div>
-            <div className={`${styles.policyLabel} ${styles.policyLabelB}`}>
+            <div className="flex-1 rounded-[var(--radius-md)] border border-risk-medium bg-risk-medium-bg px-3 py-2 text-center text-[13px] font-semibold text-risk-medium">
               B: {policyBMeta.policy_name} ({policyBMeta.insurer_name})
             </div>
           </div>
         )}
 
-        {/* Executive Summary */}
-        <div className={styles.sectionCard}>
-          <div className={styles.sectionHeader}>Executive Summary</div>
-          <div className={styles.sectionBody}>
-            <p>{result.executive_summary}</p>
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">Executive Summary</div>
+          <div className="px-5 py-4">
+            <p className="m-0 text-sm leading-7 text-text-primary">{result.executive_summary}</p>
           </div>
         </div>
 
-        {/* Comparison Table */}
-        <div className={styles.sectionCard}>
-          <div className={styles.sectionHeader}>Section-by-Section Comparison</div>
-          <div className={styles.sectionBody} style={{ padding: 0 }}>
-            <table className={styles.compTable}>
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">Section-by-Section Comparison</div>
+          <div className="p-0">
+            <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className={styles.compTableCategory}>Category</th>
-                  <th className={styles.compTableValue}>Policy A</th>
-                  <th className={styles.compTableValue}>Policy B</th>
+                  <th className="w-[20%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">Category</th>
+                  <th className="w-[40%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">Policy A</th>
+                  <th className="w-[40%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">Policy B</th>
                 </tr>
               </thead>
               <tbody>
                 {result.comparisons.map((item) => (
                   <tr key={item.category}>
-                    <td className={`${styles.compTableCategory} ${styles.compTableValue}`}>
+                    <td className="w-[20%] border-b border-border px-4 py-4 text-sm font-semibold text-text-primary">
                       {CATEGORY_LABELS[item.category] || item.category}
                     </td>
-                    <td className={styles.compTableValue}><PointList value={item.policy_a_value} /></td>
-                    <td className={styles.compTableValue}><PointList value={item.policy_b_value} /></td>
+                    <td className="w-[40%] border-b border-border px-4 py-4 text-sm leading-6 text-text-primary"><PointList value={item.policy_a_value} /></td>
+                    <td className="w-[40%] border-b border-border px-4 py-4 text-sm leading-6 text-text-primary"><PointList value={item.policy_b_value} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -223,43 +221,41 @@ export default function ComparisonView({
           </div>
         </div>
 
-        {/* Business Risk Alignment */}
-        <div className={styles.sectionCard}>
-          <div className={styles.sectionHeader}>Business Risk Alignment</div>
-          <div className={styles.sectionBody}>
-            <p>{result.business_risk_alignment}</p>
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">Business Risk Alignment</div>
+          <div className="px-5 py-4">
+            <p className="m-0 text-sm leading-7 text-text-primary">{result.business_risk_alignment}</p>
           </div>
         </div>
 
-        {/* Advantages & Limitations */}
-        <div className={styles.sectionCard}>
-          <div className={styles.sectionHeader}>Advantages & Limitations</div>
-          <div className={styles.sectionBody}>
-            <div className={styles.twoCol}>
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">Advantages & Limitations</div>
+          <div className="px-5 py-4">
+            <div className="grid gap-6 md:grid-cols-2">
               <div>
-                <div className={styles.policyColLabel}>Policy A — Advantages</div>
-                <div className={styles.listBlock}>
-                  <ul>
+                <div className="mb-3 text-[15px] font-bold text-primary">Policy A — Advantages</div>
+                <div className="flex flex-col gap-2">
+                  <ul className="m-0 pl-5">
                     {renderListItems(result.advantages_a)}
                   </ul>
                 </div>
-                <div className={styles.listBlock} style={{ marginTop: '1rem' }}>
-                  <div className={styles.listBlockTitle}>Limitations</div>
-                  <ul>
+                <div className="mt-4 flex flex-col gap-2">
+                  <div className="text-[13px] font-semibold uppercase tracking-[0.03em] text-text-secondary">Limitations</div>
+                  <ul className="m-0 pl-5">
                     {renderListItems(result.limitations_a)}
                   </ul>
                 </div>
               </div>
               <div>
-                <div className={styles.policyColLabel}>Policy B — Advantages</div>
-                <div className={styles.listBlock}>
-                  <ul>
+                <div className="mb-3 text-[15px] font-bold text-primary">Policy B — Advantages</div>
+                <div className="flex flex-col gap-2">
+                  <ul className="m-0 pl-5">
                     {renderListItems(result.advantages_b)}
                   </ul>
                 </div>
-                <div className={styles.listBlock} style={{ marginTop: '1rem' }}>
-                  <div className={styles.listBlockTitle}>Limitations</div>
-                  <ul>
+                <div className="mt-4 flex flex-col gap-2">
+                  <div className="text-[13px] font-semibold uppercase tracking-[0.03em] text-text-secondary">Limitations</div>
+                  <ul className="m-0 pl-5">
                     {renderListItems(result.limitations_b)}
                   </ul>
                 </div>
@@ -268,34 +264,30 @@ export default function ComparisonView({
           </div>
         </div>
 
-        {/* Overall Recommendation */}
-        <div className={styles.recommendation}>
-          <div className={styles.recommendationTitle}>Overall Recommendation</div>
-          <p>{result.overall_recommendation}</p>
+        <div className="rounded-[var(--radius-lg)] border border-risk-low bg-risk-low-bg p-5">
+          <div className="mb-2 text-[15px] font-bold text-risk-low">Overall Recommendation</div>
+          <p className="m-0 text-sm leading-7 text-text-primary">{result.overall_recommendation}</p>
         </div>
 
-        {/* Missing Information */}
         {result.missing_information.length > 0 && (
-          <div className={styles.missingInfo}>
+          <div className="rounded-[var(--radius-md)] bg-surface-alt px-4 py-3 text-[13px] text-text-tertiary">
             <strong>Missing Information:</strong> Some details could not be retrieved from the policy documents.
-            <ul>
-              {result.missing_information.map((m, i) => <li key={i}>{m}</li>)}
+            <ul className="mt-1.5 pl-5">
+              {result.missing_information.map((m, i) => <li key={i} className="mb-0.5">{m}</li>)}
             </ul>
           </div>
         )}
-
       </div>
     )
   }
 
   return (
-    <div className={styles.container}>
-      {/* Policy Selectors */}
-      <div className={styles.selectorsRow}>
-        <div className={styles.selectorGroup}>
-          <label className={styles.selectorLabel}>Policy A</label>
+    <div className="flex flex-col gap-6">
+      <div className="grid items-end gap-4 md:grid-cols-[1fr_auto_1fr]">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] font-semibold text-text-secondary">Policy A</label>
           <select
-            className={styles.policySelect}
+            className="w-full cursor-pointer rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-secondary disabled:cursor-not-allowed disabled:opacity-60"
             value={policyA}
             onChange={(e) => {
               lastAutoCompareKey.current = ''
@@ -314,12 +306,12 @@ export default function ComparisonView({
           </select>
         </div>
 
-        <div className={styles.selectorVs}>VS</div>
+        <div className="flex items-center justify-center pb-1 text-sm font-bold text-text-tertiary">VS</div>
 
-        <div className={styles.selectorGroup}>
-          <label className={styles.selectorLabel}>Policy B</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] font-semibold text-text-secondary">Policy B</label>
           <select
-            className={styles.policySelect}
+            className="w-full cursor-pointer rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-secondary disabled:cursor-not-allowed disabled:opacity-60"
             value={policyB}
             onChange={(e) => {
               lastAutoCompareKey.current = ''
@@ -339,37 +331,32 @@ export default function ComparisonView({
         </div>
       </div>
 
-      {/* Compare Button */}
       <button
-        className={styles.compareBtn}
+        className="self-center rounded-[var(--radius-md)] bg-secondary px-8 py-2.5 text-[15px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         onClick={handleCompare}
         disabled={!policyA || !policyB || policyA === policyB || comparing}
       >
         {comparing ? 'Comparing...' : 'Compare'}
       </button>
 
-      {/* Loading */}
       {comparing && (
-        <div className={styles.loadingState}>
-          <div className={styles.spinner} />
+        <div className="flex flex-col items-center gap-3 rounded-[var(--radius-lg)] bg-surface-alt p-8 text-sm text-text-tertiary">
+          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-border border-t-secondary" />
           <p>Analyzing policies... This may take a moment.</p>
         </div>
       )}
 
-      {/* Error */}
       {error && (
-        <div className={styles.errorBanner}>
+        <div className="flex items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-risk-medium-bg)] bg-[var(--color-risk-medium-bg)] px-4 py-3 text-sm text-[var(--color-risk-medium)]">
           <span>{error}</span>
-          <button type="button" className={styles.retryBtn} onClick={() => setError(null)}>
+          <button type="button" className="rounded-[var(--radius-md)] border-none bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-[var(--color-risk-medium)] shadow-sm" onClick={() => setError(null)}>
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Results or Placeholder */}
       {!comparing && !error && (result ? renderResults() : renderPlaceholder())}
 
-      {/* Comparison Chat Popup */}
       <ComparisonChatPopUp
         openSignal={openChatSignal}
         compareParams={{

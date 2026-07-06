@@ -4,7 +4,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import type { BusinessProfile, CreateBusinessRequest, Segment, Industry } from './profile.types'
 import { profileApi, getProfileErrorMessage } from './profileApi'
 import { businessProfileSchema, type BusinessProfileFormValues } from './validation/businessProfile.schema'
-import styles from './BusinessProfileForm.module.css'
 
 interface BusinessProfileFormProps {
   onSuccess: (profile: BusinessProfile) => void
@@ -103,23 +102,22 @@ export default function BusinessProfileForm({ onSuccess }: BusinessProfileFormPr
   }
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit(onSubmit as any)} noValidate>
-      {/* Segments */}
-      <div className={styles.fieldGroup}>
-        <label className={styles.label} htmlFor="segment_id">
+    <form className="flex flex-col gap-5" onSubmit={handleSubmit(onSubmit as any)} noValidate>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-semibold text-text-primary" htmlFor="segment_id">
           Segment
         </label>
         {segmentsError ? (
-          <div className={styles.banner}>
+          <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-risk-high bg-risk-high-bg px-3 py-2 text-[13px] text-risk-high">
             <span>{segmentsError}</span>
-            <button type="button" className={styles.retryBtn} onClick={loadSegments}>
+            <button type="button" className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-2.5 py-1 text-[12px] font-medium text-risk-high" onClick={loadSegments}>
               Retry
             </button>
           </div>
         ) : (
           <select
             id="segment_id"
-            className={styles.select}
+            className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:shadow-[0_0_0_2px_var(--focus-ring-secondary-soft)] disabled:cursor-not-allowed disabled:bg-surface-alt disabled:text-text-tertiary"
             disabled={segmentsLoading}
             {...register('segment_id')}
           >
@@ -133,20 +131,19 @@ export default function BusinessProfileForm({ onSuccess }: BusinessProfileFormPr
             ))}
           </select>
         )}
-        {errors.segment_id && <span className={styles.error}>{errors.segment_id.message}</span>}
+        {errors.segment_id && <span className="text-[12px] text-risk-high">{errors.segment_id.message}</span>}
       </div>
 
-      {/* Industries */}
-      <div className={styles.fieldGroup}>
-        <label className={styles.label} htmlFor="industry_id">
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-semibold text-text-primary" htmlFor="industry_id">
           Industry
         </label>
         {industriesError ? (
-          <div className={styles.banner}>
+          <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-risk-high bg-risk-high-bg px-3 py-2 text-[13px] text-risk-high">
             <span>{industriesError}</span>
             <button
               type="button"
-              className={styles.retryBtn}
+              className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-2.5 py-1 text-[12px] font-medium text-risk-high"
               onClick={() => selectedSegmentId && loadIndustries(selectedSegmentId)}
             >
               Retry
@@ -155,7 +152,7 @@ export default function BusinessProfileForm({ onSuccess }: BusinessProfileFormPr
         ) : (
           <select
             id="industry_id"
-            className={styles.select}
+            className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:shadow-[0_0_0_2px_var(--focus-ring-secondary-soft)] disabled:cursor-not-allowed disabled:bg-surface-alt disabled:text-text-tertiary"
             disabled={!selectedSegmentId || industriesLoading}
             {...register('industry_id')}
           >
@@ -173,58 +170,54 @@ export default function BusinessProfileForm({ onSuccess }: BusinessProfileFormPr
             ))}
           </select>
         )}
-        {errors.industry_id && <span className={styles.error}>{errors.industry_id.message}</span>}
+        {errors.industry_id && <span className="text-[12px] text-risk-high">{errors.industry_id.message}</span>}
       </div>
 
-      {/* Business Name */}
-      <div className={styles.fieldGroup}>
-        <label className={styles.label} htmlFor="business_name">
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-semibold text-text-primary" htmlFor="business_name">
           Business Name
         </label>
         <input
           id="business_name"
           type="text"
-          className={styles.input}
+          className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:shadow-[0_0_0_2px_var(--focus-ring-secondary-soft)]"
           {...register('business_name')}
         />
-        {errors.business_name && <span className={styles.error}>{errors.business_name.message}</span>}
+        {errors.business_name && <span className="text-[12px] text-risk-high">{errors.business_name.message}</span>}
       </div>
 
-      {/* Business Description */}
-      <div className={styles.fieldGroup}>
-        <label className={styles.label} htmlFor="business_description">
-          Description <span className={styles.optional}>(optional)</span>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-semibold text-text-primary" htmlFor="business_description">
+          Description <span className="ml-1 font-normal text-text-tertiary">(optional)</span>
         </label>
         <textarea
           id="business_description"
-          className={styles.textarea}
+          className="min-h-16 w-full resize-y rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:shadow-[0_0_0_2px_var(--focus-ring-secondary-soft)]"
           {...register('business_description')}
         />
       </div>
 
-      {/* City + State */}
-      <div className={styles.row}>
-        <div className={styles.fieldGroup}>
-          <label className={styles.label} htmlFor="city">
-            City 
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] font-semibold text-text-primary" htmlFor="city">
+            City
           </label>
-          <input id="city" type="text" className={styles.input} {...register('city')} />
+          <input id="city" type="text" className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:shadow-[0_0_0_2px_var(--focus-ring-secondary-soft)]" {...register('city')} />
         </div>
-        <div className={styles.fieldGroup}>
-          <label className={styles.label} htmlFor="state">
-            State 
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] font-semibold text-text-primary" htmlFor="state">
+            State
           </label>
-          <input id="state" type="text" className={styles.input} {...register('state')} />
+          <input id="state" type="text" className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:shadow-[0_0_0_2px_var(--focus-ring-secondary-soft)]" {...register('state')} />
         </div>
       </div>
 
-      {/* Submit Error */}
       {submitError && (
-        <div className={styles.banner}>
+        <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-risk-high bg-risk-high-bg px-3 py-2 text-[13px] text-risk-high">
           <span>{submitError}</span>
           <button
             type="button"
-            className={styles.retryBtn}
+            className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-2.5 py-1 text-[12px] font-medium text-risk-high"
             onClick={handleSubmit(onSubmit as any)}
           >
             Retry
@@ -232,8 +225,7 @@ export default function BusinessProfileForm({ onSuccess }: BusinessProfileFormPr
         </div>
       )}
 
-      {/* Submit */}
-      <button type="submit" className={styles.submitBtn} disabled={loading}>
+      <button type="submit" className="w-full rounded-[var(--radius-md)] bg-primary px-4 py-2.5 text-sm font-semibold text-text-onPrimary transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60" disabled={loading}>
         {loading ? 'Creating...' : 'Create Profile'}
       </button>
     </form>

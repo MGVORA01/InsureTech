@@ -9,7 +9,6 @@ import type { LoginFormData } from './auth.types'
 import PasswordInput from './PasswordInput'
 import { useAuth } from '../../hooks/useAuth'
 import { loginSchema } from './validation/login.schema'
-import styles from './LoginForm.module.css'
 
 interface LoginFormProps {
     onForgotPassword?: () => void
@@ -46,13 +45,13 @@ function LoginForm({ onForgotPassword, onRegister }: LoginFormProps) {
     }
 
     return (
-        <form className={styles.form} noValidate onSubmit={handleSubmit(onSubmit)}>
-            <header className={styles.header}>
-                <h2>{AUTH_MESSAGES.loginTitle}</h2>
-                <p>{AUTH_MESSAGES.loginSubtitle}</p>
+        <form className="grid w-full max-w-[440px] justify-self-center gap-6 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-card)] sm:p-8" noValidate onSubmit={handleSubmit(onSubmit)}>
+            <header className="grid gap-2">
+                <h2 className="m-0 text-[1.85rem] leading-[1.15] text-[var(--color-primary)]">{AUTH_MESSAGES.loginTitle}</h2>
+                <p className="m-0 leading-[1.55] text-[var(--color-text-secondary)]">{AUTH_MESSAGES.loginSubtitle}</p>
             </header>
 
-            <div className={styles.fields}>
+            <div className="grid gap-[18px]">
                 <Input
                     autoComplete="email"
                     error={errors.email?.message}
@@ -70,23 +69,23 @@ function LoginForm({ onForgotPassword, onRegister }: LoginFormProps) {
                 />
             </div>
 
-            <div className={styles.actionsRow}>
+            <div className="flex items-center justify-between gap-4">
                 <Checkbox label={AUTH_MESSAGES.rememberMe} {...register('rememberMe')} />
                 {onForgotPassword ? (
                     <button
-                        className={styles.linkButton}
+                        className="border-0 bg-transparent p-0 font-extrabold text-[var(--color-secondary)] underline-offset-2 hover:text-[var(--color-secondary-dark)] hover:underline"
                         onClick={onForgotPassword}
                         type="button"
                     >
                         {AUTH_MESSAGES.forgotPassword}
                     </button>
                 ) : (
-                    <Link to="/forgot-password">{AUTH_MESSAGES.forgotPassword}</Link>
+                    <Link className="font-extrabold text-[var(--color-secondary)] hover:text-[var(--color-secondary-dark)] hover:underline" to="/forgot-password">{AUTH_MESSAGES.forgotPassword}</Link>
                 )}
             </div>
 
             {error ? (
-                <p className={styles.formError} role="alert">
+                <p className="m-0 rounded-[var(--radius-md)] bg-[var(--color-risk-high-bg)] p-3 text-sm font-bold text-[var(--color-risk-high)]" role="alert">
                     {error}
                 </p>
             ) : null}
@@ -95,18 +94,18 @@ function LoginForm({ onForgotPassword, onRegister }: LoginFormProps) {
                 {loading ? 'Logging in...' : AUTH_MESSAGES.loginButton}
             </Button>
 
-            <p className={styles.footer}>
+            <p className="m-0 text-center leading-[1.55] text-[var(--color-text-secondary)]">
                 {AUTH_MESSAGES.noAccount}{' '}
                 {onRegister ? (
                     <button
-                        className={styles.linkButton}
+                        className="border-0 bg-transparent p-0 font-extrabold text-[var(--color-secondary)] hover:text-[var(--color-secondary-dark)] hover:underline"
                         onClick={onRegister}
                         type="button"
                     >
                         {AUTH_MESSAGES.registerLink}
                     </button>
                 ) : (
-                    <Link to="/register">{AUTH_MESSAGES.registerLink}</Link>
+                    <Link className="font-extrabold text-[var(--color-secondary)] hover:text-[var(--color-secondary-dark)] hover:underline" to="/register">{AUTH_MESSAGES.registerLink}</Link>
                 )}
             </p>
         </form>

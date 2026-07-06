@@ -1,4 +1,3 @@
-import styles from './PasswordRequirements.module.css'
 
 interface PasswordRequirement {
   label: string
@@ -45,17 +44,15 @@ function PasswordRequirements({ password }: PasswordRequirementsProps) {
     <section
       aria-label="Password requirements"
       aria-live="polite"
-      className={styles.requirements}
+      className="mt-[-6px] grid gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)] p-3"
     >
-      <ul className={styles.list}>
+      <ul className="m-0 grid list-none gap-[7px] p-0">
         {requirements.map((requirement) => (
           <li
-            className={`${styles.item} ${
-              requirement.isValid ? styles.valid : styles.invalid
-            }`}
+            className={`flex min-h-5 items-center gap-2 text-[0.86rem] font-bold leading-[1.35] ${requirement.isValid ? 'text-[var(--color-risk-low)]' : 'text-[var(--color-risk-high)]'}`}
             key={requirement.label}
           >
-            <span aria-hidden="true" className={styles.icon}>
+            <span aria-hidden="true" className={`inline-grid h-[18px] w-[18px] flex-none place-items-center rounded-full text-[0.78rem] font-black leading-none ${requirement.isValid ? 'bg-[var(--color-risk-low-bg)] text-[var(--color-risk-low)]' : 'bg-[var(--color-risk-high-bg)] text-[var(--color-risk-high)]'}`}>
               {requirement.isValid ? '✓' : '✗'}
             </span>
             <span>{requirement.label}</span>
