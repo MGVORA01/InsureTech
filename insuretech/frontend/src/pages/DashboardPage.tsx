@@ -18,10 +18,9 @@ import type { ProfilingCompleteOut } from '../features/profiling'
 import {
   FeedbackForm,
 } from '../features/feedback'
-import UserLayout from '../layout/UserLayout'
+import UserLayout from '../layouts/UserLayout'
 import type { Section } from '../components/UserSidebar'
 import BusinessSwitcher from '../components/BusinessSwitcher'
-import { ComparisonView } from '../features/comparison'
 import { useAuth } from '../hooks/useAuth'
 
 
@@ -288,10 +287,13 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const state = location.state as { section?: Section } | null
   const activeSection: Section = section === 'profiling' ? 'profiling'
     : section === 'feedback' ? 'feedback'
     : section === 'comparison' ? 'comparison'
-    : 'profile'
+    : section === 'chatbot' ? 'chatbot'
+    : section === 'recommendation' ? 'recommendation'
+    : state?.section ?? 'profile'
 
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([])
   const [businessesLoading, setBusinessesLoading] = useState(true)
@@ -357,13 +359,6 @@ export default function DashboardPage() {
     resolveView()
     return () => { cancelled = true }
   }, [selectedBusinessId, activeSection, profilingView])
-
-  useEffect(() => {
-    const state = location.state as { section?: Section } | null
-    if (state?.section) {
-      setActiveSection(state.section)
-    }
-  }, [location.state])
 
   useEffect(() => {
     if (!selectedBusinessId) {
@@ -483,41 +478,6 @@ export default function DashboardPage() {
           <p className="mt-1 text-sm" style={{ color: 'var(--color-text-tertiary)' }}>{PROFILE_MESSAGES.noProfileProfiling}</p>
         </div>
         <BusinessProfileForm onSuccess={handleProfileCreated} />
-      </div>
-    )
-  }
-
-  const renderComparisonTab = () => {
-    if (!selectedBusiness) {
-      return (
-        <div className="p-8" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
-          <div className="flex flex-col items-center gap-3 py-8 text-center">
-            <svg
-              className="h-10 w-10" style={{ color: 'var(--color-text-muted)' }}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 20V10" />
-              <path d="M18 20V4" />
-              <path d="M6 20v-4" />
-              <path d="M2 20h20" />
-              <path d="M12 10l4-6" />
-              <path d="M12 10l-4-6" />
-            </svg>
-            <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-tertiary)' }}>Profile Required</h3>
-            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Please create a business profile first to compare policies.</p>
-          </div>
-        </div>
-      )
-    }
-
-    return (
-      <div style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)', padding: '1.5rem' }}>
-        <ComparisonView businessProfileId={selectedBusinessId!} />
       </div>
     )
   }

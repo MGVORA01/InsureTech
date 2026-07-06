@@ -10,7 +10,6 @@ import PasswordInput from './PasswordInput'
 import PasswordRequirements from './PasswordRequirements'
 import { useAuth } from '../../hooks/useAuth'
 import { registerSchema } from './validation/register.schema'
-import styles from './RegisterForm.module.css'
 
 interface RegisterFormProps {
   onLogin?: () => void
@@ -52,13 +51,13 @@ function RegisterForm({ onLogin }: RegisterFormProps) {
   }
 
   return (
-    <form className={styles.form} noValidate onSubmit={handleSubmit(onSubmit)}>
-      <header className={styles.header}>
-        <h2>{AUTH_MESSAGES.registerTitle}</h2>
-        <p>{AUTH_MESSAGES.registerSubtitle}</p>
+    <form className="grid w-full max-w-[480px] justify-self-center gap-[22px] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-card)] sm:p-8" noValidate onSubmit={handleSubmit(onSubmit)}>
+      <header className="grid gap-2">
+        <h2 className="m-0 text-[1.85rem] leading-[1.15] text-[var(--color-primary)]">{AUTH_MESSAGES.registerTitle}</h2>
+        <p className="m-0 leading-[1.55] text-[var(--color-text-secondary)]">{AUTH_MESSAGES.registerSubtitle}</p>
       </header>
 
-      <div className={styles.fields}>
+      <div className="grid gap-4">
         <Input
           autoComplete="name"
           error={errors.fullName?.message}
@@ -105,13 +104,13 @@ function RegisterForm({ onLogin }: RegisterFormProps) {
       </div>
 
       {error ? (
-        <p className={styles.formError} role="alert">
+        <p className="m-0 rounded-[var(--radius-md)] bg-[var(--color-risk-high-bg)] p-3 text-sm font-bold text-[var(--color-risk-high)]" role="alert">
           {error}
         </p>
       ) : null}
 
       {successMessage ? (
-        <p className={styles.formSuccess} role="status">
+        <p className="m-0 rounded-[var(--radius-md)] bg-[var(--color-risk-low-bg)] p-3 text-sm font-bold text-[var(--color-risk-low)]" role="status">
           {successMessage}
         </p>
       ) : null}
@@ -120,14 +119,14 @@ function RegisterForm({ onLogin }: RegisterFormProps) {
         {loading ? 'Registering...' : AUTH_MESSAGES.registerButton}
       </Button>
 
-      <p className={styles.footer}>
+      <p className="m-0 text-center leading-[1.55] text-[var(--color-text-secondary)]">
         {AUTH_MESSAGES.hasAccount}{' '}
         {onLogin ? (
-          <button className={styles.linkButton} onClick={onLogin} type="button">
+          <button className="border-0 bg-transparent p-0 font-extrabold text-[var(--color-secondary)] hover:text-[var(--color-secondary-dark)] hover:underline" onClick={onLogin} type="button">
             {AUTH_MESSAGES.loginLink}
           </button>
         ) : (
-          <Link to="/login">{AUTH_MESSAGES.loginLink}</Link>
+          <Link className="font-extrabold text-[var(--color-secondary)] hover:text-[var(--color-secondary-dark)] hover:underline" to="/login">{AUTH_MESSAGES.loginLink}</Link>
         )}
       </p>
     </form>
