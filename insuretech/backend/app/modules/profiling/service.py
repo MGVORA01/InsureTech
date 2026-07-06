@@ -297,7 +297,7 @@ class ProfilingService:
         # Build scores before commit while relationships are still in-memory
         scores_out = [self._score_to_out(s) for s in saved]
 
-        logger.info("Session %s completed with %d risk scores", session.id, len(saved))
+        logger.info("Session %s completed with %d risk scores", session.id, len(scores))
 
         return APIResponse.success_response(
             PROFILING_COMPLETED_MESSAGE,

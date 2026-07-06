@@ -1,6 +1,6 @@
   import { useCallback, useEffect, useState } from 'react'
   import { useNavigate } from 'react-router-dom'
-  import baseApi from '../api/baseApi'
+  import baseApi from '../config/api'
   import { useAuth } from '../hooks/useAuth'
   import {
     AdminDesktopSidebar,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import baseApi from '../api/baseApi';
+import baseApi from '../config/api';
 import { useAuth } from '../hooks/useAuth';
 // import { ProfilingWizard } from '../features/profiling';
 

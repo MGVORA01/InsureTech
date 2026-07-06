@@ -1,5 +1,5 @@
 import axios, { AxiosError, type AxiosResponse } from 'axios'
-import { BASE_URL } from '../../api/baseApi'
+import { BASE_URL } from '../../config/api'
 import { AUTH_ENDPOINTS, AUTH_MESSAGES } from './auth.constants'
 import type {
   ApiEnvelope,

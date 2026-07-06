@@ -104,15 +104,11 @@ function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3 px-4 py-3 text-[14px] font-semibold transition-all duration-200 ease-out ${
-        active ? 'shadow-sm' : 'hover:bg-black/5 hover:translate-x-0.5'
+      className={`flex w-full items-center gap-3 rounded-[14px] px-4 py-3 text-[14px] font-semibold transition-all duration-200 ease-out ${
+        active
+          ? 'bg-[rgba(207,69,0,0.08)] text-secondary shadow-sm ring-1 ring-[rgba(207,69,0,0.12)]'
+          : 'text-text-secondary hover:-translate-x-0.5 hover:bg-black/5'
       }`}
-      style={{
-        backgroundColor: active ? 'rgba(207, 69, 0, 0.08)' : 'transparent',
-        color: active ? '#CF4500' : 'var(--color-text-secondary)',
-        borderRadius: '14px',
-        position: 'relative',
-      }}
     >
       <Icon className="h-5 w-5 shrink-0" />
       <span className={active ? 'font-semibold' : ''}>{label}</span>
@@ -162,7 +158,7 @@ export function UserSidebar({
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-5">
         <LogoIcon />
-        <span className="text-lg font-bold tracking-tight" style={{ color: 'var(--color-primary)' }}>
+        <span className="text-lg font-bold tracking-tight text-primary">
           InsureTech
         </span>
       </div>
@@ -184,19 +180,16 @@ export function UserSidebar({
       </nav>
 
       {/* User + Logout */}
-      <div className="sticky bottom-0 border-t px-4 py-4" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+      <div className="sticky bottom-0 border-t border-border bg-surface/95 px-4 py-4 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-            style={{ backgroundColor: 'var(--color-secondary)' }}
-          >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-white">
             {initials}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+            <p className="truncate text-sm font-medium text-text-primary">
               {user?.fullName || 'User'}
             </p>
-            <p className="truncate text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+            <p className="truncate text-xs text-text-tertiary">
               {user?.email || ''}
             </p>
           </div>
@@ -204,8 +197,7 @@ export function UserSidebar({
         <button
           type="button"
           onClick={handleLogout}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition"
-          style={{ backgroundColor: 'var(--color-risk-high)' }}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-risk-high px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
         >
           <IconLogOut className="h-4 w-4" />
           Logout
@@ -219,7 +211,7 @@ export function UserSidebar({
 
 export function UserDesktopSidebar({ children }: { children: React.ReactNode }) {
   return (
-    <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:flex-col lg:border-r" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+    <aside className="hidden border-r border-border bg-surface lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:flex-col">
       {children}
     </aside>
   )
@@ -227,10 +219,8 @@ export function UserDesktopSidebar({ children }: { children: React.ReactNode }) 
 
 export function UserMobileTopBar({ onOpenDrawer, onLogout, onBack }: { onOpenDrawer: () => void; onLogout: () => void; onBack?: () => void }) {
   return (
-    <div
-      className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b px-4 py-3 backdrop-blur-md lg:hidden"
-      style={{ backgroundColor: 'var(--overlay-surface-80)', borderColor: 'var(--color-border)' }}
-    >
+    <div className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b border-border bg-surface/90 px-4 py-3 backdrop-blur-md lg:hidden">
+
       {onBack ? (
         <button type="button" onClick={onBack} className="rounded-md p-1.5 transition hover:[background-color:var(--color-hover)]" style={{ color: 'var(--color-text-tertiary)' }}>
           <IconChevronLeft className="h-6 w-6" />

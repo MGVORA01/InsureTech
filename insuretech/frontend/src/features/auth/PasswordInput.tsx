@@ -5,7 +5,6 @@ import {
   type InputHTMLAttributes,
 } from 'react'
 import Input from '../../components/Input'
-import styles from './PasswordInput.module.css'
 
 interface PasswordInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   error?: string
@@ -30,7 +29,7 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
             aria-controls={inputId}
             aria-label={isVisible ? 'Hide password' : 'Show password'}
             aria-pressed={isVisible}
-            className={styles.toggle}
+            className="min-w-[58px] rounded-[var(--radius-sm)] border-0 bg-transparent px-[10px] py-2 text-[0.82rem] font-extrabold text-[var(--color-secondary-dark)] transition hover:bg-[var(--color-surface-alt)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--focus-ring-secondary-strong)]"
             onClick={() => setIsVisible((current) => !current)}
             type="button"
           >

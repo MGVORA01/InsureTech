@@ -15,8 +15,8 @@ import DashboardPage from './pages/DashboardPage'
 import RecommendationsPage from './pages/RecommendationsPage'
 import PolicyComparisonPage from './pages/PolicyComparisonPage'
 import ChatPage from './pages/ChatPage'
-import AdminRoute from './Routes/AdminRoute'
-import ProtectedRoute from './Routes/ProtectedRoute'
+import AdminRoute from './routes/AdminRoute'
+import ProtectedRoute from './routes/ProtectedRoute'
 import { useSessionCheck } from './hooks/useSessionCheck'
 
 function App() {
