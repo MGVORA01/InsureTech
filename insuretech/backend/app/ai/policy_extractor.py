@@ -4,6 +4,8 @@ from pathlib import Path
 
 from llama_parse import LlamaParse
 
+from app.core.config import settings
+
 
 # ==========================================
 # CONFIG
@@ -20,8 +22,6 @@ OUTPUT_DIR.mkdir(
     exist_ok=True
 )
 
-LLAMA_PARSE_API_KEY = "llx-KhLCHZrD2Pdt1bncbZn98jC24K1NqLhyefnnRfArIl4NLasu"
-
 
 # ==========================================
 # PARSE SINGLE PDF
@@ -34,7 +34,7 @@ def parse_policy(pdf_path: Path):
         try:
 
             parser = LlamaParse(
-                api_key=LLAMA_PARSE_API_KEY,
+                api_key=settings.LLAMA_PARSE_API_KEY,
                 result_type="markdown",
                 verbose=True
             )

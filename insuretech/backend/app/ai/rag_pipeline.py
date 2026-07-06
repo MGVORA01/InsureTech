@@ -1,3 +1,4 @@
+import asyncio
 from uuid import UUID
 
 from sqlalchemy import bindparam, select, text
@@ -68,7 +69,7 @@ async def retrieve_chunks(
 ) -> list[dict]:
     detected_type = detect_section_type(query)
     final_section_type = section_type or detected_type
-    query_embedding = generate_embedding(query)
+    query_embedding = await asyncio.to_thread(generate_embedding, query)
     vector_literal = _format_vector(query_embedding)
 
     conditions = []
