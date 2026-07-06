@@ -71,7 +71,7 @@ async def get_or_create_knowledge_document(db, filename: str):
     )
     db.add(doc)
     await db.flush()
-    await db.commit()
+    await db.flush()
 
     return policy.id, doc.id
 
@@ -79,7 +79,7 @@ async def get_or_create_knowledge_document(db, filename: str):
 async def delete_existing_chunks(db, document_id):
     stmt = delete(CustomerSupportChunk).where(CustomerSupportChunk.document_id == document_id)
     await db.execute(stmt)
-    await db.commit()
+    await db.flush()
 
 
 async def store_chunks(db, chunks_with_embeddings: list[dict], policy_id, document_id):
@@ -94,4 +94,4 @@ async def store_chunks(db, chunks_with_embeddings: list[dict], policy_id, docume
         )
         for chunk in chunks_with_embeddings
     ])
-    await db.commit()
+    await db.flush()
