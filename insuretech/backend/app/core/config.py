@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     # PROJECT_NAME: str
     # ENVIRONMENT: str
     LOG_LEVEL: str
+    ECHO_SQL: bool = False
 
     # GROQ_API_KEY: str = ""
     EMBEDDING_MODEL: str = "BAAI/bge-base-en-v1.5"
@@ -28,6 +29,8 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_TEMPERATURE: float = 0.7
+
+    COOKIE_SECURE: bool = True
 
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
