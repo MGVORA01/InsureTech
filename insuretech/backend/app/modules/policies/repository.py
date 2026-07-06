@@ -290,6 +290,27 @@ async def get_document_count_for_policy(db: AsyncSession, policy_id: str) -> int
     return result.scalar() or 0
 
 
+async def get_document_counts_for_policies(
+    db: AsyncSession,
+    policy_ids: list[str],
+) -> dict[str, int]:
+    """Batch count active documents for multiple policies (eliminates N+1)."""
+    if not policy_ids:
+        return {}
+    result = await db.execute(
+        select(
+            PolicyDocument.policy_id,
+            func.count(PolicyDocument.id),
+        )
+        .where(
+            PolicyDocument.policy_id.in_(policy_ids),
+            PolicyDocument.is_active.is_(True),
+        )
+        .group_by(PolicyDocument.policy_id)
+    )
+    return dict(result.all())
+
+
 async def delete_document_chunks(db: AsyncSession, document_id: str) -> None:
     """Delete all chunks for a document."""
     await db.execute(

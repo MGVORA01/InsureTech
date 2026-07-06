@@ -225,9 +225,11 @@ class PoliciesService:
         policies, total = await Repo.get_policies(
             db, page, limit, insurer_id, category_id, search
         )
+        policy_ids = [str(p.id) for p in policies]
+        doc_counts = await Repo.get_document_counts_for_policies(db, policy_ids)
         items = []
         for p in policies:
-            doc_count = await Repo.get_document_count_for_policy(db, str(p.id))
+            doc_count = doc_counts.get(str(p.id), 0)
             items.append(
                 PolicyListResponse(
                     id=str(p.id),
