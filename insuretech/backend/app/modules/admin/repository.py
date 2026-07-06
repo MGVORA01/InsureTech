@@ -29,6 +29,7 @@ from app.modules.admin.constants import (
     TOTAL_USERS_KEY,
     USERS_KEY,
 )
+from app.modules.auth.repository import get_user_by_id
 
 
 async def get_user_stats(db: AsyncSession) -> dict[str, int | None]:
@@ -83,14 +84,6 @@ async def get_all_users(
         PAGE_KEY: page,
         LIMIT_KEY: limit,
     }
-
-
-async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
-    """Fetch a user by ID with role loaded."""
-    result = await db.execute(
-        select(User).options(selectinload(User.role)).where(User.id == user_id)
-    )
-    return result.scalar_one_or_none()
 
 
 async def update_user_status(
