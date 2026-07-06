@@ -69,7 +69,7 @@ function LoginForm({ onForgotPassword, onRegister }: LoginFormProps) {
                 />
             </div>
 
-            <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-start">
+            <div className="flex items-center justify-between gap-4">
                 <Checkbox label={AUTH_MESSAGES.rememberMe} {...register('rememberMe')} />
                 {onForgotPassword ? (
                     <button
