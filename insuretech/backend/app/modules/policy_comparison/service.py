@@ -504,7 +504,7 @@ class ComparisonService:
         )
 
         try:
-            llm_response = generate_response(
+            llm_response = await generate_response(
                 system_prompt=SYSTEM_PROMPT,
                 user_prompt=user_prompt,
                 model=LLM_MODEL,
@@ -636,7 +636,7 @@ class ComparisonService:
         )
 
         try:
-            answer = generate_response(
+            answer = await generate_response(
                 system_prompt="",
                 user_prompt="",
                 model=LLM_MODEL,
