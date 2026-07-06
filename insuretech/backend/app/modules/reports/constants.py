@@ -2,6 +2,15 @@
 
 from pathlib import Path
 
+from app.shared.constants import (
+    RISK_LEVEL_CRITICAL,
+    RISK_LEVEL_HIGH,
+    RISK_LEVEL_LOW,
+    RISK_LEVEL_MEDIUM,
+    UNKNOWN_LABEL,
+    UNKNOWN_LEVEL_LABEL,
+)
+
 REPORTS_PREFIX = "/reports"
 REPORTS_TAG = "reports"
 GENERATE_RISK_ADVISORY_ROUTE = "/{session_id}/risk-advisory"
@@ -16,10 +25,6 @@ RISK_ADVISORY_TXT_FILENAME_TEMPLATE = "risk-advisory-report-{report_id}.txt"
 REPORT_DOWNLOAD_URL_TEMPLATE = "/api/v1/reports/{report_id}/download"
 PDF_MEDIA_TYPE = "application/pdf"
 
-RISK_LEVEL_LOW = "low"
-RISK_LEVEL_MEDIUM = "medium"
-RISK_LEVEL_HIGH = "high"
-RISK_LEVEL_CRITICAL = "critical"
 HIGH_RISK_LEVELS = {RISK_LEVEL_HIGH, RISK_LEVEL_CRITICAL}
 
 RISK_PRIORITY_LABELS = {
@@ -29,8 +34,6 @@ RISK_PRIORITY_LABELS = {
     RISK_LEVEL_CRITICAL: "Critical priority",
 }
 
-UNKNOWN_LABEL = "Unknown"
-UNKNOWN_LEVEL_LABEL = "unknown"
 UNKNOWN_POLICY_LABEL = "Unknown Policy"
 UNKNOWN_COMPANY_LABEL = "Unknown Company"
 NOT_AVAILABLE_LABEL = "N/A"
