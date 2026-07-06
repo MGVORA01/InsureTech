@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import BusinessProfile, ProfilingSession, Report
+from app.modules.reports.constants import REPORT_STATUS_COMPLETED
 
 
 async def get_session_with_business(
@@ -16,8 +17,12 @@ async def get_session_with_business(
         select(ProfilingSession)
         .where(ProfilingSession.id == session_id)
         .options(
-            selectinload(ProfilingSession.business_profile).selectinload(BusinessProfile.industry),
-            selectinload(ProfilingSession.business_profile).selectinload(BusinessProfile.segment),
+            selectinload(ProfilingSession.business_profile).selectinload(
+                BusinessProfile.industry
+            ),
+            selectinload(ProfilingSession.business_profile).selectinload(
+                BusinessProfile.segment
+            ),
         )
     )
     return result.scalar_one_or_none()
@@ -33,11 +38,11 @@ async def create_completed_report(
         business_id=business_id,
         session_id=session_id,
         report_type=report_type,
-        status="completed",
+        status=REPORT_STATUS_COMPLETED,
         generated_at=datetime.now(timezone.utc),
     )
     db.add(report)
-    await db.flush()
+    await db.commit()
     await db.refresh(report)
     return report
 
@@ -49,7 +54,7 @@ async def update_report_file_url(
 ) -> Report:
     report.file_url = file_url
     db.add(report)
-    await db.flush()
+    await db.commit()
     await db.refresh(report)
     return report
 

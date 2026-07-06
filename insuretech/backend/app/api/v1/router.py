@@ -12,7 +12,6 @@ from app.modules.rag.router import router as rag_router
 from app.modules.feedback.router import router as feedback_router
 from app.modules.recommendations.router import router as recommendations_router
 from app.modules.reports.router import router as reports_router
-from app.modules.policies.router import router as policies_router
 
 
 API_router = APIRouter()
@@ -29,4 +28,3 @@ API_router.include_router(chat_router)
 API_router.include_router(feedback_router)
 API_router.include_router(recommendations_router)
 API_router.include_router(reports_router)
-API_router.include_router(policies_router)
