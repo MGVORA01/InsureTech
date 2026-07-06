@@ -67,6 +67,8 @@ class RecommendationService:
         session_id: UUID,
         user: User,
         db: AsyncSession,
+        *,
+        commit: bool = True,
     ) -> APIResponse:
         session, business = await self._resolve_session(session_id, user, db)
         scores = await repository.get_business_risk_scores(db, session_id)
@@ -75,6 +77,8 @@ class RecommendationService:
         risk_priorities = RiskEngine.select_priority_risks(scores)
 
         if not risk_priorities:
+            if commit:
+                await db.commit()
             return APIResponse.success_response(
                 NO_RISK_SCORES_MESSAGE,
                 RecommendationListOut(
@@ -108,6 +112,8 @@ class RecommendationService:
         )[:MAX_RECOMMENDATIONS]
 
         if not top_policies:
+            if commit:
+                await db.commit()
             return APIResponse.success_response(
                 NO_SUITABLE_POLICY_EVIDENCE_MESSAGE,
                 RecommendationListOut(
@@ -144,7 +150,8 @@ class RecommendationService:
             rec_models.append(rec)
 
         saved = await repository.save_recommendations(db, rec_models)
-        await db.commit()
+        if commit:
+            await db.commit()
 
         for rec, evidence in zip(saved, top_policies, strict=False):
             rec._policy_id = evidence.policy.id
