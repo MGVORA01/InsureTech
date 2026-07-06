@@ -51,6 +51,9 @@ logger = get_logger(__name__)
 
 
 class ComparisonService:
+    def __init__(self):
+        self._business_service = BusinessService()
+
     def _strip_json_fences(self, text: str) -> str:
         text = text.strip()
         if text.startswith("```"):
