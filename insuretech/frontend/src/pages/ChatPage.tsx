@@ -71,7 +71,7 @@ function ChatPage() {
   return (
     <UserLayout activeSection="chatbot" onSectionChange={handleSectionChange} contentClassName="w-full">
       <main className="min-h-screen bg-background text-text-primary">
-        <header className="border-b border-border bg-surface">
+        <header className="border-b border-border bg-surface/95 backdrop-blur-sm">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
             <div>
               <h1 className="text-xl font-semibold tracking-tight">InsureTech Assistant</h1>
@@ -80,7 +80,7 @@ function ChatPage() {
             <button
               type="button"
               onClick={closeChat}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface-alt text-text-primary transition hover:bg-background"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface-alt text-text-primary transition hover:bg-background"
               aria-label="Close chat"
               title="Close chat"
             >
@@ -91,12 +91,12 @@ function ChatPage() {
 
       <div className="mx-auto max-w-3xl px-5 py-6">
 
-        <section className="flex min-h-[72vh] flex-col rounded-md border border-border bg-surface shadow-card">
+        <section className="flex min-h-[72vh] flex-col rounded-2xl border border-border bg-surface shadow-card">
           <div className="flex-1 space-y-4 overflow-y-auto p-5">
             {messages.map((message, index) => (
               <div key={`${message.role}-${index}`} className={message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
                 <div
-                  className={`max-w-[82%] rounded-md px-4 py-3 text-sm leading-relaxed ${
+                  className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     message.role === 'user'
                       ? 'text-white'
                       : 'border border-border bg-background text-text-primary'
@@ -124,13 +124,13 @@ function ChatPage() {
             <input
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              className="min-w-0 flex-1 rounded-md border border-border bg-background px-4 py-3 text-sm outline-none focus:border-secondary"
+              className="min-w-0 flex-1 rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-secondary"
               placeholder="Ask a question from the uploaded PDF"
             />
             <button
               type="submit"
               disabled={sending || !question.trim()}
-              className="inline-flex h-12 w-12 items-center justify-center rounded-md text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-xl text-white transition disabled:cursor-not-allowed disabled:opacity-60"
               style={{ background: 'var(--color-cta)' }}
               aria-label="Send message"
               title="Send message"
