@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, ForeignKey, String, Integer, 
-    Text, Boolean, DateTime, text
+    Column, ForeignKey, String, Integer,
+    Text, Boolean, DateTime, text, func
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -22,7 +22,7 @@ class PolicyDocument(Base):
     version    = Column(Integer, nullable=False, server_default=text("1"))
     is_active    = Column(Boolean, nullable=False, server_default=text("true"))
     created_at   = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
-    updated_at   = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at   = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"), onupdate=func.now())
 
     # Relationships
     policy  = relationship("Policy",  back_populates="documents")
