@@ -62,6 +62,9 @@ logger = get_logger(__name__)
 class ProfilingService:
     """Service for business risk profiling operations."""
 
+    def __init__(self, business_service=None):
+        self._business_service = business_service or BusinessService
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -75,11 +78,11 @@ class ProfilingService:
         """Return profiling status for the authenticated user's business."""
         try:
             if business_id:
-                business = await BusinessService.get_business_by_id_for_user(
+                business = await self._business_service.get_business_by_id_for_user(
                     business_id, user, db
                 )
             else:
-                business = await BusinessService.get_business_by_user(user, db)
+                business = await self._business_service.get_business_by_user(user, db)
         except NotFoundException:
             return APIResponse.success_response(
                 NO_BUSINESS_PROFILE_MESSAGE,
@@ -127,11 +130,11 @@ class ProfilingService:
             business_id: Target business. Falls back to user's first business if omitted.
         """
         if business_id:
-            business = await BusinessService.get_business_by_id_for_user(
+            business = await self._business_service.get_business_by_id_for_user(
                 business_id, user, db
             )
         else:
-            business = await BusinessService.get_business_by_user(user, db)
+            business = await self._business_service.get_business_by_user(user, db)
 
         active = await repository.get_active_session(db, business.id)
         if active:
@@ -218,7 +221,7 @@ class ProfilingService:
         """
         session, business = await self._resolve_session(session_id, user, db)
 
-        await repository.save_answer(db, session.id, data)
+        await repository.save_answer(db, session.id, data.question_id, data.answer_value)
         logger.info(
             "Answer saved for session %s, question %s", session.id, data.question_id
         )
@@ -250,7 +253,7 @@ class ProfilingService:
         session, business = await self._resolve_session(session_id, user, db)
 
         for ans_data in data.answers:
-            await repository.save_answer(db, session.id, ans_data)
+            await repository.save_answer(db, session.id, ans_data.question_id, ans_data.answer_value)
 
         logger.info(
             "Batch answers saved for session %s, count: %d",
@@ -444,7 +447,7 @@ class ProfilingService:
         Raises:
             NotFoundException if no completed session exists.
         """
-        business = await BusinessService.get_business_by_id_for_user(
+        business = await self._business_service.get_business_by_id_for_user(
             business_id, user, db
         )
 
@@ -519,7 +522,7 @@ class ProfilingService:
         if not session:
             raise NotFoundException(PROFILING_SESSION_NOT_FOUND_MESSAGE)
 
-        business = await BusinessService.get_business_by_id_for_user(
+        business = await self._business_service.get_business_by_id_for_user(
             session.business_id, user, db
         )
 
