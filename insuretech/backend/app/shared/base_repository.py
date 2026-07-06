@@ -59,6 +59,11 @@ async def create(
     return instance
 
 
+async def commit(db: AsyncSession) -> None:
+    """Commit the current transaction on the given session."""
+    await db.commit()
+
+
 async def exists(
     db: AsyncSession,
     model: type,
