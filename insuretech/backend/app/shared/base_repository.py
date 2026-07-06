@@ -7,7 +7,6 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 
 async def get_by_id(
@@ -16,6 +15,7 @@ async def get_by_id(
     id: UUID,
     *,
     options: list | None = None,
+    active_only: bool = False,
 ) -> Any | None:
     """Fetch a record by its UUID primary key.
 
@@ -23,11 +23,15 @@ async def get_by_id(
         model: The SQLAlchemy model class.
         id: The UUID primary key value.
         options: Optional list of ``selectinload`` / ``joinedload`` options.
+        active_only: When True and the model has ``is_active``, only return
+            active records.
 
     Returns:
         The ORM instance or None.
     """
     query = select(model).where(model.id == id)
+    if active_only and hasattr(model, "is_active"):
+        query = query.where(model.is_active.is_(True))
     if options:
         query = query.options(*options)
     result = await db.execute(query)
@@ -91,7 +95,7 @@ async def soft_delete(
     Returns:
         The updated ORM instance or None if not found.
     """
-    instance = await get_by_id(db, model, id)
+    instance = await get_by_id(db, model, id, active_only=True)
     if not instance:
         return None
     instance.is_active = False
