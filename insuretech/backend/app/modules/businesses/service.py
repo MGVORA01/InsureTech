@@ -31,7 +31,7 @@ from app.shared.response import APIResponse
 logger = get_logger(__name__)
 
 
-class _BusinessService:
+class BusinessService:
     """Service for business profile operations."""
 
     async def get_segments(self, db: AsyncSession) -> APIResponse[list[dict[str, Any]]]:
@@ -63,6 +63,7 @@ class _BusinessService:
         """Create a new business profile for the authenticated user."""
 
         business = await repository.create_business(db, user.id, data)
+        await db.commit()
         logger.info(BUSINESS_CREATED_LOG_MESSAGE, user.id)
 
         return APIResponse.success_response(
@@ -165,6 +166,7 @@ class _BusinessService:
             raise NotFoundException(BUSINESS_NOT_FOUND_MESSAGE)
 
         await repository.delete_business(db, business_id)
+        await db.commit()
         logger.info(BUSINESS_DELETED_LOG_MESSAGE, business_id, user.id)
 
         return APIResponse.success_response(
@@ -173,4 +175,4 @@ class _BusinessService:
         )
 
 
-Service = _BusinessService()
+Service = BusinessService()
