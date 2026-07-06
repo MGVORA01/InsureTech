@@ -292,11 +292,10 @@ class ProfilingService:
         if not completed:
             raise NotFoundException(PROFILING_SESSION_NOT_FOUND_MESSAGE)
 
-        await db.commit()
-
-        # Build scores before commit while relationships are still in-memory
-        scores_out = [self._score_to_out(s) for s in saved]
-
+        # Re-load saved scores with risk_category relationship loaded explicitly.
+        scores = await repository.get_risk_scores_for_session(db, session.id)   
+        scores_out = [self._score_to_out(s) for s in scores]
+ 
         logger.info("Session %s completed with %d risk scores", session.id, len(scores))
 
         return APIResponse.success_response(
