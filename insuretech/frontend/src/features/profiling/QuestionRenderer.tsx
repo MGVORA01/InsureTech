@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import type { OptionItem, QuestionOut } from './profiling.types'
-import styles from './QuestionRenderer.module.css'
 
 interface QuestionRendererProps {
   question: QuestionOut
@@ -40,6 +39,7 @@ export default function QuestionRenderer({
   }
 
   const opts = question.options ?? []
+  const inputClassName = `w-full rounded-[var(--radius-md)] border px-3 py-2.5 text-sm text-text-primary outline-none transition-colors placeholder:text-text-tertiary ${error ? 'border-risk-high bg-[rgba(220,38,38,0.04)] focus:border-risk-high focus:ring-[rgba(220,38,38,0.18)]' : 'border-border bg-surface focus:border-primary focus:ring-2 focus:ring-[rgba(56,96,190,0.18)]'}`
   const renderInput = () => {
     switch (question.question_type) {
       case 'text':
@@ -47,7 +47,7 @@ export default function QuestionRenderer({
           <input
             id={inputId}
             type="text"
-            className={`${styles.input} ${error ? styles.invalid : ''}`}
+            className={inputClassName}
             value={value}
             onChange={handleChange}
             aria-invalid={Boolean(error)}
@@ -61,7 +61,7 @@ export default function QuestionRenderer({
           <input
             id={inputId}
             type="number"
-            className={`${styles.input} ${error ? styles.invalid : ''}`}
+            className={inputClassName}
             value={value}
             onChange={handleChange}
             aria-invalid={Boolean(error)}
@@ -73,7 +73,7 @@ export default function QuestionRenderer({
         return (
           <textarea
             id={inputId}
-            className={`${styles.textarea} ${error ? styles.invalid : ''}`}
+            className={inputClassName}
             value={value}
             onChange={handleChange}
             rows={3}
@@ -87,7 +87,7 @@ export default function QuestionRenderer({
           <input
             id={inputId}
             type="date"
-            className={`${styles.input} ${error ? styles.invalid : ''}`}
+            className={inputClassName}
             value={value}
             onChange={handleChange}
             aria-invalid={Boolean(error)}
@@ -97,8 +97,8 @@ export default function QuestionRenderer({
 
       case 'boolean':
         return (
-          <div className={styles.booleanGroup}>
-            <label className={styles.radioLabel}>
+          <div className="flex flex-wrap gap-3">
+            <label className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary">
               <input
                 type="radio"
                 name={inputId}
@@ -108,7 +108,7 @@ export default function QuestionRenderer({
               />
               <span>Yes</span>
             </label>
-            <label className={styles.radioLabel}>
+            <label className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary">
               <input
                 type="radio"
                 name={inputId}
@@ -125,7 +125,7 @@ export default function QuestionRenderer({
         return (
           <select
             id={inputId}
-            className={`${styles.select} ${error ? styles.invalid : ''}`}
+            className={inputClassName}
             value={value}
             onChange={handleChange}
             aria-invalid={Boolean(error)}
@@ -142,9 +142,9 @@ export default function QuestionRenderer({
 
       case 'radio':
         return (
-          <div className={styles.radioGroup}>
+          <div className="flex flex-col gap-2.5">
             {opts.map((opt: OptionItem) => (
-              <label key={opt.value} className={styles.radioLabel}>
+              <label key={opt.value} className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary">
                 <input
                   type="radio"
                   name={inputId}
@@ -164,7 +164,7 @@ export default function QuestionRenderer({
             <input
               id={inputId}
               type="text"
-              className={`${styles.input} ${error ? styles.invalid : ''}`}
+              className={inputClassName}
               value={value}
               onChange={handleChange}
               aria-invalid={Boolean(error)}
@@ -174,9 +174,9 @@ export default function QuestionRenderer({
         }
         if (opts.length <= RADIO_THRESHOLD) {
           return (
-            <div className={styles.radioGroup}>
+            <div className="flex flex-col gap-2.5">
               {opts.map((opt: OptionItem) => (
-                <label key={opt.value} className={styles.radioLabel}>
+                <label key={opt.value} className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary">
                   <input
                     type="radio"
                     name={inputId}
@@ -194,7 +194,7 @@ export default function QuestionRenderer({
           return (
             <select
               id={inputId}
-              className={`${styles.select} ${error ? styles.invalid : ''}`}
+              className={inputClassName}
               value={value}
               onChange={handleChange}
               aria-invalid={Boolean(error)}
@@ -222,11 +222,11 @@ export default function QuestionRenderer({
         }
 
         return (
-          <div ref={comboboxRef} className={styles.combobox}>
+          <div ref={comboboxRef} className="relative">
             <input
               id={inputId}
               type="text"
-              className={`${styles.comboboxInput} ${error ? styles.invalid : ''}`}
+              className={inputClassName}
               value={selectedOpt && !showDropdown ? selectedOpt.label : searchText}
               onChange={(e) => {
                 setSearchText(e.target.value)
@@ -244,16 +244,14 @@ export default function QuestionRenderer({
               role="combobox"
             />
             {showDropdown && (
-              <ul className={styles.comboboxDropdown}>
+              <ul className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-[var(--radius-md)] border border-border bg-surface py-1 shadow-lg">
                 {filtered.length === 0 ? (
-                  <li className={styles.comboboxEmpty}>No matches found</li>
+                  <li className="px-3 py-2 text-sm text-text-tertiary">No matches found</li>
                 ) : (
                   filtered.map((opt) => (
                     <li
                       key={opt.value}
-                      className={`${styles.comboboxOption} ${
-                        value === opt.value ? styles.comboboxOptionActive : ''
-                      }`}
+                      className={`cursor-pointer px-3 py-2 text-sm ${value === opt.value ? 'bg-primary/10 text-primary' : 'text-text-primary hover:bg-surface-alt'}`}
                       onMouseDown={(e) => {
                         e.preventDefault()
                         selectOption(opt)
@@ -357,7 +355,7 @@ export default function QuestionRenderer({
             {needsSearch && (
               <input
                 type="text"
-                className={styles.multiSearch}
+                className={`mb-2 w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-primary focus:ring-2 focus:ring-[rgba(56,96,190,0.18)]`}
                 placeholder="Search options..."
                 value={multiSearch}
                 onChange={(e) => setMultiSearch(e.target.value)}
@@ -365,9 +363,9 @@ export default function QuestionRenderer({
             )}
             <div>
               {visibleGrouped.map((group) => (
-                <div key={group.prefix} className={styles.radioGroup}>
+                <div key={group.prefix} className="flex flex-col gap-2.5">
                   {group.options.map((opt) => (
-                    <label key={opt.value} className={styles.radioLabel}>
+                    <label key={opt.value} className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary">
                       <input
                         type="radio"
                         name={`${inputId}_${group.prefix}`}
@@ -383,9 +381,9 @@ export default function QuestionRenderer({
               {visibleGrouped.length > 0 && visibleUngrouped.length > 0 && (
                 <div style={{ height: '0.5rem' }} />
               )}
-              <div className={styles.checkboxGroup}>
+              <div className="grid gap-2.5 sm:grid-cols-2">
                 {(needsSearch ? visibleUngrouped : ungrouped).map((opt) => (
-                  <label key={opt.value} className={styles.checkboxLabel}>
+                  <label key={opt.value} className="flex cursor-pointer items-start gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary">
                     <input
                       type="checkbox"
                       value={opt.value}
@@ -398,7 +396,7 @@ export default function QuestionRenderer({
               </div>
             </div>
             {needsSearch && multiSearch && (
-              <div className={styles.multiSearchCount}>
+              <div className="mt-2 text-[12px] font-semibold text-text-tertiary">
                 {visibleGrouped.length + visibleUngrouped.length} of {totalItems} options shown
               </div>
             )}
@@ -411,7 +409,7 @@ export default function QuestionRenderer({
           <input
             id={inputId}
             type="text"
-            className={`${styles.input} ${error ? styles.invalid : ''}`}
+            className={inputClassName}
             value={value}
             onChange={handleChange}
             aria-invalid={Boolean(error)}
@@ -422,13 +420,13 @@ export default function QuestionRenderer({
   }
 
   return (
-    <div className={styles.field}>
-      <label className={styles.label} htmlFor={inputId}>
+    <div className="flex flex-col gap-2 rounded-[var(--radius-lg)] border border-border bg-surface-alt p-4">
+      <label className="text-sm font-semibold text-text-primary" htmlFor={inputId}>
         {question.question_text}
       </label>
       {renderInput()}
       {error && (
-        <p className={styles.error} id={errorId} role="alert">
+        <p className="text-sm text-risk-high" id={errorId} role="alert">
           {error}
         </p>
       )}
