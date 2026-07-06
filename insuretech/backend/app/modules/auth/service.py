@@ -53,7 +53,7 @@ from app.modules.auth.constants import (
     USER_REGISTERED_MESSAGE,
     USER_ROLE_NAME,
 )
-from app.modules.auth.password_hashing import hash, verify_hash
+from app.modules.auth.password_hashing import async_hash, async_verify_hash
 from app.modules.auth.schemas import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
@@ -83,7 +83,7 @@ class AuthService:
             email=data.email,
             full_name=data.full_name,
             phone_no=data.phone_no,
-            password_hash=hash(data.password),
+            password_hash=await async_hash(data.password),
             role_id=role.id,
         )
 
@@ -108,7 +108,7 @@ class AuthService:
             raise UnauthorizedException(USER_EMAIL_NOT_FOUND_MESSAGE)
         if not user.is_active:
             raise UnauthorizedException(ACCOUNT_INACTIVE_MESSAGE)
-        if not verify_hash(data.password, user.password_hash):
+        if not await async_verify_hash(data.password, user.password_hash):
             raise UnauthorizedException(INVALID_EMAIL_OR_PASSWORD_MESSAGE)
 
         access_token = create_access_token(user)
@@ -132,15 +132,15 @@ class AuthService:
         db: AsyncSession,
     ) -> APIResponse[None]:
         """Change the current user's password."""
-        if not verify_hash(data.current_password, current_user.password_hash):
+        if not await async_verify_hash(data.current_password, current_user.password_hash):
             raise UnauthorizedException(CURRENT_PASSWORD_INCORRECT_MESSAGE)
-        if verify_hash(data.new_password, current_user.password_hash):
+        if await async_verify_hash(data.new_password, current_user.password_hash):
             raise ConflictException(SAME_PASSWORD_MESSAGE)
 
         await Repository.update_user_password(
             db,
             current_user.id,
-            hash(data.new_password),
+            await async_hash(data.new_password),
         )
         return APIResponse.success_response(
             message=PASSWORD_CHANGED_MESSAGE,
@@ -166,7 +166,7 @@ class AuthService:
         await Repository.store_password_reset_token(
             db,
             user.id,
-            hash(password_reset_token),
+            await async_hash(password_reset_token),
         )
 
         reset_url = (
@@ -201,10 +201,10 @@ class AuthService:
         reset_token = await Repository.get_active_password_reset_token(db, user.id)
         if not reset_token:
             raise UnauthorizedException(RESET_TOKEN_NOT_FOUND_MESSAGE)
-        if not verify_hash(data.token, reset_token.token_hash):
+        if not await async_verify_hash(data.token, reset_token.token_hash):
             raise UnauthorizedException(INVALID_TOKEN_MESSAGE)
 
-        await Repository.update_user_password(db, user.id, hash(data.new_password))
+        await Repository.update_user_password(db, user.id, await async_hash(data.new_password))
         await Repository.mark_reset_token_used(db, reset_token)
         return APIResponse.success_response(message=PASSWORD_CHANGED_MESSAGE)
 
