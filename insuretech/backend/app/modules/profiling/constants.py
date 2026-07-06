@@ -1,5 +1,17 @@
 """Constants for the profiling module."""
 
+from app.shared.constants import (
+    DEFAULT_SEGMENT,
+    HIGH_RISK_LEVELS,
+    RISK_LEVEL_CRITICAL,
+    RISK_LEVEL_HIGH,
+    RISK_LEVEL_LOW,
+    RISK_LEVEL_MEDIUM,
+    UNKNOWN_LABEL,
+    UNKNOWN_LEVEL_LABEL,
+    PROFILING_SESSION_NOT_FOUND_MESSAGE,
+)
+
 PROFILING_PREFIX = "/profiling"
 PROFILING_TAG = "profiling"
 
@@ -27,23 +39,12 @@ DEFAULT_SECTION = SECTIONS_ORDER[0]
 SESSION_STATUS_IN_PROGRESS = "in_progress"
 SESSION_STATUS_COMPLETED = "completed"
 
-RISK_LEVEL_LOW = "low"
-RISK_LEVEL_MEDIUM = "medium"
-RISK_LEVEL_HIGH = "high"
-RISK_LEVEL_CRITICAL = "critical"
-HIGH_RISK_LEVELS = (RISK_LEVEL_HIGH, RISK_LEVEL_CRITICAL)
-
 RISK_THRESHOLD_CRITICAL = 0.8
 RISK_THRESHOLD_HIGH = 0.6
 RISK_THRESHOLD_MEDIUM = 0.3
 
 QUESTION_TYPE_MULTI_SELECT = "multi_select"
 MULTI_SELECT_DELIMITERS = ("|||", ",")
-
-DEFAULT_SEGMENT = "both"
-
-UNKNOWN_LABEL = "Unknown"
-UNKNOWN_LEVEL_LABEL = "unknown"
 
 NO_BUSINESS_PROFILE_MESSAGE = "No business profile found"
 PROFILING_STATUS_FETCHED_MESSAGE = "Profiling status fetched successfully"
@@ -59,6 +60,5 @@ NO_HIGH_RISK_CATEGORIES_MESSAGE = "No high-risk categories found"
 TIER2_QUESTIONS_FETCHED_MESSAGE = "Tier 2 questions fetched"
 BUSINESS_RESULTS_FETCHED_MESSAGE = "Business profiling results fetched successfully"
 
-PROFILING_SESSION_NOT_FOUND_MESSAGE = "Profiling session not found"
 UNKNOWN_SECTION_MESSAGE_TEMPLATE = "Unknown section: {section}"
 NO_COMPLETED_SESSION_MESSAGE = "No completed profiling session found for this business"

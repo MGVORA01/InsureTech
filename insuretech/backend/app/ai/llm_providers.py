@@ -1,3 +1,5 @@
+import asyncio
+
 from groq import Groq
 from app.core.config import settings
 
@@ -13,7 +15,7 @@ def get_client() -> Groq:
     return _client
 
 
-def generate_response(
+async def generate_response(
     system_prompt: str,
     user_prompt: str,
     model: str = "llama-3.1-8b-instant",
@@ -28,7 +30,8 @@ def generate_response(
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-    response = client.chat.completions.create(
+    response = await asyncio.to_thread(
+        client.chat.completions.create,
         model=model,
         messages=msgs,
         temperature=temperature,

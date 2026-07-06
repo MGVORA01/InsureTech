@@ -9,18 +9,27 @@ from starlette import status
 
 from app.core.database import get_db
 from app.models import User
+from app.modules.businesses.constants import (
+    BUSINESSES_PREFIX,
+    BUSINESSES_TAG,
+    BUSINESSES_ROUTE,
+    BUSINESS_DETAIL_ROUTE,
+    INDUSTRIES_ROUTE,
+    MY_BUSINESS_ROUTE,
+    SEGMENTS_ROUTE,
+)
 from app.modules.businesses.schemas import CreateBusinessRequest
 from app.modules.businesses.service import Service
 from app.shared.dependency.get_current_user import get_current_user
 from app.shared.response import APIResponse
 
 router = APIRouter(
-    prefix="/businesses",
-    tags=["businesses"],
+    prefix=BUSINESSES_PREFIX,
+    tags=[BUSINESSES_TAG],
 )
 
 
-@router.get("/segments", status_code=status.HTTP_200_OK)
+@router.get(SEGMENTS_ROUTE, status_code=status.HTTP_200_OK)
 async def get_segments(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -29,7 +38,7 @@ async def get_segments(
     return await Service.get_segments(db)
 
 
-@router.get("/industries", status_code=status.HTTP_200_OK)
+@router.get(INDUSTRIES_ROUTE, status_code=status.HTTP_200_OK)
 async def get_industries(
     segment_id: Annotated[UUID, Query(...)],
     current_user: Annotated[User, Depends(get_current_user)],
@@ -39,7 +48,7 @@ async def get_industries(
     return await Service.get_industries(segment_id, db)
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post(BUSINESSES_ROUTE, status_code=status.HTTP_201_CREATED)
 async def create_business(
     data: CreateBusinessRequest,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -49,7 +58,7 @@ async def create_business(
     return await Service.create_business(data, current_user, db)
 
 
-@router.get("", status_code=status.HTTP_200_OK)
+@router.get(BUSINESSES_ROUTE, status_code=status.HTTP_200_OK)
 async def get_my_businesses(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -58,7 +67,7 @@ async def get_my_businesses(
     return await Service.get_my_businesses(current_user, db)
 
 
-@router.get("/me", status_code=status.HTTP_200_OK)
+@router.get(MY_BUSINESS_ROUTE, status_code=status.HTTP_200_OK)
 async def get_my_business(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -67,7 +76,7 @@ async def get_my_business(
     return await Service.get_my_business(current_user, db)
 
 
-@router.get("/{business_id}", status_code=status.HTTP_200_OK)
+@router.get(BUSINESS_DETAIL_ROUTE, status_code=status.HTTP_200_OK)
 async def get_business_by_id(
     business_id: UUID,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -77,7 +86,7 @@ async def get_business_by_id(
     return await Service.get_my_business_by_id(business_id, current_user, db)
 
 
-@router.delete("/{business_id}", status_code=status.HTTP_200_OK)
+@router.delete(BUSINESS_DETAIL_ROUTE, status_code=status.HTTP_200_OK)
 async def delete_business(
     business_id: UUID,
     current_user: Annotated[User, Depends(get_current_user)],

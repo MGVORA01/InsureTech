@@ -1,5 +1,10 @@
 """Constants for chat workflows."""
 
+CHAT_PREFIX = "/chat"
+CHAT_TAG = "Chat"
+
+CHAT_ROUTE = ""
+
 EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
 ANSWER_GENERATED_MESSAGE = "Answer generated"
 ANSWER_GENERATED_SUCCESS_MESSAGE = "Answer generated successfully"

@@ -51,6 +51,9 @@ logger = get_logger(__name__)
 
 
 class ComparisonService:
+    def __init__(self):
+        self._business_service = BusinessService
+
     def _strip_json_fences(self, text: str) -> str:
         text = text.strip()
         if text.startswith("```"):
@@ -67,7 +70,7 @@ class ComparisonService:
         user: User,
         business_profile_id: UUID,
     ):
-        profile = await BusinessService.get_business_by_id(business_profile_id, db)
+        profile = await self._business_service.get_business_by_id(business_profile_id, db)
         if profile.user_id != user.id:
             raise NotFoundException(BUSINESS_PROFILE_NOT_FOUND_MESSAGE)
 
@@ -504,7 +507,7 @@ class ComparisonService:
         )
 
         try:
-            llm_response = generate_response(
+            llm_response = await generate_response(
                 system_prompt=SYSTEM_PROMPT,
                 user_prompt=user_prompt,
                 model=LLM_MODEL,
@@ -636,7 +639,7 @@ class ComparisonService:
         )
 
         try:
-            answer = generate_response(
+            answer = await generate_response(
                 system_prompt="",
                 user_prompt="",
                 model=LLM_MODEL,

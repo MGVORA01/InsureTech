@@ -60,56 +60,6 @@ async def get_insurance_categories_for_risk_categories(
     return list(result.scalars().all())
 
 
-async def get_policies_for_insurance_categories(
-    db: AsyncSession,
-    insurance_category_ids: list[UUID],
-    segment: str,
-) -> list[Policy]:
-    """Fetch active policies for given insurance categories, filtered by segment."""
-    if not insurance_category_ids:
-        return []
-    result = await db.execute(
-        select(Policy)
-        .options(
-            selectinload(Policy.insurer),
-            selectinload(Policy.insurance_category),
-        )
-        .where(
-            Policy.insurance_category_id.in_(insurance_category_ids),
-            Policy.is_active.is_(True),
-            or_(
-                Policy.target_segment.is_(None),
-                Policy.target_segment == segment,
-                Policy.target_segment == DEFAULT_SEGMENT,
-            ),
-        )
-        .order_by(Policy.policy_name)
-    )
-    return list(result.scalars().all())
-
-
-async def get_policies_by_insurance_categories(
-    db: AsyncSession,
-    insurance_category_ids: list[UUID],
-) -> list[Policy]:
-    """Fetch active policies for given insurance categories."""
-    if not insurance_category_ids:
-        return []
-    result = await db.execute(
-        select(Policy)
-        .options(
-            selectinload(Policy.insurer),
-            selectinload(Policy.insurance_category),
-        )
-        .where(
-            Policy.insurance_category_id.in_(insurance_category_ids),
-            Policy.is_active.is_(True),
-        )
-        .order_by(Policy.policy_name)
-    )
-    return list(result.scalars().all())
-
-
 async def get_policy_documents(
     db: AsyncSession,
     policy_ids: list[UUID],
@@ -263,7 +213,7 @@ async def save_recommendations(
     """Bulk-save recommendation records."""
     for rec in recommendations:
         db.add(rec)
-    await db.commit()
+    await db.flush()
     for rec in recommendations:
         await db.refresh(rec)
     return recommendations
@@ -282,4 +232,4 @@ async def deactivate_recommendations_for_session(
         )
         .values(is_active=False)
     )
-    await db.commit()
+    await db.flush()

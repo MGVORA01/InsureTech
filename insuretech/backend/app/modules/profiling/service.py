@@ -37,6 +37,7 @@ from app.modules.profiling.constants import (
     SECTIONS_ORDER,
     SESSION_STARTED_MESSAGE,
     SESSION_STATE_FETCHED_MESSAGE,
+    SESSION_STATUS_COMPLETED,
     TIER2_QUESTIONS_FETCHED_MESSAGE,
     UNKNOWN_LABEL,
     UNKNOWN_LEVEL_LABEL,
@@ -59,8 +60,11 @@ from app.shared.response import APIResponse
 logger = get_logger(__name__)
 
 
-class _ProfilingService:
+class ProfilingService:
     """Service for business risk profiling operations."""
+
+    def __init__(self, business_service=None):
+        self._business_service = business_service or BusinessService
 
     # ------------------------------------------------------------------
     # Public API
@@ -75,11 +79,11 @@ class _ProfilingService:
         """Return profiling status for the authenticated user's business."""
         try:
             if business_id:
-                business = await BusinessService.get_business_by_id_for_user(
+                business = await self._business_service.get_business_by_id_for_user(
                     business_id, user, db
                 )
             else:
-                business = await BusinessService.get_business_by_user(user, db)
+                business = await self._business_service.get_business_by_user(user, db)
         except NotFoundException:
             return APIResponse.success_response(
                 NO_BUSINESS_PROFILE_MESSAGE,
@@ -127,11 +131,11 @@ class _ProfilingService:
             business_id: Target business. Falls back to user's first business if omitted.
         """
         if business_id:
-            business = await BusinessService.get_business_by_id_for_user(
+            business = await self._business_service.get_business_by_id_for_user(
                 business_id, user, db
             )
         else:
-            business = await BusinessService.get_business_by_user(user, db)
+            business = await self._business_service.get_business_by_user(user, db)
 
         active = await repository.get_active_session(db, business.id)
         if active:
@@ -164,6 +168,7 @@ class _ProfilingService:
             )
 
         session = await repository.create_session(db, business.id)
+        await db.commit()
         logger.info(
             "Created profiling session %s for business %s", session.id, business.id
         )
@@ -181,19 +186,12 @@ class _ProfilingService:
     ) -> APIResponse:
         """Fetch the full state of a profiling session.
 
-        If ``section`` is provided the session's current section pointer
-        is advanced to that section (acting as navigation).
-
         Args:
             tier: If set, filter questions by tier (1 or 2).
         """
         session, business = await self._resolve_session(session_id, user, db)
 
         target = section or session.current_section
-        if target and target != session.current_section:
-            updated = await repository.update_session_section(db, session.id, target)
-            if updated:
-                session = updated
 
         state = await self._build_section_state(
             db, session, business, target, tier=tier
@@ -216,7 +214,9 @@ class _ProfilingService:
         """
         session, business = await self._resolve_session(session_id, user, db)
 
-        await repository.save_answer(db, session.id, data)
+        if session.status == SESSION_STATUS_COMPLETED:
+            raise BadRequestException("Session is already completed")
+        await repository.save_answer(db, session.id, data.question_id, data.answer_value)
         logger.info(
             "Answer saved for session %s, question %s", session.id, data.question_id
         )
@@ -230,6 +230,7 @@ class _ProfilingService:
             updated = await repository.update_session_section(db, session.id, target)
             if updated:
                 session = updated
+        await db.commit()
 
         state = await self._build_section_state(db, session, business, target)
         return APIResponse.success_response(
@@ -246,8 +247,10 @@ class _ProfilingService:
         """Save multiple answers in a batch."""
         session, business = await self._resolve_session(session_id, user, db)
 
+        if session.status == SESSION_STATUS_COMPLETED:
+            raise BadRequestException("Session is already completed")
         for ans_data in data.answers:
-            await repository.save_answer(db, session.id, ans_data)
+            await repository.save_answer(db, session.id, ans_data.question_id, ans_data.answer_value)
 
         logger.info(
             "Batch answers saved for session %s, count: %d",
@@ -264,6 +267,7 @@ class _ProfilingService:
             updated = await repository.update_session_section(db, session.id, target)
             if updated:
                 session = updated
+        await db.commit()
 
         state = await self._build_section_state(db, session, business, target)
         return APIResponse.success_response(
@@ -279,6 +283,8 @@ class _ProfilingService:
         """Complete a profiling session and compute risk scores."""
         session, business = await self._resolve_session(session_id, user, db)
 
+        if session.status == SESSION_STATUS_COMPLETED:
+            raise BadRequestException("Session is already completed")
         risk_scores = await self._compute_risk_scores(db, session, business)
         saved = await repository.save_risk_scores(db, risk_scores)
 
@@ -287,9 +293,9 @@ class _ProfilingService:
             raise NotFoundException(PROFILING_SESSION_NOT_FOUND_MESSAGE)
 
         # Re-load saved scores with risk_category relationship loaded explicitly.
-        scores = await repository.get_risk_scores_for_session(db, session.id)
+        scores = await repository.get_risk_scores_for_session(db, session.id)   
         scores_out = [self._score_to_out(s) for s in scores]
-
+ 
         logger.info("Session %s completed with %d risk scores", session.id, len(scores))
 
         return APIResponse.success_response(
@@ -439,7 +445,7 @@ class _ProfilingService:
         Raises:
             NotFoundException if no completed session exists.
         """
-        business = await BusinessService.get_business_by_id_for_user(
+        business = await self._business_service.get_business_by_id_for_user(
             business_id, user, db
         )
 
@@ -514,7 +520,7 @@ class _ProfilingService:
         if not session:
             raise NotFoundException(PROFILING_SESSION_NOT_FOUND_MESSAGE)
 
-        business = await BusinessService.get_business_by_id_for_user(
+        business = await self._business_service.get_business_by_id_for_user(
             session.business_id, user, db
         )
 
@@ -676,4 +682,4 @@ class _ProfilingService:
         return risk_score_instances
 
 
-Service = _ProfilingService()
+Service = ProfilingService()

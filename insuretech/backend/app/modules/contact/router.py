@@ -7,6 +7,7 @@ from app.modules.contact.constants import (
     CONTACT_PREFIX,
     CONTACT_SUBMIT_ROUTE,
     CONTACT_TAG,
+    UNKNOWN_CLIENT_IP,
 )
 from app.modules.contact.schemas import ContactRequest
 from app.modules.contact.service import Service
@@ -21,4 +22,5 @@ router = APIRouter(
 @router.post(CONTACT_SUBMIT_ROUTE, status_code=status.HTTP_200_OK)
 async def submit_contact(data: ContactRequest, request: Request) -> APIResponse:
     """Submit a contact form."""
-    return await Service.submit_contact(data, request)
+    client_ip = request.client.host if request.client else UNKNOWN_CLIENT_IP
+    return await Service.submit_contact(data, client_ip)

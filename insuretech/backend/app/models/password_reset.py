@@ -13,6 +13,5 @@ class PasswordResetToken(Base, TimestampMixin):
     token_hash = Column(String, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used_at = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), server_default=text("now()"), nullable=False)
 
     user = relationship("User", back_populates="password_reset_tokens")

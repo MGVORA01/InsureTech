@@ -1,9 +1,11 @@
+import asyncio
 import os
 import uuid
 import tempfile
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.ai.policy_extractor import parse_policy, LLAMA_PARSE_API_KEY
+from app.ai.policy_extractor import parse_policy
+from app.core.config import settings
 from app.ai.policy_cleaner import clean_page_text, is_admin_page
 from app.ai.metadata_extractor import clean_insurer_name
 from app.ai.section_detector import extract_sections, merge_consecutive_same_type, merge_insurer_headers
@@ -34,7 +36,7 @@ async def ingest_single_pdf(
             tmp.write(pdf_bytes)
             tmp_path = tmp.name
 
-        parsed = parse_policy(Path(tmp_path))
+        parsed = await asyncio.to_thread(parse_policy, Path(tmp_path))
         pages = parsed.get("pages", [])
         if not pages:
             raise ValueError("No pages extracted from PDF")

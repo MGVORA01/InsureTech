@@ -2,13 +2,15 @@
 
 from typing import Any, cast
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_providers import generate_response
 from app.ai.rag_pipeline import retrieve_chunks
 from app.core.config import settings
-from app.core.exceptions import BadRequestException
+from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.logging import get_logger
+from app.models import User
 from app.modules.rag.constants import (
     CONTEXT_PART_TEMPLATE,
     CONTEXT_SEPARATOR,
@@ -47,16 +49,46 @@ class RAGService:
     async def query(
         self,
         db: AsyncSession,
-        user_id: str,
+        user: User,
         request: RagQueryRequest,
     ) -> APIResponse[dict[str, object]]:
         """Answer a RAG query."""
         if not request.query.strip():
             raise BadRequestException(QUERY_EMPTY_MESSAGE)
 
+        if request.policy_ids:
+            from app.modules.businesses.service import Service as BusinessService
+            from app.models import Recommendation
+            import json as _json
+
+            try:
+                business = await BusinessService().get_business_by_user(user, db)
+            except NotFoundException:
+                raise BadRequestException("No business profile found")
+
+            result = await db.execute(
+                select(Recommendation).where(
+                    Recommendation.business_id == business.id,
+                    Recommendation.is_active.is_(True),
+                )
+            )
+            owned_ids: set[str] = set()
+            for rec in result.scalars().all():
+                try:
+                    payload = _json.loads(rec.reason_text)
+                    if isinstance(payload, dict) and payload.get("policy_id"):
+                        owned_ids.add(str(payload["policy_id"]))
+                except (TypeError, ValueError):
+                    continue
+            requested = {str(pid) for pid in request.policy_ids}
+            if not requested.issubset(owned_ids):
+                raise BadRequestException(
+                    "Access denied to one or more requested policies"
+                )
+
         logger.info(
             RAG_LOG_MESSAGE,
-            user_id,
+            str(user.id),
             request.query,
             request.insurance_categories,
         )
@@ -87,7 +119,7 @@ class RAGService:
             context = self._build_context(chunks)
 
             try:
-                answer = generate_response(
+                answer = await generate_response(
                     system_prompt=SYSTEM_PROMPT,
                     user_prompt=USER_PROMPT_TEMPLATE.format(
                         context=context,

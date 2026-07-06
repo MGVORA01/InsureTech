@@ -77,7 +77,7 @@ async def get_session_state(
 ) -> APIResponse:
     """Fetch the full state of a profiling session.
 
-    Optionally specify ``section`` to navigate to that wizard step.
+    Optionally specify ``section`` to view a specific wizard step.
     Use ``?tier=1`` or ``?tier=2`` to filter questions by tier.
     """
     return await Service.get_session_state(
