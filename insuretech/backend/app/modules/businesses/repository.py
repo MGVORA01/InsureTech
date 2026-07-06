@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models import BusinessProfile, Industry, Segment
 from app.modules.businesses.schemas import CreateBusinessRequest
+from app.shared import base_repository as Base
 
 
 async def get_all_segments(db: AsyncSession) -> list[Segment]:
@@ -55,7 +56,9 @@ async def create_business(
     Returns:
         The newly created BusinessProfile ORM instance.
     """
-    business = BusinessProfile(
+    business = await Base.create(
+        db,
+        BusinessProfile,
         user_id=user_id,
         industry_id=data.industry_id,
         segment_id=data.segment_id,
@@ -69,20 +72,17 @@ async def create_business(
         employee_count=data.employee_count,
         annual_turnover_range=data.annual_turnover_range,
     )
-    db.add(business)
-    await db.commit()
-    await db.refresh(business)
 
     # Eagerly load relationships for serialization
-    result = await db.execute(
-        select(BusinessProfile)
-        .options(
+    return await Base.get_by_id(
+        db,
+        BusinessProfile,
+        business.id,
+        options=[
             selectinload(BusinessProfile.industry),
             selectinload(BusinessProfile.segment),
-        )
-        .where(BusinessProfile.id == business.id)
+        ],
     )
-    return result.scalar_one()
 
 
 async def get_business_by_user_id(
@@ -141,15 +141,15 @@ async def get_business_by_id(
     Returns:
         BusinessProfile if found, None otherwise.
     """
-    result = await db.execute(
-        select(BusinessProfile)
-        .options(
+    return await Base.get_by_id(
+        db,
+        BusinessProfile,
+        business_id,
+        options=[
             selectinload(BusinessProfile.industry),
             selectinload(BusinessProfile.segment),
-        )
-        .where(BusinessProfile.id == business_id, BusinessProfile.is_active.is_(True))
+        ],
     )
-    return result.scalar_one_or_none()
 
 
 async def delete_business(
@@ -163,15 +163,4 @@ async def delete_business(
     Returns:
         The updated BusinessProfile instance if found, None otherwise.
     """
-    result = await db.execute(
-        select(BusinessProfile).where(
-            BusinessProfile.id == business_id, BusinessProfile.is_active.is_(True)
-        )
-    )
-    business = result.scalar_one_or_none()
-    if business:
-        business.is_active = False
-        db.add(business)
-        await db.commit()
-        await db.refresh(business)
-    return business
+    return await Base.soft_delete(db, BusinessProfile, business_id)
