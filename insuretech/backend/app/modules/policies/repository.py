@@ -37,17 +37,14 @@ async def update_insurer(
     insurer_id: str,
     data: dict[str, Any],
 ) -> Insurer | None:
-    """Update an insurer and return the updated row."""
-    result = await db.execute(
-        update(Insurer)
-        .where(Insurer.id == insurer_id)
-        .values(**data)
-        .returning(Insurer)
-    )
-    insurer = result.scalar_one_or_none()
-    if insurer:
-        await db.flush()
-        await db.refresh(insurer)
+    """Update an insurer by mutating and flushing the ORM object."""
+    insurer = await Base.get_by_id(db, Insurer, insurer_id)
+    if not insurer:
+        return None
+    for key, value in data.items():
+        setattr(insurer, key, value)
+    await db.flush()
+    await db.refresh(insurer)
     return insurer
 
 
@@ -86,17 +83,14 @@ async def update_category(
     category_id: str,
     data: dict[str, Any],
 ) -> InsuranceCategory | None:
-    """Update an insurance category and return the updated row."""
-    result = await db.execute(
-        update(InsuranceCategory)
-        .where(InsuranceCategory.id == category_id)
-        .values(**data)
-        .returning(InsuranceCategory)
-    )
-    category = result.scalar_one_or_none()
-    if category:
-        await db.flush()
-        await db.refresh(category)
+    """Update an insurance category by mutating and flushing the ORM object."""
+    category = await Base.get_by_id(db, InsuranceCategory, category_id)
+    if not category:
+        return None
+    for key, value in data.items():
+        setattr(category, key, value)
+    await db.flush()
+    await db.refresh(category)
     return category
 
 
@@ -162,14 +156,21 @@ async def update_policy(
     policy_id: str,
     data: dict[str, Any],
 ) -> Policy | None:
-    """Update a policy and return the updated row."""
-    result = await db.execute(
-        update(Policy).where(Policy.id == policy_id).values(**data).returning(Policy)
+    """Update a policy by mutating and flushing the ORM object.
+
+    Relationships (insurer, insurance_category) are eagerly loaded so the
+    caller can serialize them without an extra round-trip.
+    """
+    policy = await Base.get_by_id(
+        db, Policy, policy_id,
+        options=[selectinload(Policy.insurer), selectinload(Policy.insurance_category)],
     )
-    policy = result.scalar_one_or_none()
-    if policy:
-        await db.flush()
-        await db.refresh(policy)
+    if not policy:
+        return None
+    for key, value in data.items():
+        setattr(policy, key, value)
+    await db.flush()
+    await db.refresh(policy)
     return policy
 
 
