@@ -1,9 +1,15 @@
+from uuid import UUID
+
 from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import CustomerSupportChunk, Policy, PolicyDocument, Insurer, InsuranceCategory
+from app.shared import base_repository as Base
 
 
-async def search_similar_chunks(db, query_embedding: list[float], limit: int = 5):
+async def search_similar_chunks(
+    db: AsyncSession, query_embedding: list[float], limit: int = 5,
+):
     distance = CustomerSupportChunk.embedding.cosine_distance(query_embedding)
     stmt = (
         select(CustomerSupportChunk, distance.label("distance"))
@@ -18,7 +24,7 @@ async def search_similar_chunks(db, query_embedding: list[float], limit: int = 5
     ]
 
 
-async def get_or_create_knowledge_document(db, filename: str):
+async def get_or_create_knowledge_document(db: AsyncSession, filename: str):
     result = await db.execute(
         select(PolicyDocument).where(
             PolicyDocument.doc_type == "knowledge_base",
@@ -34,34 +40,32 @@ async def get_or_create_knowledge_document(db, filename: str):
     )
     insurer = result.scalar_one_or_none()
     if not insurer:
-        insurer = Insurer(name="Knowledge Base", is_active=True)
-        db.add(insurer)
-        await db.flush()
+        insurer = await Base.create(db, Insurer, name="Knowledge Base", is_active=True)
 
     result = await db.execute(
         select(InsuranceCategory).where(InsuranceCategory.name == "Knowledge Base")
     )
     category = result.scalar_one_or_none()
     if not category:
-        category = InsuranceCategory(name="Knowledge Base", is_active=True)
-        db.add(category)
-        await db.flush()
+        category = await Base.create(
+            db, InsuranceCategory, name="Knowledge Base", is_active=True,
+        )
 
     result = await db.execute(
         select(Policy).where(Policy.policy_name == "Project Documentation")
     )
     policy = result.scalar_one_or_none()
     if not policy:
-        policy = Policy(
+        policy = await Base.create(
+            db, Policy,
             insurer_id=insurer.id,
             insurance_category_id=category.id,
             policy_name="Project Documentation",
             is_active=True,
         )
-        db.add(policy)
-        await db.flush()
 
-    doc = PolicyDocument(
+    doc = await Base.create(
+        db, PolicyDocument,
         policy_id=policy.id,
         insurer_id=insurer.id,
         doc_type="knowledge_base",
@@ -69,20 +73,22 @@ async def get_or_create_knowledge_document(db, filename: str):
         file_url=f"file://{filename}",
         is_active=True,
     )
-    db.add(doc)
-    await db.flush()
-    await db.flush()
 
     return policy.id, doc.id
 
 
-async def delete_existing_chunks(db, document_id):
+async def delete_existing_chunks(db: AsyncSession, document_id: UUID):
     stmt = delete(CustomerSupportChunk).where(CustomerSupportChunk.document_id == document_id)
     await db.execute(stmt)
     await db.flush()
 
 
-async def store_chunks(db, chunks_with_embeddings: list[dict], policy_id, document_id):
+async def store_chunks(
+    db: AsyncSession,
+    chunks_with_embeddings: list[dict],
+    policy_id: UUID,
+    document_id: UUID,
+):
     db.add_all([
         CustomerSupportChunk(
             policy_id=policy_id,
