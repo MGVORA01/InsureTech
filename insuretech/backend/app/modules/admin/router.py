@@ -1,5 +1,7 @@
 """Route definitions for admin workflows."""
 
+import asyncio
+import os
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
@@ -7,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.core.database import get_db
+from app.core.exceptions import BadRequestException
 from app.models import User
 from app.modules.admin.constants import (
     ADMIN_PREFIX,
@@ -19,6 +22,10 @@ from app.modules.admin.constants import (
     UPLOAD_ROUTE,
     USERS_ROUTE,
     USER_STATUS_ROUTE,
+    PDF_EXTENSION,
+    PDF_ONLY_MESSAGE,
+    PDFS_DIR,
+    WRITE_BINARY_MODE,
 )
 from app.modules.admin.schemas import UpdateUserStatusRequest, UploadRequest
 from app.modules.admin.service import Service
@@ -106,4 +113,16 @@ async def admin_upload_pdf_file(
 ) -> APIResponse:
     """Upload and ingest a PDF file."""
     _ = current_user
-    return await Service.upload_pdf_file_service(file, db)
+    if not file.filename or not file.filename.lower().endswith(PDF_EXTENSION):
+        raise BadRequestException(PDF_ONLY_MESSAGE)
+
+    os.makedirs(PDFS_DIR, exist_ok=True)
+    file_path = os.path.join(PDFS_DIR, file.filename)
+    content = await file.read()
+
+    def _write_file(path: str, data: bytes) -> None:
+        with open(path, WRITE_BINARY_MODE) as f:
+            f.write(data)
+
+    await asyncio.to_thread(_write_file, file_path, content)
+    return await Service.upload_pdf_file_service(file_path, db)
