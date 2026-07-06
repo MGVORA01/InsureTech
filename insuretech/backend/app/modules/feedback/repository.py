@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Feedback
 from app.modules.feedback.schemas import CreateFeedbackRequest
+from app.shared import base_repository as Base
 
 
 async def create_feedback(
@@ -26,17 +27,15 @@ async def create_feedback(
     Returns:
         The newly created feedback record.
     """
-    feedback = Feedback(
+    return await Base.create(
+        db,
+        Feedback,
         user_id=user_id,
         business_id=business_id,
         message=data.message,
         rating=data.rating,
         recommendations_helpful=data.recommendations_helpful,
     )
-    db.add(feedback)
-    await db.commit()
-    await db.refresh(feedback)
-    return feedback
 
 
 async def get_business_feedbacks(

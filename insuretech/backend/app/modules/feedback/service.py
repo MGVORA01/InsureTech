@@ -20,7 +20,7 @@ from app.shared.response import APIResponse
 logger = get_logger(__name__)
 
 
-class _FeedbackService:
+class FeedbackService:
     """Service for feedback workflows."""
 
     async def submit_feedback(
@@ -39,6 +39,7 @@ class _FeedbackService:
             business = await BusinessService.get_business_by_user(user, db)
 
         feedback = await repository.create_feedback(db, user.id, business.id, data)
+        await db.commit()
         logger.info(
             FEEDBACK_SUBMITTED_LOG_MESSAGE,
             feedback.id,
@@ -71,4 +72,4 @@ class _FeedbackService:
         )
 
 
-Service = _FeedbackService()
+Service = FeedbackService()
