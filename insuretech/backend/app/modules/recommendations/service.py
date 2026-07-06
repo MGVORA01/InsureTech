@@ -72,7 +72,7 @@ class PolicyEvidence:
     recommendation_score: float = 0.0
 
 
-class _RecommendationService:
+class RecommendationService:
     async def get_recommendations(
         self,
         session_id: UUID,
@@ -173,6 +173,7 @@ class _RecommendationService:
             rec_models.append(rec)
 
         saved = await repository.save_recommendations(db, rec_models)
+        await db.commit()
 
         for rec, evidence in zip(saved, top_policies, strict=False):
             rec._policy_id = evidence.policy.id
@@ -715,4 +716,4 @@ class _RecommendationService:
         return session, business
 
 
-Service = _RecommendationService()
+Service = RecommendationService()
