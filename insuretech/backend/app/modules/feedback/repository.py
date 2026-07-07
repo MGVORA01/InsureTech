@@ -9,6 +9,11 @@ from app.models import Feedback
 from app.shared import base_repository as Base
 
 
+async def commit(db: AsyncSession) -> None:
+    """Commit the current transaction on the session."""
+    await Base.commit(db)
+
+
 async def create_feedback(
     db: AsyncSession,
     user_id: UUID,

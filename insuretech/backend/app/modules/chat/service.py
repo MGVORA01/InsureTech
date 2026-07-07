@@ -153,7 +153,7 @@ class ChatService:
         )
         await Repo.delete_existing_chunks(db, document_id)
         await Repo.store_chunks(db, chunks, policy_id, document_id)
-        await db.commit()
+        await Repo.commit(db)
 
         return APIResponse.success_response(
             message=PDF_PROCESSED_MESSAGE,

@@ -123,7 +123,7 @@ class ReportService:
         )
         file_url = REPORT_DOWNLOAD_URL_TEMPLATE.format(report_id=report.id)
         report = await repository.complete_report(db, report, file_url)
-        await db.commit()
+        await repository.commit(db)
 
         out.status = report.status
         out.file_url = report.file_url

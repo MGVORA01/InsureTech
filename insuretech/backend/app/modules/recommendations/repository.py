@@ -16,6 +16,12 @@ from app.models import (
     Recommendation,
 )
 from app.modules.recommendations.constants import DEFAULT_SEGMENT
+from app.shared import base_repository as Base
+
+
+async def commit(db: AsyncSession) -> None:
+    """Commit the current transaction on the session."""
+    await Base.commit(db)
 
 
 async def get_business_risk_scores(

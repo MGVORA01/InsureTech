@@ -517,32 +517,37 @@ export default function DashboardPage() {
       )
     }
 
+    if (profilingView === 'results' && profilingResults) {
+      return (
+        <div className="p-8" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
+          <ProfilingResults
+            data={profilingResults}
+            onRestart={() => {
+              setProfilingResults(null)
+              setProfilingView('wizard')
+            }}
+            onSeeRecommendations={() => navigate(`/recommendations/${profilingResults.session.id}`)}
+          />
+        </div>
+      )
+    }
+
     if (profilingView === 'wizard') {
       return (
         <ProfilingWizard
           businessId={selectedBusinessId ?? undefined}
           onComplete={(data) => {
             setProfilingResults(data)
-              setWorkflowSessionId(data.session.id)
+            setWorkflowSessionId(data.session.id)
             setProfilingView('results')
+          }}
+          onSeeRecommendations={(data) => {
+            setProfilingResults(data)
+            setWorkflowSessionId(data.session.id)
+            navigate(`/recommendations/${data.session.id}`)
           }}
           onCancel={() => setProfilingView('launcher')}
         />
-      )
-    }
-
-    if (profilingView === 'results' && profilingResults) {
-      return (
-        <div className="p-8" style={{ borderRadius: 'var(--radius-xl)', border: 'none', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-lg)' }}>
-            <ProfilingResults
-              data={profilingResults}
-              onRestart={() => {
-                setProfilingResults(null)
-                setProfilingView('wizard')
-              }}
-            onSeeRecommendations={() => navigate(`/recommendations/${profilingResults.session.id}`)}
-          />
-        </div>
       )
     }
 

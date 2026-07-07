@@ -92,7 +92,7 @@ class AdminService:
         user = await Repository.update_user_status(db, UUID(user_id), is_active)
         if not user:
             raise NotFoundException(USER_NOT_FOUND_MESSAGE)
-        await db.commit()
+        await Repository.commit(db)
         return APIResponse.success_response(
             message=USER_STATUS_UPDATED_MESSAGE,
             data=self._user_to_list_item(user),
@@ -128,7 +128,7 @@ class AdminService:
         doc = await Repository.delete_knowledge_document(db, UUID(document_id))
         if not doc:
             raise NotFoundException(DOCUMENT_NOT_FOUND_MESSAGE)
-        await db.commit()
+        await Repository.commit(db)
 
         file_path = os.path.join(PDFS_DIR, doc.file_name)
         try:
