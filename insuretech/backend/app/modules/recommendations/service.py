@@ -79,7 +79,7 @@ class RecommendationService:
 
         if not risk_priorities:
             if commit:
-                await db.commit()
+                await repository.commit(db)
             return APIResponse.success_response(
                 NO_RISK_SCORES_MESSAGE,
                 RecommendationListOut(
@@ -114,7 +114,7 @@ class RecommendationService:
 
         if not top_policies:
             if commit:
-                await db.commit()
+                await repository.commit(db)
             return APIResponse.success_response(
                 NO_SUITABLE_POLICY_EVIDENCE_MESSAGE,
                 RecommendationListOut(
@@ -152,7 +152,7 @@ class RecommendationService:
 
         saved = await repository.save_recommendations(db, rec_models)
         if commit:
-            await db.commit()
+            await repository.commit(db)
 
         for rec, evidence in zip(saved, top_policies, strict=False):
             rec._policy_id = evidence.policy.id

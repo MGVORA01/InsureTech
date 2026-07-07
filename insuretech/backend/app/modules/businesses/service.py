@@ -77,7 +77,7 @@ class BusinessService:
             employee_count=data.employee_count,
             annual_turnover_range=data.annual_turnover_range,
         )
-        await db.commit()
+        await repository.commit(db)
         logger.info(BUSINESS_CREATED_LOG_MESSAGE, user.id)
 
         return APIResponse.success_response(
@@ -180,7 +180,7 @@ class BusinessService:
             raise NotFoundException(BUSINESS_NOT_FOUND_MESSAGE)
 
         await repository.delete_business(db, business_id)
-        await db.commit()
+        await repository.commit(db)
         logger.info(BUSINESS_DELETED_LOG_MESSAGE, business_id, user.id)
 
         return APIResponse.success_response(

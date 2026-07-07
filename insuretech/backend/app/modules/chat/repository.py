@@ -7,6 +7,11 @@ from app.models import CustomerSupportChunk, Policy, PolicyDocument, Insurer, In
 from app.shared import base_repository as Base
 
 
+async def commit(db: AsyncSession) -> None:
+    """Commit the current transaction on the session."""
+    await Base.commit(db)
+
+
 async def search_similar_chunks(
     db: AsyncSession, query_embedding: list[float], limit: int = 5,
 ):

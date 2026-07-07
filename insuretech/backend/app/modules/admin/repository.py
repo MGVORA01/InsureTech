@@ -15,6 +15,13 @@ from app.models import (
     PolicyDocument,
     User,
 )
+from app.shared import base_repository as Base
+
+
+async def commit(db: AsyncSession) -> None:
+    """Commit the current transaction on the session."""
+    await Base.commit(db)
+
 from app.modules.admin.constants import (
     ACTIVE_USERS_KEY,
     CHUNKS_COUNT_LABEL,

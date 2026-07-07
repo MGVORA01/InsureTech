@@ -13,6 +13,7 @@ import QuestionRenderer from './QuestionRenderer'
 
 interface ProfilingWizardProps {
   onComplete: (data: ProfilingCompleteOut) => void
+  onSeeRecommendations?: (data: ProfilingCompleteOut) => void
   onCancel: () => void
   businessId?: string
 }
@@ -24,7 +25,7 @@ const RISK_WEIGHTS: Record<string, number> = {
   low: 1,
 }
 
-export default function ProfilingWizard({ onComplete, onCancel, businessId }: ProfilingWizardProps) {
+export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCancel, businessId }: ProfilingWizardProps) {
   const [phase, setPhase] = useState<ProfilingPhase>('tier1')
   const [section, setSection] = useState<SectionQuestionsOut | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -312,6 +313,9 @@ export default function ProfilingWizard({ onComplete, onCancel, businessId }: Pr
     try {
       const result = await profilingApi.completeSession(sessionId)
       onComplete(result)
+      if (onSeeRecommendations) {
+        onSeeRecommendations(result)
+      }
     } catch (err) {
       setError(getProfilingErrorMessage(err))
     } finally {
