@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { profilingApi, getProfilingErrorMessage } from './profilingApi'
-import { PROFILING_MESSAGES, SECTION_LABELS, SECTIONS_ORDER } from './profiling.constants'
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { profilingApi, getProfilingErrorMessage } from "./profilingApi";
+import {
+  PROFILING_MESSAGES,
+  SECTION_LABELS,
+  SECTIONS_ORDER,
+} from "./profiling.constants";
 import type {
   PreviewScoreOut,
   ProfilingCompleteOut,
@@ -8,14 +12,14 @@ import type {
   QuestionOut,
   SectionQuestionsOut,
   Tier2QuestionOut,
-} from './profiling.types'
-import QuestionRenderer from './QuestionRenderer'
+} from "./profiling.types";
+import QuestionRenderer from "./QuestionRenderer";
 
 interface ProfilingWizardProps {
-  onComplete: (data: ProfilingCompleteOut) => void
-  onSeeRecommendations?: (data: ProfilingCompleteOut) => void
-  onCancel: () => void
-  businessId?: string
+  onComplete: (data: ProfilingCompleteOut) => void;
+  onSeeRecommendations?: (data: ProfilingCompleteOut) => void;
+  onCancel: () => void;
+  businessId?: string;
 }
 
 const RISK_WEIGHTS: Record<string, number> = {
@@ -23,46 +27,57 @@ const RISK_WEIGHTS: Record<string, number> = {
   high: 3,
   medium: 2,
   low: 1,
-}
+};
 
-export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCancel, businessId }: ProfilingWizardProps) {
-  const [phase, setPhase] = useState<ProfilingPhase>('tier1')
-  const [section, setSection] = useState<SectionQuestionsOut | null>(null)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([])
-  const [previewScores, setPreviewScores] = useState<PreviewScoreOut[]>([])
-  const [tier2Questions, setTier2Questions] = useState<Tier2QuestionOut[]>([])
-  const [finished, setFinished] = useState(false)
+export default function ProfilingWizard({
+  onComplete,
+  onSeeRecommendations,
+  onCancel,
+  businessId,
+}: ProfilingWizardProps) {
+  const [phase, setPhase] = useState<ProfilingPhase>("tier1");
+  const [section, setSection] = useState<SectionQuestionsOut | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [previewScores, setPreviewScores] = useState<PreviewScoreOut[]>([]);
+  const [tier2Questions, setTier2Questions] = useState<Tier2QuestionOut[]>([]);
+  const [finished, setFinished] = useState(false);
   const uniqueT2Questions = useMemo(
-    () => Array.from(new Map(tier2Questions.map(t => [t.question.id, t.question])).values()),
+    () =>
+      Array.from(
+        new Map(
+          tier2Questions.map((t) => [t.question.id, t.question]),
+        ).values(),
+      ),
     [tier2Questions],
-  )
-  const mountedRef = useRef(true)
+  );
+  const mountedRef = useRef(true);
 
   const getVisibleQuestions = useCallback(
     (questions: QuestionOut[], ans: Record<string, string>): QuestionOut[] => {
-      const roots = questions.filter((q) => !q.parent_question_id)
-      const visible: QuestionOut[] = []
-      const queue: QuestionOut[] = []
-      const seen = new Set<string>()
+      const roots = questions.filter((q) => !q.parent_question_id);
+      const visible: QuestionOut[] = [];
+      const queue: QuestionOut[] = [];
+      const seen = new Set<string>();
 
       for (const q of roots) {
         if (!seen.has(q.id)) {
-          seen.add(q.id)
-          visible.push(q)
-          queue.push(q)
+          seen.add(q.id);
+          visible.push(q);
+          queue.push(q);
         }
       }
 
       while (queue.length > 0) {
-        const q = queue.shift()!
-        const answer = ans[q.id]
-        if (!answer) continue
+        const q = queue.shift()!;
+        const answer = ans[q.id];
+        if (!answer) continue;
 
         for (const child of questions) {
           if (
@@ -70,315 +85,396 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
             child.parent_answer_value === answer &&
             !seen.has(child.id)
           ) {
-            seen.add(child.id)
-            visible.push(child)
-            queue.push(child)
+            seen.add(child.id);
+            visible.push(child);
+            queue.push(child);
           }
         }
       }
 
-      return visible
+      return visible;
     },
     [],
-  )
+  );
 
-  const initSession = useCallback(async (tier?: number) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await profilingApi.startSession(tier, businessId)
-      if (!mountedRef.current) return
-      
-      let currentResult = result;
-      while (currentResult.questions.length === 0 && currentResult.section_index < currentResult.total_sections - 1) {
-          currentResult = await profilingApi.getSessionState(currentResult.session.id, SECTIONS_ORDER[currentResult.section_index + 1], tier);
-      }
+  const initSession = useCallback(
+    async (tier?: number) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await profilingApi.startSession(tier, businessId);
+        if (!mountedRef.current) return;
 
-      setSection(currentResult)
-      setSessionId(currentResult.session.id)
-      setAllQuestions(currentResult.questions)
-      const initialAnswers: Record<string, string> = {}
-      for (const q of currentResult.questions) {
-        initialAnswers[q.id] = currentResult.answers[q.id] ?? ''
+        let currentResult = result;
+        while (
+          currentResult.questions.length === 0 &&
+          currentResult.section_index < currentResult.total_sections - 1
+        ) {
+          currentResult = await profilingApi.getSessionState(
+            currentResult.session.id,
+            SECTIONS_ORDER[currentResult.section_index + 1],
+            tier,
+          );
+        }
+
+        setSection(currentResult);
+        setSessionId(currentResult.session.id);
+        setAllQuestions(currentResult.questions);
+        setQuestionIndex(0);
+        const initialAnswers: Record<string, string> = {};
+        for (const q of currentResult.questions) {
+          initialAnswers[q.id] = currentResult.answers[q.id] ?? "";
+        }
+        setAnswers(initialAnswers);
+      } catch (err) {
+        if (mountedRef.current) setError(getProfilingErrorMessage(err));
+      } finally {
+        if (mountedRef.current) setLoading(false);
       }
-      setAnswers(initialAnswers)
-    } catch (err) {
-      if (mountedRef.current) setError(getProfilingErrorMessage(err))
-    } finally {
-      if (mountedRef.current) setLoading(false)
-    }
-  }, [businessId])
+    },
+    [businessId],
+  );
 
   useEffect(() => {
-    mountedRef.current = true
-    initSession(1)
-    return () => { mountedRef.current = false }
-  }, [initSession])
+    mountedRef.current = true;
+    initSession(1);
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [initSession]);
 
   const visibleQuestions = useMemo(
     () => getVisibleQuestions(allQuestions, answers),
     [allQuestions, answers, getVisibleQuestions],
-  )
+  );
 
   useEffect(() => {
-    if (!allQuestions.length) return
-    const visible = getVisibleQuestions(allQuestions, answers)
-    setSection(prev => {
-      if (!prev) return prev
+    if (!allQuestions.length) return;
+    const visible = getVisibleQuestions(allQuestions, answers);
+    setSection((prev) => {
+      if (!prev) return prev;
       const same =
         prev.questions.length === visible.length &&
-        prev.questions.every((q, i) => q.id === visible[i].id)
-      if (same) return prev
-      return { ...prev, questions: visible }
-    })
-  }, [answers, allQuestions, getVisibleQuestions])
+        prev.questions.every((q, i) => q.id === visible[i].id);
+      if (same) return prev;
+      return { ...prev, questions: visible };
+    });
+  }, [answers, allQuestions, getVisibleQuestions]);
+
+  useEffect(() => {
+    if (questionIndex >= visibleQuestions.length) {
+      setQuestionIndex(Math.max(0, visibleQuestions.length - 1));
+    }
+  }, [visibleQuestions.length, questionIndex]);
+
+  const validateCurrentQuestion = (): boolean => {
+    const currentQuestion = visibleQuestions[questionIndex];
+    if (!currentQuestion) return true;
+    const val = answers[currentQuestion.id]?.trim();
+    if (!val) {
+      setErrors({ [currentQuestion.id]: PROFILING_MESSAGES.requiredField });
+      return false;
+    }
+    setErrors((prev) => {
+      if (!prev[currentQuestion.id]) return prev;
+      const next = { ...prev };
+      delete next[currentQuestion.id];
+      return next;
+    });
+    return true;
+  };
 
   const validateSection = (): boolean => {
-    if (!section) return false
-    const newErrors: Record<string, string> = {}
-    for (const q of visibleQuestions) {
-      const val = answers[q.id]?.trim()
-      if (!val) {
-        newErrors[q.id] = PROFILING_MESSAGES.requiredField
+    if (!visibleQuestions.length) return true;
+    const nextErrors: Record<string, string> = {};
+    visibleQuestions.forEach((question) => {
+      const value = answers[question.id]?.trim();
+      if (!value) {
+        nextErrors[question.id] = PROFILING_MESSAGES.requiredField;
       }
+    });
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...nextErrors }));
+      return false;
     }
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors((prev) => {
+      const next = { ...prev };
+      visibleQuestions.forEach((question) => {
+        delete next[question.id];
+      });
+      return next;
+    });
+    return true;
+  };
 
-  const loadSection = useCallback(async (targetSection: string, tier?: number, direction: 'forward' | 'backward' = 'forward') => {
-    if (!sessionId) return
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await profilingApi.getSessionState(sessionId, targetSection, tier)
-      if (!mountedRef.current) return
-      
-      if (result.questions.length === 0) {
-        if (direction === 'forward' && result.section_index < result.total_sections - 1) {
-          const nextTarget = SECTIONS_ORDER[result.section_index + 1]
-          await loadSection(nextTarget, tier, direction)
-          return
-        } else if (direction === 'backward') {
-          if (result.section_index > 0) {
-            const prevTarget = SECTIONS_ORDER[result.section_index - 1]
-            await loadSection(prevTarget, tier, direction)
-            return
-          } else {
-            // Reached the very first section navigating backward, and it's empty. Exit the wizard.
-            onCancel()
-            return
+  const loadSection = useCallback(
+    async (
+      targetSection: string,
+      tier?: number,
+      direction: "forward" | "backward" = "forward",
+    ) => {
+      if (!sessionId) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await profilingApi.getSessionState(
+          sessionId,
+          targetSection,
+          tier,
+        );
+        if (!mountedRef.current) return;
+
+        if (result.questions.length === 0) {
+          if (
+            direction === "forward" &&
+            result.section_index < result.total_sections - 1
+          ) {
+            const nextTarget = SECTIONS_ORDER[result.section_index + 1];
+            await loadSection(nextTarget, tier, direction);
+            return;
+          } else if (direction === "backward") {
+            if (result.section_index > 0) {
+              const prevTarget = SECTIONS_ORDER[result.section_index - 1];
+              await loadSection(prevTarget, tier, direction);
+              return;
+            } else {
+              // Reached the very first section navigating backward, and it's empty. Exit the wizard.
+              onCancel();
+              return;
+            }
           }
         }
-      }
 
-      setSection(result)
-      setAllQuestions(result.questions)
-      const merged: Record<string, string> = {}
-      for (const q of result.questions) {
-        merged[q.id] = result.answers[q.id] ?? answers[q.id] ?? ''
+        setSection(result);
+        setAllQuestions(result.questions);
+        setQuestionIndex(0);
+        const merged: Record<string, string> = {};
+        for (const q of result.questions) {
+          merged[q.id] = result.answers[q.id] ?? answers[q.id] ?? "";
+        }
+        setAnswers(merged);
+        setErrors({});
+      } catch (err) {
+        if (mountedRef.current) setError(getProfilingErrorMessage(err));
+      } finally {
+        if (mountedRef.current) setLoading(false);
       }
-      setAnswers(merged)
-      setErrors({})
-    } catch (err) {
-      if (mountedRef.current) setError(getProfilingErrorMessage(err))
-    } finally {
-      if (mountedRef.current) setLoading(false)
-    }
-  }, [sessionId, answers])
+    },
+    [sessionId, answers],
+  );
 
   // ---- Tier 1 Navigation ----
 
   const handleAnswerChange = (questionId: string, value: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: value }))
-    setErrors(prev => {
-      if (!prev[questionId]) return prev
-      const next = { ...prev }
-      delete next[questionId]
-      return next
-    })
-  }
+    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    setErrors((prev) => {
+      if (!prev[questionId]) return prev;
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
+  };
 
   const handleTier1Next = async () => {
-    if (!section || !sessionId) return
-    if (!validateSection()) return
+    if (!section || !sessionId) return;
+    if (!validateCurrentQuestion()) return;
+
+    const isLastQuestion = questionIndex >= visibleQuestions.length - 1;
+    if (!isLastQuestion) {
+      setQuestionIndex((idx) => idx + 1);
+      return;
+    }
 
     // navigating forward clears any previously marked finished state
-    setFinished(false)
-    const currentIdx = section.section_index
-    if (currentIdx >= SECTIONS_ORDER.length - 1) return
+    setFinished(false);
+    const currentIdx = section.section_index;
+    if (currentIdx >= SECTIONS_ORDER.length - 1) return;
 
-    const nextSection = SECTIONS_ORDER[currentIdx + 1]
-    setSubmitting(true)
+    const nextSection = SECTIONS_ORDER[currentIdx + 1];
+    setSubmitting(true);
 
     try {
       if (visibleQuestions.length > 0) {
-        const answersBatch = visibleQuestions.map(q => ({
+        const answersBatch = visibleQuestions.map((q) => ({
           question_id: q.id,
-          answer_value: answers[q.id] ?? ''
-        }))
+          answer_value: answers[q.id] ?? "",
+        }));
         await profilingApi.submitAnswersBatch(sessionId, {
           answers: answersBatch,
           advance_to_section: nextSection,
-        })
+        });
       }
-      await loadSection(nextSection, 1, 'forward')
+      await loadSection(nextSection, 1, "forward");
     } catch (err) {
-      setError(getProfilingErrorMessage(err))
+      setError(getProfilingErrorMessage(err));
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const handleTier1Back = async () => {
-    if (!section || !sessionId) return
+    if (!section || !sessionId) return;
     // navigating back cancels finished state
-    setFinished(false)
-    const currentIdx = section.section_index
-    if (currentIdx <= 0) {
-      onCancel()
-      return
+    setFinished(false);
+
+    if (questionIndex > 0) {
+      setQuestionIndex((idx) => idx - 1);
+      return;
     }
-    const prevSection = SECTIONS_ORDER[currentIdx - 1]
-    setLoading(true)
+
+    const currentIdx = section.section_index;
+    if (currentIdx <= 0) {
+      onCancel();
+      return;
+    }
+    const prevSection = SECTIONS_ORDER[currentIdx - 1];
+    setLoading(true);
     try {
       if (visibleQuestions.length > 0) {
-        const answersBatch = visibleQuestions.map(q => ({
+        const answersBatch = visibleQuestions.map((q) => ({
           question_id: q.id,
-          answer_value: answers[q.id] ?? ''
-        }))
+          answer_value: answers[q.id] ?? "",
+        }));
         await profilingApi.submitAnswersBatch(sessionId, {
           answers: answersBatch,
           advance_to_section: prevSection,
-        })
+        });
       }
-      await loadSection(prevSection, 1, 'backward')
+      await loadSection(prevSection, 1, "backward");
     } catch (err) {
-      setError(getProfilingErrorMessage(err))
-      setLoading(false)
+      setError(getProfilingErrorMessage(err));
+      setLoading(false);
     }
-  }
+  };
 
   const handleTier1Finish = async () => {
-    if (!section || !sessionId) return
-    if (!validateSection()) return
+    if (!section || !sessionId) return;
+    if (!validateSection()) return;
 
     // mark finished so progress shows 100% immediately while finishing
-    setFinished(true)
-    setSubmitting(true)
-    setError(null)
+    setFinished(true);
+    setSubmitting(true);
+    setError(null);
 
     try {
       // Save the last section's answers before previewing
       if (visibleQuestions.length > 0) {
-        const answersBatch = visibleQuestions.map(q => ({
+        const answersBatch = visibleQuestions.map((q) => ({
           question_id: q.id,
-          answer_value: answers[q.id] ?? ''
-        }))
+          answer_value: answers[q.id] ?? "",
+        }));
         await profilingApi.submitAnswersBatch(sessionId, {
           answers: answersBatch,
-        })
+        });
       }
 
-      const preview = await profilingApi.previewScores(sessionId)
-      if (!mountedRef.current) return
+      const preview = await profilingApi.previewScores(sessionId);
+      if (!mountedRef.current) return;
 
-      setPreviewScores(preview.scores)
+      setPreviewScores(preview.scores);
 
       if (preview.has_high_risk) {
-        setPhase('preview')
-        const t2 = await profilingApi.getTier2Questions(sessionId)
+        setPhase("preview");
+        const t2 = await profilingApi.getTier2Questions(sessionId);
         if (mountedRef.current) {
-          setTier2Questions(t2.questions)
+          setTier2Questions(t2.questions);
         }
       } else {
-        const result = await profilingApi.completeSession(sessionId)
-        if (mountedRef.current) onComplete(result)
+        const result = await profilingApi.completeSession(sessionId);
+        if (mountedRef.current) onComplete(result);
       }
     } catch (err) {
-      if (mountedRef.current) setError(getProfilingErrorMessage(err))
+      if (mountedRef.current) setError(getProfilingErrorMessage(err));
       // revert finished state on error
-      if (mountedRef.current) setFinished(false)
+      if (mountedRef.current) setFinished(false);
     } finally {
-      if (mountedRef.current) setSubmitting(false)
+      if (mountedRef.current) setSubmitting(false);
     }
-  }
+  };
 
   // ---- Preview Phase ----
 
   const handleSkipToComplete = async () => {
-    if (!sessionId) return
-    setSubmitting(true)
-    setError(null)
+    if (!sessionId) return;
+    setSubmitting(true);
+    setError(null);
     try {
-      const result = await profilingApi.completeSession(sessionId)
-      onComplete(result)
+      const result = await profilingApi.completeSession(sessionId);
+      onComplete(result);
       if (onSeeRecommendations) {
-        onSeeRecommendations(result)
+        onSeeRecommendations(result);
       }
     } catch (err) {
-      setError(getProfilingErrorMessage(err))
+      setError(getProfilingErrorMessage(err));
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const handleStartTier2 = async () => {
-    if (!sessionId) return
-    setSubmitting(true)
-    setError(null)
+    if (!sessionId) return;
+    setSubmitting(true);
+    setError(null);
     try {
-
-      if (!mountedRef.current) return
-      const t2questions = Array.from(new Map(tier2Questions.map(t => [t.question.id, t.question])).values())
-      const tier2Answers = tier2Questions.reduce<Record<string, string>>((acc, t) => {
-        if (t.answer_value) acc[t.question.id] = t.answer_value
-        return acc
-      }, {})
-      setAllQuestions(t2questions)
+      if (!mountedRef.current) return;
+      const t2questions = Array.from(
+        new Map(
+          tier2Questions.map((t) => [t.question.id, t.question]),
+        ).values(),
+      );
+      const tier2Answers = tier2Questions.reduce<Record<string, string>>(
+        (acc, t) => {
+          if (t.answer_value) acc[t.question.id] = t.answer_value;
+          return acc;
+        },
+        {},
+      );
+      setAllQuestions(t2questions);
       setSection({
-        section: 'refinement',
+        section: "refinement",
         section_index: 0,
         total_sections: 1,
         questions: t2questions,
         answers: tier2Answers,
         session: section?.session!,
-      })
-      setAnswers(prev => ({ ...prev, ...tier2Answers }))
-      setErrors({})
-      setPhase('tier2')
+      });
+      setAnswers((prev) => ({ ...prev, ...tier2Answers }));
+      setErrors({});
+      setPhase("tier2");
     } catch (err) {
-      if (mountedRef.current) setError(getProfilingErrorMessage(err))
+      if (mountedRef.current) setError(getProfilingErrorMessage(err));
     } finally {
-      if (mountedRef.current) setSubmitting(false)
+      if (mountedRef.current) setSubmitting(false);
     }
-  }
+  };
 
   // ---- Tier 2 (flat list, no section nav) ----
 
   const handleTier2Finish = async () => {
-    if (!sessionId) return
-    setSubmitting(true)
-    setError(null)
+    if (!sessionId) return;
+    setSubmitting(true);
+    setError(null);
     try {
       const answersToSubmit = tier2Questions
-        .filter(t2 => answers[t2.question.id])
-        .map(t2 => ({
+        .filter((t2) => answers[t2.question.id])
+        .map((t2) => ({
           question_id: t2.question.id,
           answer_value: answers[t2.question.id],
-        }))
+        }));
 
       if (answersToSubmit.length > 0) {
-        await profilingApi.submitAnswersBatch(sessionId, { answers: answersToSubmit })
+        await profilingApi.submitAnswersBatch(sessionId, {
+          answers: answersToSubmit,
+        });
       }
-      const result = await profilingApi.completeSession(sessionId)
-      onComplete(result)
+      const result = await profilingApi.completeSession(sessionId);
+      onComplete(result);
     } catch (err) {
-      setError(getProfilingErrorMessage(err))
+      setError(getProfilingErrorMessage(err));
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   // ---- Render Helpers ----
 
@@ -391,7 +487,7 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
             <p>Loading profiling session...</p>
           </div>
         </div>
-      )
+      );
     }
 
     if (error && !section) {
@@ -400,81 +496,163 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
           <div className="mb-4 flex items-center justify-between gap-4 rounded-[14px] border border-risk-high bg-risk-high-bg px-3.5 py-3 text-sm text-risk-high">
             <p className="m-0">{error}</p>
             <div className="flex gap-2">
-              <button type="button" className="rounded-[var(--radius-md)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high" onClick={() => initSession(1)}>
+              <button
+                type="button"
+                className="rounded-[var(--radius-md)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high"
+                onClick={() => initSession(1)}
+              >
                 Retry
               </button>
-              <button type="button" className="rounded-[var(--radius-md)] border border-border bg-transparent px-3 py-1.5 text-[13px] font-semibold text-text-secondary" onClick={onCancel}>
+              <button
+                type="button"
+                className="rounded-[var(--radius-md)] border border-border bg-transparent px-3 py-1.5 text-[13px] font-semibold text-text-secondary"
+                onClick={onCancel}
+              >
                 Cancel
               </button>
             </div>
           </div>
         </div>
-      )
+      );
     }
 
-    if (!section) return null
+    if (!section) return null;
 
-    const currentIdx = section.section_index
-    const totalSections = section.total_sections
+    const currentIdx = section.section_index;
+    const totalSections = section.total_sections;
     // Map progress so the first step shows 0% and the last step shows 100%.
     // When there's only one section, show 100%.
     const progressPct = finished
       ? 100
       : totalSections > 1
-      ? (currentIdx / (totalSections - 1)) * 100
-      : 0
-    const sectionLabel = SECTION_LABELS[section.section] || section.section
-    const isFirstSection = currentIdx === 0
-    const isLastSection = currentIdx === totalSections - 1
+        ? (currentIdx / (totalSections - 1)) * 100
+        : 0;
+    const sectionLabel = SECTION_LABELS[section.section] || section.section;
+    const isFirstSection = currentIdx === 0;
+    const isLastSection = currentIdx === totalSections - 1;
 
     return (
       <div className="w-full min-h-[20rem] pb-20">
         <header className="mb-4">
-          <h1 className="m-0 max-w-[46rem] text-[clamp(2.125rem,3.5vw,2.5rem)] font-extrabold leading-[1.05] tracking-[-0.02em] text-text-primary">Insurance Risk Assessment</h1>
+          <h1 className="m-0 max-w-[46rem] text-[clamp(2.125rem,3.5vw,2.5rem)] font-extrabold leading-[1.05] tracking-[-0.02em] text-text-primary">
+            Insurance Risk Assessment
+          </h1>
           <p className="mt-2 max-w-[52rem] text-[0.9375rem] font-medium leading-6 text-text-muted">
-            Progress through each section at your own pace. Your answers shape the final risk profile and policy recommendations.
+            Progress through each section at your own pace. Your answers shape
+            the final risk profile and policy recommendations.
           </p>
         </header>
 
         <div className="mb-5 rounded-[18px] border border-[rgba(20,20,19,0.06)] bg-surface-alt p-4 shadow-[0_14px_40px_rgba(20,20,19,0.045)]">
           <div className="mb-3 flex items-start justify-between gap-4">
             <div>
-              <span className="block text-[0.9375rem] font-extrabold text-text-primary">{sectionLabel}</span>
-              <span className="mt-0.5 block text-[0.8125rem] font-semibold text-text-muted">Step {currentIdx + 1} of {totalSections}</span>
+              <span className="block text-[0.9375rem] font-extrabold text-text-primary">
+                {sectionLabel}
+              </span>
+              <span className="mt-0.5 block text-[0.8125rem] font-semibold text-text-muted">
+                Step {currentIdx + 1} of {totalSections}
+              </span>
             </div>
-            <span className="whitespace-nowrap text-sm font-extrabold text-text-primary">{Math.round(progressPct)}% Complete</span>
+            <span className="whitespace-nowrap text-sm font-extrabold text-text-primary">
+              {Math.round(progressPct)}% Complete
+            </span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full border border-[rgba(20,20,19,0.06)] bg-surface">
-            <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${progressPct}%` }} />
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-300"
+              style={{ width: `${progressPct}%` }}
+            />
           </div>
         </div>
 
         {error && (
           <div className="mb-4 flex items-center justify-between gap-4 rounded-[14px] border border-risk-high bg-risk-high-bg px-3.5 py-3 text-sm text-risk-high">
             <span>{error}</span>
-            <button type="button" className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high" onClick={() => setError(null)}>
+            <button
+              type="button"
+              className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high"
+              onClick={() => setError(null)}
+            >
               Dismiss
             </button>
           </div>
         )}
 
-        <div className="flex flex-col gap-[1.125rem]">
-          {loading ? (
-            <div className="flex min-h-[14rem] flex-col items-center justify-center gap-3 px-0 py-8 text-sm text-text-secondary">
-              <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-border border-t-primary" />
-              <p>Loading questions...</p>
+        <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+          <aside className="rounded-[18px] border border-[rgba(20,20,19,0.08)] bg-surface-alt p-4">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-text-secondary">
+              Sections
+            </h2>
+            <div className="space-y-3">
+              {SECTIONS_ORDER.map((sectionKey, index) => {
+                const label = SECTION_LABELS[sectionKey] || sectionKey;
+                const isActive = section?.section === sectionKey;
+                const isCompleted = section
+                  ? index < section.section_index
+                  : false;
+                return (
+                  <div
+                    key={sectionKey}
+                    className={`rounded-[14px] border px-3 py-3 text-sm ${isActive ? "border-primary bg-primary/5 text-primary" : "border-border bg-white text-text-primary"} ${isCompleted ? "opacity-80" : ""}`}
+                  >
+                    <div className="font-semibold">{label}</div>
+                    <div className="mt-1 text-[12px] text-text-secondary">
+                      Step {index + 1}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ) : (
-            visibleQuestions.map(q => (
-              <QuestionRenderer
-                key={q.id}
-                question={q}
-                value={answers[q.id] ?? ''}
-                onChange={handleAnswerChange}
-                error={errors[q.id]}
-              />
-            ))
-          )}
+          </aside>
+
+          <div className="flex flex-col gap-4">
+            {loading ? (
+              <div className="flex min-h-[14rem] flex-col items-center justify-center gap-3 px-0 py-8 text-sm text-text-secondary">
+                <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-border border-t-primary" />
+                <p>Loading questions...</p>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-[18px] border border-[rgba(20,20,19,0.08)] bg-surface-alt p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-text-primary">
+                        {sectionLabel}
+                      </p>
+                      <p className="mt-1 text-[13px] text-text-secondary">
+                        Question {questionIndex + 1} of{" "}
+                        {visibleQuestions.length}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-surface px-3 py-1 text-[12px] font-semibold text-text-secondary">
+                      Section {currentIdx + 1}
+                    </span>
+                  </div>
+                  <div className="mt-4 h-2 rounded-full bg-surface">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{
+                        width: `${visibleQuestions.length ? ((questionIndex + 1) / visibleQuestions.length) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+                {visibleQuestions.length > 0 ? (
+                  <QuestionRenderer
+                    key={visibleQuestions[questionIndex].id}
+                    question={visibleQuestions[questionIndex]}
+                    value={answers[visibleQuestions[questionIndex].id] ?? ""}
+                    onChange={handleAnswerChange}
+                    error={errors[visibleQuestions[questionIndex].id]}
+                  />
+                ) : (
+                  <div className="rounded-[18px] border border-[rgba(20,20,19,0.08)] bg-surface-alt p-6 text-sm text-text-secondary">
+                    No visible questions for this section.
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         <div className="sticky bottom-0 z-20 mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4 bg-[linear-gradient(to_top,var(--color-background)_78%,rgba(243,240,238,0))] py-3">
@@ -484,17 +662,23 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
             onClick={handleTier1Back}
             disabled={submitting || loading}
           >
-            {isFirstSection ? 'Cancel' : 'Back'}
+            {questionIndex > 0
+              ? "Previous question"
+              : isFirstSection
+                ? "Cancel"
+                : "Back"}
           </button>
-          <span className="justify-self-center rounded-full border border-[rgba(20,20,19,0.06)] bg-[rgba(252,251,250,0.92)] px-3 py-1.5 text-[13px] font-extrabold text-text-secondary shadow-[0_10px_30px_rgba(20,20,19,0.05)]">Step {currentIdx + 1} of {totalSections}</span>
-          {isLastSection ? (
+          <span className="justify-self-center rounded-full border border-[rgba(20,20,19,0.06)] bg-[rgba(252,251,250,0.92)] px-3 py-1.5 text-[13px] font-extrabold text-text-secondary shadow-[0_10px_30px_rgba(20,20,19,0.05)]">
+            Step {currentIdx + 1} of {totalSections}
+          </span>
+          {isLastSection && questionIndex >= visibleQuestions.length - 1 ? (
             <button
               type="button"
               className="justify-self-end rounded-[var(--radius-md)] border border-cta bg-cta px-5 py-2.5 text-sm font-bold text-cta-contrast shadow-cta transition-all hover:-translate-y-0.5 hover:bg-cta-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
               onClick={handleTier1Finish}
               disabled={submitting || loading}
             >
-              {submitting ? 'Saving...' : 'Finish'}
+              {submitting ? "Saving..." : "Finish"}
             </button>
           ) : (
             <button
@@ -503,25 +687,36 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
               onClick={handleTier1Next}
               disabled={submitting || loading}
             >
-              {submitting ? 'Saving...' : 'Next'}
+              {submitting
+                ? "Saving..."
+                : questionIndex < visibleQuestions.length - 1
+                  ? "Next question"
+                  : "Next section"}
             </button>
           )}
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   const renderPreview = () => {
     const filteredScores = previewScores
-      .filter(s => s.score > 0.2)
-      .sort((a, b) => (RISK_WEIGHTS[b.risk_level] || 0) - (RISK_WEIGHTS[a.risk_level] || 0))
+      .filter((s) => s.score > 0.2)
+      .sort(
+        (a, b) =>
+          (RISK_WEIGHTS[b.risk_level] || 0) - (RISK_WEIGHTS[a.risk_level] || 0),
+      );
 
-    const hasHighRisk = filteredScores.some(s => s.risk_level === 'high' || s.risk_level === 'critical')
+    const hasHighRisk = filteredScores.some(
+      (s) => s.risk_level === "high" || s.risk_level === "critical",
+    );
 
     return (
       <div className="w-full max-w-[1180px]">
         <div className="mb-5">
-          <h2 className="m-0 mb-2.5 text-[clamp(1.75rem,2.4vw,2.125rem)] font-extrabold leading-[1.15] tracking-[-0.02em] text-text-primary">Your Risk Assessment Results</h2>
+          <h2 className="m-0 mb-2.5 text-[clamp(1.75rem,2.4vw,2.125rem)] font-extrabold leading-[1.15] tracking-[-0.02em] text-text-primary">
+            Your Risk Assessment Results
+          </h2>
           <p className="m-0 max-w-[42rem] text-[0.9375rem] font-semibold leading-6 text-text-secondary">
             Based on your answers, here is your preliminary risk profile
           </p>
@@ -530,7 +725,11 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
         {error && (
           <div className="mb-4 flex items-center justify-between gap-4 rounded-[14px] border border-risk-high bg-risk-high-bg px-3.5 py-3 text-sm text-risk-high">
             <span>{error}</span>
-            <button type="button" className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high" onClick={() => setError(null)}>
+            <button
+              type="button"
+              className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high"
+              onClick={() => setError(null)}
+            >
               Dismiss
             </button>
           </div>
@@ -538,32 +737,46 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
 
         {filteredScores.length > 0 ? (
           <div className="mb-4 flex flex-col gap-3">
-            {filteredScores.map(s => (
+            {filteredScores.map((s) => (
               <div
                 key={s.risk_category_name}
-                className={`grid min-h-[4rem] items-center gap-4 rounded-[18px] border border-[rgba(20,20,19,0.08)] bg-surface-alt px-4 py-3.5 shadow-[0_14px_40px_rgba(20,20,19,0.04)] md:grid-cols-[minmax(0,1fr)_auto_auto] ${s.risk_level === 'high' || s.risk_level === 'critical' ? 'border-[rgba(220,38,38,0.28)] bg-risk-high-bg' : ''}`}
+                className={`grid min-h-[4rem] items-center gap-4 rounded-[18px] border border-[rgba(20,20,19,0.08)] bg-surface-alt px-4 py-3.5 shadow-[0_14px_40px_rgba(20,20,19,0.04)] md:grid-cols-[minmax(0,1fr)_auto_auto] ${s.risk_level === "high" || s.risk_level === "critical" ? "border-[rgba(220,38,38,0.28)] bg-risk-high-bg" : ""}`}
               >
-                <span className="text-base font-extrabold text-text-primary">{s.risk_category_name}</span>
-                <span className={`rounded-full px-2.5 py-1 text-[13px] font-extrabold uppercase ${s.risk_level === 'critical' || s.risk_level === 'high' ? 'bg-risk-high-bg text-risk-high' : s.risk_level === 'medium' ? 'bg-risk-medium-bg text-risk-medium' : 'bg-risk-low-bg text-risk-low'}`}>
+                <span className="text-base font-extrabold text-text-primary">
+                  {s.risk_category_name}
+                </span>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[13px] font-extrabold uppercase ${s.risk_level === "critical" || s.risk_level === "high" ? "bg-risk-high-bg text-risk-high" : s.risk_level === "medium" ? "bg-risk-medium-bg text-risk-medium" : "bg-risk-low-bg text-risk-low"}`}
+                >
                   {s.risk_level.toUpperCase()}
                 </span>
-                <span className="text-right text-[1.5rem] font-extrabold text-text-primary md:text-left">{Math.round(s.score * 100)}%</span>
+                <span className="text-right text-[1.5rem] font-extrabold text-text-primary md:text-left">
+                  {Math.round(s.score * 100)}%
+                </span>
                 {s.has_tier2_questions && (
-                  <span className="md:col-span-3 text-[13px] font-bold text-secondary">Refinement available</span>
+                  <span className="md:col-span-3 text-[13px] font-bold text-secondary">
+                    Refinement available
+                  </span>
                 )}
               </div>
             ))}
           </div>
         ) : (
           <p className="mb-6 text-[0.9375rem] font-semibold text-text-secondary">
-            Excellent! All your risk categories are below 20%. No significant risks detected.
+            Excellent! All your risk categories are below 20%. No significant
+            risks detected.
           </p>
         )}
 
         {hasHighRisk && uniqueT2Questions.length > 0 && (
           <div className="rounded-[18px] border border-[rgba(20,20,19,0.08)] bg-surface-alt p-4 shadow-[0_14px_40px_rgba(20,20,19,0.04)]">
             <p className="m-0 mb-3 text-sm leading-6 text-text-primary">
-              We found <strong>areas</strong> that need closer attention. Answer <strong>{uniqueT2Questions.length} more question{uniqueT2Questions.length !== 1 ? 's' : ''}</strong>{' '}for a more precise assessment.
+              We found <strong>areas</strong> that need closer attention. Answer{" "}
+              <strong>
+                {uniqueT2Questions.length} more question
+                {uniqueT2Questions.length !== 1 ? "s" : ""}
+              </strong>{" "}
+              for a more precise assessment.
             </p>
             <div className="flex flex-wrap gap-2.5">
               <button
@@ -572,7 +785,9 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
                 onClick={handleStartTier2}
                 disabled={submitting}
               >
-                {submitting ? 'Loading...' : `Refine Assessment (${uniqueT2Questions.length} questions)`}
+                {submitting
+                  ? "Loading..."
+                  : `Refine Assessment (${uniqueT2Questions.length} questions)`}
               </button>
               <button
                 type="button"
@@ -589,7 +804,8 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
         {!hasHighRisk && (
           <div className="rounded-[18px] border border-[rgba(20,20,19,0.08)] bg-surface-alt p-4 shadow-[0_14px_40px_rgba(20,20,19,0.04)]">
             <p className="m-0 mb-3 text-sm leading-6 text-text-primary">
-              All risk categories are at a Low or Medium level. Your recommendations are ready.
+              All risk categories are at a Low or Medium level. Your
+              recommendations are ready.
             </p>
             <button
               type="button"
@@ -597,31 +813,41 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
               onClick={handleSkipToComplete}
               disabled={submitting}
             >
-              {submitting ? 'Loading...' : 'View Recommendations'}
+              {submitting ? "Loading..." : "View Recommendations"}
             </button>
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const renderTier2Wizard = () => {
-    const questions = allQuestions.length > 0 ? allQuestions : uniqueT2Questions
-    const categories = Array.from(new Set(tier2Questions.map(t => t.risk_category_name)))
+    const questions =
+      allQuestions.length > 0 ? allQuestions : uniqueT2Questions;
+    const categories = Array.from(
+      new Set(tier2Questions.map((t) => t.risk_category_name)),
+    );
 
     return (
       <div className="w-full min-h-[20rem] pb-20">
         <header className="mb-4">
-          <h1 className="m-0 text-[clamp(2.125rem,3.5vw,2.5rem)] font-extrabold leading-[1.05] tracking-[-0.02em] text-text-primary">Precision Refinement</h1>
+          <h1 className="m-0 text-[clamp(2.125rem,3.5vw,2.5rem)] font-extrabold leading-[1.05] tracking-[-0.02em] text-text-primary">
+            Precision Refinement
+          </h1>
           <p className="mt-2 text-[0.9375rem] font-semibold leading-6 text-text-secondary">
-            Answer {questions.length} more question{questions.length !== 1 ? 's' : ''} to refine your risk scores
+            Answer {questions.length} more question
+            {questions.length !== 1 ? "s" : ""} to refine your risk scores
           </p>
         </header>
 
         {error && (
           <div className="mb-4 flex items-center justify-between gap-4 rounded-[14px] border border-risk-high bg-risk-high-bg px-3.5 py-3 text-sm text-risk-high">
             <span>{error}</span>
-            <button type="button" className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high" onClick={() => setError(null)}>
+            <button
+              type="button"
+              className="rounded-[var(--radius-sm)] border border-risk-high bg-transparent px-3 py-1.5 text-[13px] font-semibold text-risk-high"
+              onClick={() => setError(null)}
+            >
               Dismiss
             </button>
           </div>
@@ -630,16 +856,22 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
         <div className="flex flex-col gap-[1.125rem]">
           {categories.length > 0 && (
             <div className="flex min-h-auto flex-wrap items-center gap-2 text-sm font-bold text-text-primary">
-              Refining: {categories.map(cat => (
-                <span key={cat} className="inline-block rounded-full bg-risk-high-bg px-2.5 py-1 text-[13px] font-bold text-risk-high">{cat}</span>
+              Refining:{" "}
+              {categories.map((cat) => (
+                <span
+                  key={cat}
+                  className="inline-block rounded-full bg-risk-high-bg px-2.5 py-1 text-[13px] font-bold text-risk-high"
+                >
+                  {cat}
+                </span>
               ))}
             </div>
           )}
-          {questions.map(q => (
+          {questions.map((q) => (
             <QuestionRenderer
               key={q.id}
               question={q}
-              value={answers[q.id] ?? ''}
+              value={answers[q.id] ?? ""}
               onChange={handleAnswerChange}
               error={errors[q.id]}
             />
@@ -655,22 +887,25 @@ export default function ProfilingWizard({ onComplete, onSeeRecommendations, onCa
           >
             Skip
           </button>
-          <span className="justify-self-center rounded-full border border-[rgba(20,20,19,0.06)] bg-[rgba(252,251,250,0.92)] px-3 py-1.5 text-[13px] font-extrabold text-text-secondary shadow-[0_10px_30px_rgba(20,20,19,0.05)]">{questions.length} follow-up question{questions.length !== 1 ? 's' : ''}</span>
+          <span className="justify-self-center rounded-full border border-[rgba(20,20,19,0.06)] bg-[rgba(252,251,250,0.92)] px-3 py-1.5 text-[13px] font-extrabold text-text-secondary shadow-[0_10px_30px_rgba(20,20,19,0.05)]">
+            {questions.length} follow-up question
+            {questions.length !== 1 ? "s" : ""}
+          </span>
           <button
             type="button"
             className="justify-self-end rounded-[var(--radius-md)] border border-cta bg-cta px-5 py-2.5 text-sm font-bold text-cta-contrast shadow-cta transition-all hover:-translate-y-0.5 hover:bg-cta-hover disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleTier2Finish}
             disabled={submitting}
           >
-            {submitting ? 'Submitting...' : 'Get Final Results'}
+            {submitting ? "Submitting..." : "Get Final Results"}
           </button>
         </div>
       </div>
-    )
-  }
+    );
+  };
 
-  if (phase === 'tier1') return renderTier1Wizard()
-  if (phase === 'preview') return renderPreview()
-  if (phase === 'tier2') return renderTier2Wizard()
-  return null
+  if (phase === "tier1") return renderTier1Wizard();
+  if (phase === "preview") return renderPreview();
+  if (phase === "tier2") return renderTier2Wizard();
+  return null;
 }
