@@ -20,6 +20,7 @@ interface ProfilingWizardProps {
   onSeeRecommendations?: (data: ProfilingCompleteOut) => void;
   onCancel: () => void;
   businessId?: string;
+  resumeSessionId?: string;
 }
 
 const RISK_WEIGHTS: Record<string, number> = {
@@ -34,6 +35,7 @@ export default function ProfilingWizard({
   onSeeRecommendations,
   onCancel,
   businessId,
+  resumeSessionId,
 }: ProfilingWizardProps) {
   const [phase, setPhase] = useState<ProfilingPhase>("tier1");
   const [section, setSection] = useState<SectionQuestionsOut | null>(null);
@@ -102,7 +104,13 @@ export default function ProfilingWizard({
       setLoading(true);
       setError(null);
       try {
-        const result = await profilingApi.startSession(tier, businessId);
+        const result = resumeSessionId
+          ? await profilingApi.getSessionState(
+              resumeSessionId,
+              SECTIONS_ORDER[0],
+              tier,
+            )
+          : await profilingApi.startSession(tier, businessId);
         if (!mountedRef.current) return;
 
         let currentResult = result;
@@ -132,7 +140,7 @@ export default function ProfilingWizard({
         if (mountedRef.current) setLoading(false);
       }
     },
-    [businessId],
+    [businessId, resumeSessionId],
   );
 
   useEffect(() => {
@@ -401,9 +409,6 @@ export default function ProfilingWizard({
     try {
       const result = await profilingApi.completeSession(sessionId);
       onComplete(result);
-      if (onSeeRecommendations) {
-        onSeeRecommendations(result);
-      }
     } catch (err) {
       setError(getProfilingErrorMessage(err));
     } finally {

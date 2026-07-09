@@ -1,5 +1,6 @@
 import { useAuth } from '../../hooks/useAuth'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { profilingApi } from '../../features/profiling'
 
 function LogoIcon() {
   return (
@@ -97,18 +98,21 @@ interface NavItemProps {
   label: string
   active: boolean
   onClick?: () => void
+  disabled?: boolean
 }
 
-function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
+function NavItem({ icon: Icon, label, active, onClick, disabled }: NavItemProps) {
+  const baseClass = `flex w-full items-center gap-3 rounded-[14px] px-4 py-3 text-[14px] font-semibold transition-all duration-200 ease-out`;
+  const activeClass = active ? 'bg-[rgba(207,69,0,0.08)] text-secondary shadow-sm ring-1 ring-[rgba(207,69,0,0.12)]' : 'text-text-secondary hover:-translate-x-0.5 hover:bg-black/5';
+  const disabledClass = disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : '';
+
   return (
     <button
       type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-[14px] px-4 py-3 text-[14px] font-semibold transition-all duration-200 ease-out ${
-        active
-          ? 'bg-[rgba(207,69,0,0.08)] text-secondary shadow-sm ring-1 ring-[rgba(207,69,0,0.12)]'
-          : 'text-text-secondary hover:-translate-x-0.5 hover:bg-black/5'
-      }`}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      title={disabled ? 'Complete risk assessment to unlock this feature' : undefined}
+      className={`${baseClass} ${activeClass} ${disabledClass}`}
     >
       <Icon className="h-5 w-5 shrink-0" />
       <span className={active ? 'font-semibold' : ''}>{label}</span>
@@ -130,7 +134,6 @@ export function UserSidebar({
   onAfterNavigate,
 }: UserSidebarProps) {
   const { user, logout } = useAuth()
-  const navigate = useNavigate()
 
   const handleLogout = async () => {
     try {
@@ -144,12 +147,30 @@ export function UserSidebar({
     ? user.fullName.split(' ').filter(Boolean).map((s) => s[0]).slice(0, 2).join('').toUpperCase()
     : 'U'
 
+  const [profilingCompleted, setProfilingCompleted] = useState<boolean>(false)
+
+  useEffect(() => {
+    let mounted = true
+    async function fetchStatus() {
+      try {
+        const status = await profilingApi.getStatus()
+        if (mounted) setProfilingCompleted(Boolean(status?.profiling_completed))
+      } catch {
+        if (mounted) setProfilingCompleted(false)
+      }
+    }
+    fetchStatus()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
   const navItems = [
     { section: 'profile' as Section, icon: IconBuilding, label: 'Dashboard' },
     { section: 'profiling' as Section, icon: IconShield, label: 'Risk Assessment' },
-    { section: 'recommendation' as Section, icon: IconSparkles, label: 'Recommendation' },
-    { section: 'comparison' as Section, icon: IconScale, label: 'Policy Comparison' },
-    { section: 'chatbot' as Section, icon: IconMessageCircle, label: 'Chatbot' },
+    { section: 'recommendation' as Section, icon: IconSparkles, label: 'Recommendation', disabled: !profilingCompleted },
+    { section: 'comparison' as Section, icon: IconScale, label: 'Policy Comparison', disabled: !profilingCompleted },
+    { section: 'chatbot' as Section, icon: IconMessageCircle, label: 'Chatbot', disabled: !profilingCompleted },
     { section: 'feedback' as Section, icon: IconMessageSquare, label: 'Feedback' },
   ]
 
@@ -171,7 +192,9 @@ export function UserSidebar({
             icon={item.icon}
             label={item.label}
             active={activeSection === item.section}
+            disabled={Boolean((item as any).disabled)}
             onClick={() => {
+              if ((item as any).disabled) return
               onSectionChange(item.section)
               onAfterNavigate?.()
             }}

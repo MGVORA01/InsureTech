@@ -451,6 +451,7 @@ export default function DashboardPage() {
   >("loading");
   const [profilingResults, setProfilingResults] =
     useState<ProfilingCompleteOut | null>(null);
+  const [resumeSessionId, setResumeSessionId] = useState<string | null>(null);
   const [workflowSessionId, setWorkflowSessionId] = useState<string | null>(
     null,
   );
@@ -786,6 +787,12 @@ export default function DashboardPage() {
             data={profilingResults}
             onRestart={() => {
               setProfilingResults(null);
+              setResumeSessionId(null);
+              setProfilingView("wizard");
+            }}
+            onEdit={() => {
+              setProfilingResults(null);
+              setResumeSessionId(profilingResults.session.id);
               setProfilingView("wizard");
             }}
             onSeeRecommendations={() =>
@@ -800,9 +807,11 @@ export default function DashboardPage() {
       return (
         <ProfilingWizard
           businessId={selectedBusinessId ?? undefined}
+          resumeSessionId={resumeSessionId ?? undefined}
           onComplete={(data) => {
             setProfilingResults(data);
             setWorkflowSessionId(data.session.id);
+            setResumeSessionId(null);
             setProfilingView("results");
           }}
           onSeeRecommendations={(data) => {
@@ -810,7 +819,10 @@ export default function DashboardPage() {
             setWorkflowSessionId(data.session.id);
             navigate(`/recommendations/${data.session.id}`);
           }}
-          onCancel={() => setProfilingView("launcher")}
+          onCancel={() => {
+            setProfilingView("launcher")
+            setResumeSessionId(null)
+          }}
         />
       );
     }
