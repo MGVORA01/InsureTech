@@ -341,7 +341,7 @@ export default function RecommendationsPage() {
 
   if (status === 'loading') {
     return (
-      <UserLayout activeSection="recommendation" onSectionChange={handleSectionChange} contentClassName="w-full">
+        <UserLayout activeSection="recommendation" onSectionChange={handleSectionChange} contentClassName="w-full" profilingCompleted>
         <LoadingView />
       </UserLayout>
     )
@@ -349,7 +349,7 @@ export default function RecommendationsPage() {
 
   if (status === 'error') {
     return (
-      <UserLayout activeSection="recommendation" onSectionChange={handleSectionChange} contentClassName="w-full">
+        <UserLayout activeSection="recommendation" onSectionChange={handleSectionChange} contentClassName="w-full" profilingCompleted>
         <div className="flex min-h-screen items-center justify-center p-6" style={{ background: 'var(--color-background)' }}>
           <div className="w-full max-w-md rounded-lg border p-8 text-center shadow-sm" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-risk-high-bg)' }}>
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg" style={{ background: 'var(--color-risk-high-bg)', color: 'var(--color-risk-high)' }}>
@@ -372,7 +372,7 @@ export default function RecommendationsPage() {
   }
 
   return (
-    <UserLayout activeSection="recommendation" onSectionChange={handleSectionChange} contentClassName="w-full">
+    <UserLayout activeSection="recommendation" onSectionChange={handleSectionChange} contentClassName="w-full" profilingCompleted>
       <main className="min-h-screen" style={{ background: 'var(--color-background)' }}>
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <section className="rounded-lg border p-5 shadow-sm sm:p-6" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>

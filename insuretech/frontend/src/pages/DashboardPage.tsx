@@ -20,6 +20,7 @@ import {
   ProfilingResults,
   profilingApi,
 } from "../features/profiling";
+import { useNavigationLock } from '../store/navigationLock'
 import type { ProfilingCompleteOut } from "../features/profiling";
 import { getRecommendations } from "../features/recommendations/recommendationsApi";
 import type { RecommendationOut } from "../features/recommendations/recommendations.types";
@@ -578,6 +579,29 @@ export default function DashboardPage() {
     }
   }, [activeSection, navigate, workflowSessionId]);
 
+  const { unlockRecommendation, unlockComparison } = useNavigationLock()
+
+  const handleSeeRecommendations = (assessmentId?: string | null) => {
+    if (!assessmentId) {
+      navigate('/dashboard/profiling')
+      return
+    }
+
+    if (typeof assessmentId !== 'string' || assessmentId.trim() === '') {
+      navigate('/dashboard/profiling')
+      return
+    }
+
+    navigate(`/recommendations/${assessmentId}`)
+
+    try {
+      unlockRecommendation()
+      unlockComparison()
+    } catch {
+      // ignore
+    }
+  }
+
   const handleBusinessChange = (businessId: string) => {
     setSelectedBusinessId(businessId);
     setWorkflowSessionId(null);
@@ -796,7 +820,7 @@ export default function DashboardPage() {
               setProfilingView("wizard");
             }}
             onSeeRecommendations={() =>
-              navigate(`/recommendations/${profilingResults.session.id}`)
+              handleSeeRecommendations(profilingResults.session.id)
             }
           />
         </div>
@@ -817,7 +841,7 @@ export default function DashboardPage() {
           onSeeRecommendations={(data) => {
             setProfilingResults(data);
             setWorkflowSessionId(data.session.id);
-            navigate(`/recommendations/${data.session.id}`);
+            handleSeeRecommendations(data.session.id)
           }}
           onCancel={() => {
             setProfilingView("launcher")
@@ -911,6 +935,7 @@ export default function DashboardPage() {
     <UserLayout
       activeSection={activeSection}
       onSectionChange={handleSectionChange}
+      selectedBusinessId={selectedBusinessId ?? undefined}
     >
       {activeSection === "profile" && (
         <div className="mb-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_460px]">

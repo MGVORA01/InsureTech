@@ -32,7 +32,7 @@ const RISK_WEIGHTS: Record<string, number> = {
 
 export default function ProfilingWizard({
   onComplete,
-  onSeeRecommendations,
+  onSeeRecommendations: _onSeeRecommendations,
   onCancel,
   businessId,
   resumeSessionId,

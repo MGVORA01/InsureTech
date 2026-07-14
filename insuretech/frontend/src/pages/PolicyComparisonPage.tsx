@@ -116,7 +116,7 @@ export default function PolicyComparisonPage() {
 
   if (status === 'loading') {
     return (
-      <UserLayout activeSection="comparison" onSectionChange={handleSectionChange} contentClassName="w-full">
+      <UserLayout activeSection="comparison" onSectionChange={handleSectionChange} contentClassName="w-full" profilingCompleted>
         <div className="flex min-h-screen items-center justify-center bg-[#f7faf9]">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
@@ -126,7 +126,7 @@ export default function PolicyComparisonPage() {
 
   if (status === 'error' || !businessProfileId) {
     return (
-      <UserLayout activeSection="comparison" onSectionChange={handleSectionChange} contentClassName="w-full">
+      <UserLayout activeSection="comparison" onSectionChange={handleSectionChange} contentClassName="w-full" profilingCompleted>
         <div className="flex min-h-screen items-center justify-center bg-[#f7faf9] p-6">
           <div className="max-w-md rounded-lg border border-red-200 bg-white p-8 text-center shadow-sm">
             <ErrorOutlineRoundedIcon className="mx-auto h-10 w-10 text-red-600" />
@@ -141,7 +141,7 @@ export default function PolicyComparisonPage() {
   }
 
   return (
-    <UserLayout activeSection="comparison" onSectionChange={handleSectionChange} contentClassName="w-full">
+    <UserLayout activeSection="comparison" onSectionChange={handleSectionChange} contentClassName="w-full" profilingCompleted>
       <main className="min-h-screen bg-[#f7faf9]">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

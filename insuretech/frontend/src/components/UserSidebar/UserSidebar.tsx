@@ -1,6 +1,7 @@
 import { useAuth } from '../../hooks/useAuth'
 import { useEffect, useState } from 'react'
 import { profilingApi } from '../../features/profiling'
+import { useNavigationLock } from '../../store/navigationLock'
 
 function LogoIcon() {
   return (
@@ -126,12 +127,16 @@ interface UserSidebarProps {
   activeSection: Section
   onSectionChange: (section: Section) => void
   onAfterNavigate?: () => void
+  selectedBusinessId?: string
+  profilingCompleted?: boolean
 }
 
 export function UserSidebar({
   activeSection,
   onSectionChange,
   onAfterNavigate,
+  selectedBusinessId,
+  profilingCompleted: propProfilingCompleted,
 }: UserSidebarProps) {
   const { user, logout } = useAuth()
 
@@ -147,30 +152,39 @@ export function UserSidebar({
     ? user.fullName.split(' ').filter(Boolean).map((s) => s[0]).slice(0, 2).join('').toUpperCase()
     : 'U'
 
-  const [profilingCompleted, setProfilingCompleted] = useState<boolean>(false)
+  const [fetchedProfilingCompleted, setFetchedProfilingCompleted] = useState<boolean>(false)
 
   useEffect(() => {
+    if (propProfilingCompleted !== undefined) return
     let mounted = true
     async function fetchStatus() {
       try {
-        const status = await profilingApi.getStatus()
-        if (mounted) setProfilingCompleted(Boolean(status?.profiling_completed))
-      } catch {
-        if (mounted) setProfilingCompleted(false)
+        const status = await profilingApi.getStatus(selectedBusinessId)
+        if (mounted) {
+          setFetchedProfilingCompleted(Boolean(status?.profiling_completed))
+        }
+      } catch (error) {
+        if (mounted) {
+          setFetchedProfilingCompleted(false)
+        }
       }
     }
     fetchStatus()
     return () => {
       mounted = false
     }
-  }, [])
+  }, [activeSection, selectedBusinessId, propProfilingCompleted])
+
+  const effectiveProfilingCompleted = propProfilingCompleted ?? fetchedProfilingCompleted
+
+  const { recommendationUnlocked, comparisonUnlocked, chatbotUnlocked } = useNavigationLock()
 
   const navItems = [
     { section: 'profile' as Section, icon: IconBuilding, label: 'Dashboard' },
     { section: 'profiling' as Section, icon: IconShield, label: 'Risk Assessment' },
-    { section: 'recommendation' as Section, icon: IconSparkles, label: 'Recommendation', disabled: !profilingCompleted },
-    { section: 'comparison' as Section, icon: IconScale, label: 'Policy Comparison', disabled: !profilingCompleted },
-    { section: 'chatbot' as Section, icon: IconMessageCircle, label: 'Chatbot', disabled: !profilingCompleted },
+    { section: 'recommendation' as Section, icon: IconSparkles, label: 'Recommendation', disabled: !recommendationUnlocked },
+    { section: 'comparison' as Section, icon: IconScale, label: 'Policy Comparison', disabled: !comparisonUnlocked },
+    { section: 'chatbot' as Section, icon: IconMessageCircle, label: 'Chatbot', disabled: !chatbotUnlocked },
     { section: 'feedback' as Section, icon: IconMessageSquare, label: 'Feedback' },
   ]
 

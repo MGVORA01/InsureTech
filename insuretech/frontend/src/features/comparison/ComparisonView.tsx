@@ -4,6 +4,7 @@ import { comparePolicies } from './comparisonApi'
 import type { PolicyListItem } from '../policies/policies.types'
 import type { CompareRequest, CompareResponse } from './comparison.types'
 import ComparisonChatPopUp from './ComparisonChatPopUp'
+import { useNavigationLock } from '../../store/navigationLock'
 
 interface ComparisonViewProps {
   businessProfileId: string
@@ -152,6 +153,18 @@ export default function ComparisonView({
 
   const policyAMeta = policies.find((p) => p.id === policyA)
   const policyBMeta = policies.find((p) => p.id === policyB)
+
+  const { unlockChatbot } = useNavigationLock()
+
+  useEffect(() => {
+    if (result) {
+      try {
+        unlockChatbot()
+      } catch {
+        // ignore
+      }
+    }
+  }, [result, unlockChatbot])
 
   function renderPlaceholder() {
     return (

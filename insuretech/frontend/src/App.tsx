@@ -15,6 +15,7 @@ import DashboardPage from './pages/DashboardPage'
 import RecommendationsPage from './pages/RecommendationsPage'
 import PolicyComparisonPage from './pages/PolicyComparisonPage'
 import ChatPage from './pages/ChatPage'
+import { NavigationLockProvider } from './store/navigationLock'
 import AdminRoute from './routes/AdminRoute'
 import ProtectedRoute from './routes/ProtectedRoute'
 import { useSessionCheck } from './hooks/useSessionCheck'
@@ -35,7 +36,8 @@ function App() {
   }
 
   return (
-    <>
+    <NavigationLockProvider>
+      <>
       {/* Main routes. If we came here with a background location, render that background */}
       <Routes location={background ?? location}>
         <Route path="/" element={<HomePage />} />
@@ -84,7 +86,8 @@ function App() {
         </Routes>
       ) : null}
 
-    </>
+      </>
+    </NavigationLockProvider>
   )
 }
 
