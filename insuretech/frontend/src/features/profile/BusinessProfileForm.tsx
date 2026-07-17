@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type {
@@ -6,6 +6,7 @@ import type {
   CreateBusinessRequest,
   Segment,
   Industry,
+  UpdateBusinessRequest,
 } from "./profile.types";
 import { profileApi, getProfileErrorMessage } from "./profileApi";
 import {
@@ -15,11 +16,15 @@ import {
 
 interface BusinessProfileFormProps {
   onSuccess: (profile: BusinessProfile) => void;
+  editProfile?: BusinessProfile;
 }
 
 export default function BusinessProfileForm({
   onSuccess,
+  editProfile,
 }: BusinessProfileFormProps) {
+  const isEdit = Boolean(editProfile);
+  const initialLoadDone = useRef(false);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,16 +42,30 @@ export default function BusinessProfileForm({
     formState: { errors },
   } = useForm<BusinessProfileFormValues>({
     resolver: zodResolver(businessProfileSchema) as any,
-    defaultValues: {
-      segment_id: "",
-      industry_id: "",
-      business_name: "",
-      business_description: "",
-      city: "",
-      state: "",
-      pincode: "",
-      employee_count: undefined,
-    },
+    defaultValues: editProfile
+      ? {
+          segment_id: editProfile.segment_id,
+          industry_id: editProfile.industry_id,
+          business_name: editProfile.business_name,
+          business_description: editProfile.business_description ?? "",
+          city: editProfile.city ?? "",
+          state: editProfile.state ?? "",
+          address: editProfile.address ?? "",
+          pincode: editProfile.pincode ?? "",
+          year_established: editProfile.year_established ?? undefined,
+          employee_count: editProfile.employee_count ?? undefined,
+          annual_turnover_range: editProfile.annual_turnover_range ?? "",
+        }
+      : {
+          segment_id: "",
+          industry_id: "",
+          business_name: "",
+          business_description: "",
+          city: "",
+          state: "",
+          pincode: "",
+          employee_count: undefined,
+        },
   });
 
   const selectedSegmentId = watch("segment_id");
@@ -82,34 +101,58 @@ export default function BusinessProfileForm({
   }, [loadSegments]);
 
   useEffect(() => {
+    if (editProfile && !initialLoadDone.current) {
+      initialLoadDone.current = true;
+      if (editProfile.segment_id) {
+        loadIndustries(editProfile.segment_id);
+      }
+      return;
+    }
+
     setValue("industry_id", "");
     setIndustries([]);
 
     if (selectedSegmentId) {
       loadIndustries(selectedSegmentId);
     }
-  }, [selectedSegmentId, loadIndustries, setValue]);
+  }, [selectedSegmentId, loadIndustries, setValue, editProfile]);
 
   const onSubmit = async (values: BusinessProfileFormValues) => {
     setLoading(true);
     setSubmitError(null);
 
     try {
-      const payload: CreateBusinessRequest = {
-        segment_id: values.segment_id,
-        industry_id: values.industry_id,
-        business_name: values.business_name,
-        business_description: values.business_description || undefined,
-        city: values.city || undefined,
-        state: values.state || undefined,
-        pincode: values.pincode || undefined,
-        employee_count: values.employee_count
-          ? Number(values.employee_count)
-          : undefined,
-      };
-
-      const profile = await profileApi.createBusiness(payload);
-      onSuccess(profile);
+      if (isEdit && editProfile) {
+        const payload: UpdateBusinessRequest = {
+          segment_id: values.segment_id,
+          industry_id: values.industry_id,
+          business_name: values.business_name,
+          business_description: values.business_description || undefined,
+          city: values.city || undefined,
+          state: values.state || undefined,
+          pincode: values.pincode || undefined,
+          employee_count: values.employee_count
+            ? Number(values.employee_count)
+            : undefined,
+        };
+        const profile = await profileApi.updateBusiness(editProfile.id, payload);
+        onSuccess(profile);
+      } else {
+        const payload: CreateBusinessRequest = {
+          segment_id: values.segment_id,
+          industry_id: values.industry_id,
+          business_name: values.business_name,
+          business_description: values.business_description || undefined,
+          city: values.city || undefined,
+          state: values.state || undefined,
+          pincode: values.pincode || undefined,
+          employee_count: values.employee_count
+            ? Number(values.employee_count)
+            : undefined,
+        };
+        const profile = await profileApi.createBusiness(payload);
+        onSuccess(profile);
+      }
     } catch (err) {
       setSubmitError(getProfileErrorMessage(err));
     } finally {
@@ -331,7 +374,13 @@ export default function BusinessProfileForm({
         className="w-full rounded-[var(--radius-md)] bg-primary px-4 py-2.5 text-sm font-semibold text-text-onPrimary transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
         disabled={loading}
       >
-        {loading ? "Creating..." : "Create Profile"}
+        {loading
+          ? isEdit
+            ? "Updating..."
+            : "Creating..."
+          : isEdit
+            ? "Update Profile"
+            : "Create Profile"}
       </button>
     </form>
   );

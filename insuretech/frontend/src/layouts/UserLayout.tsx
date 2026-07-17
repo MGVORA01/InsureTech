@@ -15,7 +15,6 @@ interface UserLayoutProps {
   children: React.ReactNode
   contentClassName?: string
   selectedBusinessId?: string
-  profilingCompleted?: boolean
 }
 
 export default function UserLayout({
@@ -24,7 +23,6 @@ export default function UserLayout({
   children,
   contentClassName = 'mx-auto max-w-5xl px-6 py-8',
   selectedBusinessId,
-  profilingCompleted,
 }: UserLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const { logout } = useAuth()
@@ -57,7 +55,6 @@ export default function UserLayout({
           }}
           onAfterNavigate={() => setDrawerOpen(false)}
           selectedBusinessId={selectedBusinessId}
-          profilingCompleted={profilingCompleted}
         />
       </UserMobileDrawer>
 
@@ -67,7 +64,6 @@ export default function UserLayout({
           activeSection={activeSection}
           onSectionChange={onSectionChange}
           selectedBusinessId={selectedBusinessId}
-          profilingCompleted={profilingCompleted}
         />
       </UserDesktopSidebar>
 

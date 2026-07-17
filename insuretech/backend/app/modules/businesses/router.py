@@ -18,7 +18,7 @@ from app.modules.businesses.constants import (
     MY_BUSINESS_ROUTE,
     SEGMENTS_ROUTE,
 )
-from app.modules.businesses.schemas import CreateBusinessRequest
+from app.modules.businesses.schemas import CreateBusinessRequest, UpdateBusinessRequest
 from app.modules.businesses.service import Service
 from app.shared.dependency.get_current_user import get_current_user
 from app.shared.response import APIResponse
@@ -84,6 +84,17 @@ async def get_business_by_id(
 ) -> APIResponse:
     """Fetch a specific business profile by ID (ownership verified)."""
     return await Service.get_my_business_by_id(business_id, current_user, db)
+
+
+@router.put(BUSINESS_DETAIL_ROUTE, status_code=status.HTTP_200_OK)
+async def update_business(
+    business_id: UUID,
+    data: UpdateBusinessRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> APIResponse:
+    """Update an existing business profile (ownership verified)."""
+    return await Service.update_business(business_id, data, current_user, db)
 
 
 @router.delete(BUSINESS_DETAIL_ROUTE, status_code=status.HTTP_200_OK)

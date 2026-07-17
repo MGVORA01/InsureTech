@@ -30,12 +30,22 @@ function IconTrash(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function IconPencil(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      <path d="M15 5l4 4" />
+    </svg>
+  )
+}
+
 interface BusinessSwitcherProps {
   businesses: BusinessProfile[]
   selectedBusinessId: string | null
   onBusinessChange: (businessId: string) => void
   onAddBusiness: () => void
   onDeleteBusiness?: (businessId: string) => void
+  onEditBusiness?: (businessId: string) => void
 }
 
 export default function BusinessSwitcher({
@@ -44,6 +54,7 @@ export default function BusinessSwitcher({
   onBusinessChange,
   onAddBusiness,
   onDeleteBusiness,
+  onEditBusiness,
 }: BusinessSwitcherProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
@@ -185,20 +196,37 @@ export default function BusinessSwitcher({
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     )}
-                    {onDeleteBusiness && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setConfirmingDeleteId(b.id)
-                        }}
-                        className="shrink-0 rounded p-1 transition hover:[background-color:var(--color-risk-high-bg)] hover:[color:var(--color-risk-high)]"
-                        style={{ color: 'var(--color-text-muted)' }}
-                        title={`Delete ${b.business_name}`}
-                      >
-                        <IconTrash className="h-4 w-4" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {onEditBusiness && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDropdownOpen(false)
+                            onEditBusiness(b.id)
+                          }}
+                          className="shrink-0 rounded p-1 transition hover:[background-color:var(--color-hover)] hover:[color:var(--color-secondary)]"
+                          style={{ color: 'var(--color-text-muted)' }}
+                          title={`Edit ${b.business_name}`}
+                        >
+                          <IconPencil className="h-4 w-4" />
+                        </button>
+                      )}
+                      {onDeleteBusiness && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setConfirmingDeleteId(b.id)
+                          }}
+                          className="shrink-0 rounded p-1 transition hover:[background-color:var(--color-risk-high-bg)] hover:[color:var(--color-risk-high)]"
+                          style={{ color: 'var(--color-text-muted)' }}
+                          title={`Delete ${b.business_name}`}
+                        >
+                          <IconTrash className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </button>
                 )}
               </div>

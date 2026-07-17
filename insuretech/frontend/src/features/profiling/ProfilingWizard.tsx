@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from '../../hooks/useAuth'
+import sessionStore from '../../store/sessionStore'
 import { profilingApi, getProfilingErrorMessage } from "./profilingApi";
 import {
   PROFILING_MESSAGES,
@@ -37,6 +39,7 @@ export default function ProfilingWizard({
   businessId,
   resumeSessionId,
 }: ProfilingWizardProps) {
+  const { user } = useAuth();
   const [phase, setPhase] = useState<ProfilingPhase>("tier1");
   const [section, setSection] = useState<SectionQuestionsOut | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -389,7 +392,14 @@ export default function ProfilingWizard({
         }
       } else {
         const result = await profilingApi.completeSession(sessionId);
-        if (mountedRef.current) onComplete(result);
+        if (mountedRef.current) {
+          try {
+            sessionStore.setLastSessionForBusiness(user?.id ?? null, businessId ?? '', result.session.id)
+          } catch {
+            // ignore
+          }
+          onComplete(result);
+        }
       }
     } catch (err) {
       if (mountedRef.current) setError(getProfilingErrorMessage(err));
@@ -408,6 +418,11 @@ export default function ProfilingWizard({
     setError(null);
     try {
       const result = await profilingApi.completeSession(sessionId);
+      try {
+        sessionStore.setLastSessionForBusiness(user?.id ?? null, businessId ?? '', result.session.id)
+      } catch {
+        // ignore
+      }
       onComplete(result);
     } catch (err) {
       setError(getProfilingErrorMessage(err));
@@ -473,6 +488,11 @@ export default function ProfilingWizard({
         });
       }
       const result = await profilingApi.completeSession(sessionId);
+      try {
+        sessionStore.setLastSessionForBusiness(user?.id ?? null, businessId ?? '', result.session.id)
+      } catch {
+        // ignore
+      }
       onComplete(result);
     } catch (err) {
       setError(getProfilingErrorMessage(err));

@@ -1,6 +1,4 @@
 import { useAuth } from '../../hooks/useAuth'
-import { useEffect, useState } from 'react'
-import { profilingApi } from '../../features/profiling'
 import { useNavigationLock } from '../../store/navigationLock'
 
 function LogoIcon() {
@@ -128,15 +126,12 @@ interface UserSidebarProps {
   onSectionChange: (section: Section) => void
   onAfterNavigate?: () => void
   selectedBusinessId?: string
-  profilingCompleted?: boolean
 }
 
 export function UserSidebar({
   activeSection,
   onSectionChange,
   onAfterNavigate,
-  selectedBusinessId,
-  profilingCompleted: propProfilingCompleted,
 }: UserSidebarProps) {
   const { user, logout } = useAuth()
 
@@ -151,31 +146,6 @@ export function UserSidebar({
   const initials = user?.fullName
     ? user.fullName.split(' ').filter(Boolean).map((s) => s[0]).slice(0, 2).join('').toUpperCase()
     : 'U'
-
-  const [fetchedProfilingCompleted, setFetchedProfilingCompleted] = useState<boolean>(false)
-
-  useEffect(() => {
-    if (propProfilingCompleted !== undefined) return
-    let mounted = true
-    async function fetchStatus() {
-      try {
-        const status = await profilingApi.getStatus(selectedBusinessId)
-        if (mounted) {
-          setFetchedProfilingCompleted(Boolean(status?.profiling_completed))
-        }
-      } catch (error) {
-        if (mounted) {
-          setFetchedProfilingCompleted(false)
-        }
-      }
-    }
-    fetchStatus()
-    return () => {
-      mounted = false
-    }
-  }, [activeSection, selectedBusinessId, propProfilingCompleted])
-
-  const effectiveProfilingCompleted = propProfilingCompleted ?? fetchedProfilingCompleted
 
   const { recommendationUnlocked, comparisonUnlocked, chatbotUnlocked } = useNavigationLock()
 

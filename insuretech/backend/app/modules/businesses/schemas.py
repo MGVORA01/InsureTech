@@ -42,6 +42,22 @@ class CreateBusinessRequest(BaseModel):
     annual_turnover_range: Optional[str] = None
 
 
+class UpdateBusinessRequest(BaseModel):
+    """Schema for updating an existing business profile — all fields optional."""
+
+    industry_id: Optional[UUID] = None
+    segment_id: Optional[UUID] = None
+    business_name: Optional[str] = Field(default=None, min_length=1)
+    business_description: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    address: Optional[str] = None
+    pincode: Optional[str] = None
+    year_established: Optional[int] = None
+    employee_count: Optional[int] = None
+    annual_turnover_range: Optional[str] = None
+
+
 class BusinessResponse(BaseModel):
     """Schema for business profile response."""
 

@@ -20,7 +20,7 @@ import {
   ProfilingResults,
   profilingApi,
 } from "../features/profiling";
-import { useNavigationLock } from '../store/navigationLock'
+import { useNavigationLock } from "../store/navigationLock";
 import type { ProfilingCompleteOut } from "../features/profiling";
 import { getRecommendations } from "../features/recommendations/recommendationsApi";
 import type { RecommendationOut } from "../features/recommendations/recommendations.types";
@@ -29,6 +29,7 @@ import UserLayout from "../layouts/UserLayout";
 import type { Section } from "../components/UserSidebar";
 import BusinessSwitcher from "../components/BusinessSwitcher";
 import { useAuth } from "../hooks/useAuth";
+import sessionStore from '../store/sessionStore'
 
 type IconProps = SVGProps<SVGSVGElement>;
 
@@ -447,6 +448,7 @@ export default function DashboardPage() {
   );
   const [profileError, setProfileError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editBusinessId, setEditBusinessId] = useState<string | null>(null);
   const [profilingView, setProfilingView] = useState<
     "loading" | "launcher" | "wizard" | "results"
   >("loading");
@@ -459,9 +461,17 @@ export default function DashboardPage() {
   const [topRecommendation, setTopRecommendation] =
     useState<RecommendationOut | null>(null);
 
+  const { unlockRecommendation, unlockComparison, unlockChatbot } =
+    useNavigationLock();
+
   const selectedBusiness = useMemo(
     () => businesses.find((b) => b.id === selectedBusinessId) ?? null,
     [businesses, selectedBusinessId],
+  );
+
+  const editingBusiness = useMemo(
+    () => businesses.find((b) => b.id === editBusinessId) ?? null,
+    [businesses, editBusinessId],
   );
 
   const loadBusinesses = useCallback(async () => {
@@ -525,13 +535,17 @@ export default function DashboardPage() {
     }
 
     let cancelled = false;
-    profilingApi
-      .getStatus(selectedBusinessId)
+    profilingApi.getStatus(selectedBusinessId)
       .then((status) => {
         if (cancelled) return;
-        setWorkflowSessionId(
-          status.session?.id ?? status.latest_completed_session?.id ?? null,
-        );
+        const resolved = status.session?.id ?? status.latest_completed_session?.id ?? null
+        // persist last known session id per user+business for consistent sidebar navigation
+        if (resolved) {
+          sessionStore.setLastSessionForBusiness(user?.id ?? null, selectedBusinessId, resolved)
+        }
+        // Prefer persisted session if available to avoid transient differences
+        const persisted = sessionStore.getLastSessionForBusiness(user?.id ?? null, selectedBusinessId)
+        setWorkflowSessionId(persisted ?? resolved)
       })
       .catch(() => {
         if (!cancelled) setWorkflowSessionId(null);
@@ -552,8 +566,26 @@ export default function DashboardPage() {
 
     const loadRecommendations = async () => {
       try {
+        console.debug(
+          "[DashboardPage] loading recommendations for workflowSessionId",
+          { workflowSessionId },
+        );
         const data = await getRecommendations(workflowSessionId);
+        console.debug("[DashboardPage] recommendations returned", {
+          workflowSessionId,
+          count: data?.recommendations?.length ?? 0,
+        });
         if (cancelled) return;
+        const hasRecommendations =
+          data.recommendations && data.recommendations.length > 0;
+
+        if (hasRecommendations) {
+          // Auto-unlock sidebar buttons when recommendations exist
+          unlockRecommendation();
+          unlockComparison();
+          unlockChatbot();
+        }
+
         setTopRecommendation(data.recommendations?.[0] ?? null);
       } catch {
         if (!cancelled) {
@@ -567,7 +599,12 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [workflowSessionId]);
+  }, [
+    workflowSessionId,
+    unlockRecommendation,
+    unlockComparison,
+    unlockChatbot,
+  ]);
 
   useEffect(() => {
     if (!workflowSessionId) return;
@@ -579,28 +616,27 @@ export default function DashboardPage() {
     }
   }, [activeSection, navigate, workflowSessionId]);
 
-  const { unlockRecommendation, unlockComparison } = useNavigationLock()
-
   const handleSeeRecommendations = (assessmentId?: string | null) => {
     if (!assessmentId) {
-      navigate('/dashboard/profiling')
-      return
+      navigate("/dashboard/profiling");
+      return;
     }
 
-    if (typeof assessmentId !== 'string' || assessmentId.trim() === '') {
-      navigate('/dashboard/profiling')
-      return
+    if (typeof assessmentId !== "string" || assessmentId.trim() === "") {
+      navigate("/dashboard/profiling");
+      return;
     }
 
-    navigate(`/recommendations/${assessmentId}`)
+    navigate(`/recommendations/${assessmentId}`);
 
     try {
-      unlockRecommendation()
-      unlockComparison()
+      unlockRecommendation();
+      unlockComparison();
+      unlockChatbot();
     } catch {
       // ignore
     }
-  }
+  };
 
   const handleBusinessChange = (businessId: string) => {
     setSelectedBusinessId(businessId);
@@ -624,6 +660,22 @@ export default function DashboardPage() {
       if (prev.some((b) => b.id === newProfile.id)) return prev;
       return [...prev, newProfile];
     });
+  };
+
+  const handleEditBusiness = (businessId: string) => {
+    setEditBusinessId(businessId);
+  };
+
+  const handleProfileUpdated = (updatedProfile: BusinessProfile) => {
+    setEditBusinessId(null);
+    setBusinesses((prev) =>
+      prev.map((b) => (b.id === updatedProfile.id ? updatedProfile : b)),
+    );
+    setSelectedBusinessId(updatedProfile.id);
+  };
+
+  const handleCloseEdit = () => {
+    setEditBusinessId(null);
   };
 
   const handleDeleteBusiness = async (businessId: string) => {
@@ -684,7 +736,10 @@ export default function DashboardPage() {
             topRecommendation={topRecommendation}
             onProfilingClick={() => handleSectionChange("profiling")}
           />
-          <ProfileCard profile={selectedBusiness} />
+          <ProfileCard
+            profile={selectedBusiness}
+            onEdit={() => handleEditBusiness(selectedBusiness.id)}
+          />
           <RecentActivity
             profile={selectedBusiness}
             results={profilingResults}
@@ -841,11 +896,11 @@ export default function DashboardPage() {
           onSeeRecommendations={(data) => {
             setProfilingResults(data);
             setWorkflowSessionId(data.session.id);
-            handleSeeRecommendations(data.session.id)
+            handleSeeRecommendations(data.session.id);
           }}
           onCancel={() => {
-            setProfilingView("launcher")
-            setResumeSessionId(null)
+            setProfilingView("launcher");
+            setResumeSessionId(null);
           }}
         />
       );
@@ -871,9 +926,24 @@ export default function DashboardPage() {
 
   const handleSectionChange = useCallback(
     (newSection: Section) => {
+      // Resolve a session id from available sources: most-recent profiling results
+      // (current completed session), any resumeSessionId (editing), or the
+      // workflowSessionId (latest known session). This makes sidebar clicks
+      // behave the same as the "See Recommendations" button which passes the
+      // explicit session id.
+      const resolvedSessionId =
+        profilingResults?.session?.id ?? resumeSessionId ?? workflowSessionId;
+
       if (newSection === "recommendation") {
-        if (workflowSessionId) {
-          navigate(`/recommendations/${workflowSessionId}`);
+        if (resolvedSessionId) {
+          try {
+            unlockRecommendation();
+            unlockComparison();
+            unlockChatbot();
+          } catch {
+            // ignore
+          }
+          navigate(`/recommendations/${resolvedSessionId}`);
         } else {
           navigate("/dashboard/profiling");
         }
@@ -881,8 +951,14 @@ export default function DashboardPage() {
       }
 
       if (newSection === "comparison") {
-        if (workflowSessionId) {
-          navigate(`/recommendations/${workflowSessionId}/compare`);
+        if (resolvedSessionId) {
+          try {
+            unlockComparison();
+            unlockChatbot();
+          } catch {
+            // ignore
+          }
+          navigate(`/recommendations/${resolvedSessionId}/compare`);
         } else {
           navigate("/dashboard/comparison");
         }
@@ -890,8 +966,13 @@ export default function DashboardPage() {
       }
 
       if (newSection === "chatbot") {
-        if (workflowSessionId) {
-          navigate(`/recommendations/${workflowSessionId}/compare`, {
+        if (resolvedSessionId) {
+          try {
+            unlockChatbot();
+          } catch {
+            // ignore
+          }
+          navigate(`/recommendations/${resolvedSessionId}/compare`, {
             state: { openChat: true },
           });
         } else {
@@ -954,6 +1035,7 @@ export default function DashboardPage() {
               onBusinessChange={handleBusinessChange}
               onAddBusiness={handleAddBusiness}
               onDeleteBusiness={handleDeleteBusiness}
+              onEditBusiness={handleEditBusiness}
             />
           </div>
         </div>
@@ -964,6 +1046,47 @@ export default function DashboardPage() {
         {activeSection === "profiling" && renderProfilingTab()}
         {activeSection === "feedback" && renderFeedbackTab()}
       </div>
+
+      {/* Edit business profile modal */}
+      {editingBusiness && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={handleCloseEdit}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-border bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-950">
+                Edit Business Profile
+              </h2>
+              <button
+                type="button"
+                onClick={handleCloseEdit}
+                className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-5 w-5"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
+            <BusinessProfileForm
+              editProfile={editingBusiness}
+              onSuccess={handleProfileUpdated}
+            />
+          </div>
+        </div>
+      )}
     </UserLayout>
   );
 }
