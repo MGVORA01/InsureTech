@@ -9,6 +9,9 @@ import { ComparisonView } from '../features/comparison'
 import { generateRecommendations, getRecommendations } from '../features/recommendations/recommendationsApi'
 import type { RecommendationOut } from '../features/recommendations/recommendations.types'
 import type { PolicyListItem } from '../features/policies/policies.types'
+import { useNavigationLock } from '../store/navigationLock'
+import { useAuth } from '../hooks/useAuth'
+import sessionStore from '../store/sessionStore'
 
 type Status = 'loading' | 'ready' | 'error'
 
@@ -62,6 +65,8 @@ export default function PolicyComparisonPage() {
   const [chatOpenSignal, setChatOpenSignal] = useState(routeState.openChat ? 1 : 0)
   const [status, setStatus] = useState<Status>('loading')
   const [error, setError] = useState('')
+  const { user } = useAuth()
+  const { setActiveBusiness, unlockComparison } = useNavigationLock()
 
   const load = useCallback(async () => {
     if (!sessionId) {
@@ -86,6 +91,13 @@ export default function PolicyComparisonPage() {
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    if (!businessProfileId) return
+    setActiveBusiness(businessProfileId)
+    sessionStore.setLastSelectedBusiness(user?.id ?? null, businessProfileId)
+    unlockComparison()
+  }, [businessProfileId, user?.id, setActiveBusiness, unlockComparison])
 
   const policyOptions = useMemo(
     () => uniquePolicyOptions(recommendations),

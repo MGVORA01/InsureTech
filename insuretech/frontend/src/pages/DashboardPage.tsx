@@ -29,7 +29,7 @@ import UserLayout from "../layouts/UserLayout";
 import type { Section } from "../components/UserSidebar";
 import BusinessSwitcher from "../components/BusinessSwitcher";
 import { useAuth } from "../hooks/useAuth";
-import sessionStore from '../store/sessionStore'
+import sessionStore from "../store/sessionStore";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
@@ -461,7 +461,7 @@ export default function DashboardPage() {
   const [topRecommendation, setTopRecommendation] =
     useState<RecommendationOut | null>(null);
 
-  const { unlockRecommendation, unlockComparison, unlockChatbot } =
+  const { unlockRecommendation, unlockComparison, setActiveBusiness } =
     useNavigationLock();
 
   const selectedBusiness = useMemo(
@@ -480,18 +480,30 @@ export default function DashboardPage() {
       const data = await profileApi.getMyBusinesses();
       setBusinesses(data);
       if (data.length > 0 && !selectedBusinessId) {
-        setSelectedBusinessId(data[0].id);
+        const persistedId = sessionStore.getLastSelectedBusiness(user?.id ?? null);
+        const persistedIsValid = persistedId && data.some((b) => b.id === persistedId);
+        setSelectedBusinessId(persistedIsValid ? (persistedId as string) : data[0].id);
       }
     } catch {
       // 404 = no business yet
     } finally {
       setBusinessesLoading(false);
     }
-  }, [selectedBusinessId]);
+  }, [selectedBusinessId, user?.id]);
 
   useEffect(() => {
     loadBusinesses();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (selectedBusinessId) {
+      sessionStore.setLastSelectedBusiness(user?.id ?? null, selectedBusinessId);
+    }
+  }, [selectedBusinessId, user?.id]);
+
+  useEffect(() => {
+    setActiveBusiness(selectedBusinessId);
+  }, [selectedBusinessId, setActiveBusiness]);
 
   useEffect(() => {
     if (!selectedBusinessId) return;
@@ -535,18 +547,27 @@ export default function DashboardPage() {
     }
 
     let cancelled = false;
-    profilingApi.getStatus(selectedBusinessId)
+    profilingApi
+      .getStatus(selectedBusinessId)
       .then((status) => {
         if (cancelled) return;
         // Prefer completed session (has risk scores) over active session (may be incomplete)
-        const resolved = status.latest_completed_session?.id ?? status.session?.id ?? null
+        const resolved =
+          status.latest_completed_session?.id ?? status.session?.id ?? null;
         // persist last known session id per user+business for consistent sidebar navigation
         if (resolved) {
-          sessionStore.setLastSessionForBusiness(user?.id ?? null, selectedBusinessId, resolved)
+          sessionStore.setLastSessionForBusiness(
+            user?.id ?? null,
+            selectedBusinessId,
+            resolved,
+          );
         }
         // Prefer persisted session if available to avoid transient differences
-        const persisted = sessionStore.getLastSessionForBusiness(user?.id ?? null, selectedBusinessId)
-        setWorkflowSessionId(persisted ?? resolved)
+        const persisted = sessionStore.getLastSessionForBusiness(
+          user?.id ?? null,
+          selectedBusinessId,
+        );
+        setWorkflowSessionId(persisted ?? resolved);
       })
       .catch(() => {
         if (!cancelled) setWorkflowSessionId(null);
@@ -599,11 +620,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [
-    workflowSessionId,
-    unlockRecommendation,
-    unlockComparison,
-  ]);
+  }, [workflowSessionId, unlockRecommendation, unlockComparison]);
 
   useEffect(() => {
     if (!workflowSessionId) return;
@@ -631,7 +648,6 @@ export default function DashboardPage() {
     try {
       unlockRecommendation();
       unlockComparison();
-      unlockChatbot();
     } catch {
       // ignore
     }

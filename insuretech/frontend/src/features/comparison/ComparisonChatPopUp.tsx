@@ -6,6 +6,7 @@ import type { CompareChatRequest, CompareChatResponse, CompareRequest } from './
 interface ComparisonChatPopUpProps {
   compareParams: CompareRequest
   openSignal?: number
+  hasComparison?: boolean
 }
 
 interface ChatMsg {
@@ -39,6 +40,7 @@ function splitAssistantText(content: string): string[] {
 export default function ComparisonChatPopUp({
   compareParams,
   openSignal = 0,
+  hasComparison = false,
 }: ComparisonChatPopUpProps) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMsg[]>([
@@ -57,10 +59,10 @@ export default function ComparisonChatPopUp({
   }, [messages])
 
   useEffect(() => {
-    if (openSignal > 0 && compareParams.policy_id_a && compareParams.policy_id_b) {
+    if (openSignal > 0 && hasComparison && compareParams.policy_id_a && compareParams.policy_id_b) {
       setOpen(true)
     }
-  }, [compareParams.policy_id_a, compareParams.policy_id_b, openSignal])
+  }, [compareParams.policy_id_a, compareParams.policy_id_b, hasComparison, openSignal])
 
   async function handleSend(event?: FormEvent) {
     event?.preventDefault()
@@ -118,7 +120,8 @@ export default function ComparisonChatPopUp({
         className="fixed bottom-6 right-6 z-[50] flex h-14 w-14 items-center justify-center rounded-full border-none bg-secondary text-white shadow-[0_4px_16px_rgba(13,115,119,0.3)] transition-transform duration-200 hover:scale-105 hover:shadow-[0_6px_24px_rgba(13,115,119,0.4)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
         onClick={() => setOpen(!open)}
         aria-label={open ? 'Close chat' : 'Open chat'}
-        disabled={!compareParams.policy_id_a || !compareParams.policy_id_b}
+        title={!hasComparison ? 'Run a policy comparison to unlock chat' : undefined}
+        disabled={!hasComparison || !compareParams.policy_id_a || !compareParams.policy_id_b}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           {open ? (

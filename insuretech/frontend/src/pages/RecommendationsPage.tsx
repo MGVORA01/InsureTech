@@ -23,6 +23,9 @@ import type {
 } from "../features/recommendations/recommendations.types";
 import UserLayout from "../layouts/UserLayout";
 import type { Section } from "../components/UserSidebar";
+import { useNavigationLock } from "../store/navigationLock";
+import { useAuth } from "../hooks/useAuth";
+import sessionStore from "../store/sessionStore";
 
 type Status = "loading" | "empty" | "error" | "ready";
 type ApiError = { response?: { data?: { error?: string } }; message?: string };
@@ -437,6 +440,9 @@ export default function RecommendationsPage() {
   const [selectedPolicyIds, setSelectedPolicyIds] = useState<string[]>([]);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState("");
+  const { user } = useAuth();
+  const { setActiveBusiness, unlockRecommendation, unlockComparison } =
+    useNavigationLock();
 
   const loadRecommendations = useCallback(async () => {
     if (!sessionId) {
@@ -536,6 +542,16 @@ export default function RecommendationsPage() {
     [data?.recommendations],
   );
   const selectedCount = selectedPolicyIds.length;
+
+  useEffect(() => {
+    if (!data?.business_profile_id) return;
+    setActiveBusiness(data.business_profile_id);
+    sessionStore.setLastSelectedBusiness(user?.id ?? null, data.business_profile_id);
+    if (data.recommendations && data.recommendations.length > 0) {
+      unlockRecommendation();
+      unlockComparison();
+    }
+  }, [data?.business_profile_id, data?.recommendations, user?.id, setActiveBusiness, unlockRecommendation, unlockComparison]);
 
   useEffect(() => {
     if (!sessionId || selectedPolicyIds.length !== 2) return;
