@@ -538,7 +538,8 @@ export default function DashboardPage() {
     profilingApi.getStatus(selectedBusinessId)
       .then((status) => {
         if (cancelled) return;
-        const resolved = status.session?.id ?? status.latest_completed_session?.id ?? null
+        // Prefer completed session (has risk scores) over active session (may be incomplete)
+        const resolved = status.latest_completed_session?.id ?? status.session?.id ?? null
         // persist last known session id per user+business for consistent sidebar navigation
         if (resolved) {
           sessionStore.setLastSessionForBusiness(user?.id ?? null, selectedBusinessId, resolved)
@@ -583,7 +584,6 @@ export default function DashboardPage() {
           // Auto-unlock sidebar buttons when recommendations exist
           unlockRecommendation();
           unlockComparison();
-          unlockChatbot();
         }
 
         setTopRecommendation(data.recommendations?.[0] ?? null);
@@ -603,7 +603,6 @@ export default function DashboardPage() {
     workflowSessionId,
     unlockRecommendation,
     unlockComparison,
-    unlockChatbot,
   ]);
 
   useEffect(() => {
@@ -939,7 +938,6 @@ export default function DashboardPage() {
           try {
             unlockRecommendation();
             unlockComparison();
-            unlockChatbot();
           } catch {
             // ignore
           }
@@ -954,7 +952,6 @@ export default function DashboardPage() {
         if (resolvedSessionId) {
           try {
             unlockComparison();
-            unlockChatbot();
           } catch {
             // ignore
           }
@@ -968,7 +965,6 @@ export default function DashboardPage() {
       if (newSection === "chatbot") {
         if (resolvedSessionId) {
           try {
-            unlockChatbot();
           } catch {
             // ignore
           }

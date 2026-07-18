@@ -5,6 +5,7 @@ import type { PolicyListItem } from '../policies/policies.types'
 import type { CompareRequest, CompareResponse } from './comparison.types'
 import ComparisonChatPopUp from './ComparisonChatPopUp'
 import { useNavigationLock } from '../../store/navigationLock'
+import { loadComparisonState, saveComparisonState } from './comparisonStorage'
 
 interface ComparisonViewProps {
   businessProfileId: string
@@ -87,6 +88,7 @@ export default function ComparisonView({
   const [comparing, setComparing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<CompareResponse | null>(null)
+  const [hasHydrated, setHasHydrated] = useState(false)
   const lastAutoCompareKey = useRef('')
 
   const loadPolicies = useCallback(async () => {
@@ -111,11 +113,41 @@ export default function ComparisonView({
   }, [loadPolicies])
 
   useEffect(() => {
-    setPolicyA(initialPolicyA)
-    setPolicyB(initialPolicyB)
-    setResult(null)
-    lastAutoCompareKey.current = ''
-  }, [initialPolicyA, initialPolicyB])
+    const persistedState = loadComparisonState(sessionId, businessProfileId)
+    const hasIncomingSelection = Boolean(initialPolicyA || initialPolicyB)
+
+    if (hasIncomingSelection) {
+      setPolicyA(initialPolicyA)
+      setPolicyB(initialPolicyB)
+      setResult(null)
+      setError(null)
+      lastAutoCompareKey.current = ''
+    } else if (persistedState) {
+      setPolicyA(persistedState.policyA || initialPolicyA)
+      setPolicyB(persistedState.policyB || initialPolicyB)
+      setResult(persistedState.result)
+      setError(null)
+      lastAutoCompareKey.current = ''
+    } else {
+      setPolicyA(initialPolicyA)
+      setPolicyB(initialPolicyB)
+      setResult(null)
+      lastAutoCompareKey.current = ''
+    }
+
+    setHasHydrated(true)
+  }, [businessProfileId, initialPolicyA, initialPolicyB, sessionId])
+
+  useEffect(() => {
+    if (!hasHydrated) return
+
+    saveComparisonState(sessionId, businessProfileId, {
+      policyA,
+      policyB,
+      result,
+      updatedAt: new Date().toISOString(),
+    })
+  }, [businessProfileId, hasHydrated, policyA, policyB, result, sessionId])
 
   const handleCompare = useCallback(() => {
     if (!policyA || !policyB) return

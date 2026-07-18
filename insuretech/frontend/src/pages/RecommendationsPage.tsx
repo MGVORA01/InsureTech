@@ -496,9 +496,17 @@ export default function RecommendationsPage() {
         }
       }
 
+      const uniqueRecommendations = Array.from(
+        new Map(
+          result.recommendations.map((rec) => [
+            rec.policy_id ?? rec.policy_name,
+            rec,
+          ]),
+        ).values(),
+      );
       setData({
         ...result,
-        recommendations: result.recommendations.slice(0, 5),
+        recommendations: uniqueRecommendations.slice(0, 5),
       });
       setSelectedPolicyIds([]);
       setPdfError("");
@@ -871,35 +879,7 @@ export default function RecommendationsPage() {
           )}
         </div>
 
-        {/* Sticky compare bar */}
-        {status === "ready" && selectedCount > 0 && (
-          <div
-            className="fixed inset-x-0 bottom-0 z-20 border-t px-4 py-3 shadow-lg sm:px-6"
-            style={{
-              background: "var(--color-surface)",
-              borderColor: "var(--color-border)",
-            }}
-          >
-            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-              <span
-                className="text-sm font-semibold"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                {selectedCount === 1
-                  ? "1 policy selected — choose 1 more to compare"
-                  : "2 policies selected"}
-              </span>
-              <button
-                onClick={() => setSelectedPolicyIds([])}
-                className="text-sm font-bold underline"
-                style={{ color: "var(--color-text-secondary)" }}
-                type="button"
-              >
-                Clear selection
-              </button>
-            </div>
-          </div>
-        )}
+
       </main>
     </UserLayout>
   );

@@ -173,7 +173,6 @@ export default function PolicyComparisonPage() {
               recommendedPolicies={policyOptions}
               initialPolicyA={selectedPolicyIds[0] ?? ''}
               initialPolicyB={selectedPolicyIds[1] ?? ''}
-              autoCompare
               openChatSignal={chatOpenSignal}
             />
           </section>

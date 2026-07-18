@@ -2,7 +2,7 @@ export function getUserKey(userId?: string | null) {
   return userId ?? 'anon'
 }
 
-function storageForUser(userKey: string) {
+function storageForUser() {
   try {
     return window.localStorage
   } catch {
@@ -13,7 +13,7 @@ function storageForUser(userKey: string) {
 export function setLastSessionForBusiness(userId: string | null | undefined, businessId: string, sessionId: string) {
   try {
     const userKey = getUserKey(userId)
-    const storage = storageForUser(userKey)
+    const storage = storageForUser()
     if (!storage) return
     const key = `insuretech:lastSession:${userKey}:${businessId}`
     storage.setItem(key, sessionId)
@@ -25,7 +25,7 @@ export function setLastSessionForBusiness(userId: string | null | undefined, bus
 export function getLastSessionForBusiness(userId: string | null | undefined, businessId: string): string | null {
   try {
     const userKey = getUserKey(userId)
-    const storage = storageForUser(userKey)
+    const storage = storageForUser()
     if (!storage) return null
     const key = `insuretech:lastSession:${userKey}:${businessId}`
     return storage.getItem(key)
