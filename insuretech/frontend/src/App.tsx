@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import MaintenancePage from './pages/MaintenancePage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminPoliciesPage from './pages/AdminPoliciesPage'
@@ -25,7 +26,7 @@ function App() {
   const navigate = useNavigate()
   const state = (location.state as { backgroundLocation?: Location } | null) || {}
   const background = state.backgroundLocation
-  const { checking } = useSessionCheck()
+  const { checking, serverDown } = useSessionCheck()
 
   if (checking) {
     return (
@@ -33,6 +34,10 @@ function App() {
         <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     )
+  }
+
+  if (serverDown) {
+    return <MaintenancePage />
   }
 
   return (

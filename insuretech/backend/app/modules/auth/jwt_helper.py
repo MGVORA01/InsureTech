@@ -28,6 +28,8 @@ def create_refresh_token(user):
 
 
 def decode_token(token: str):
+    if not token:
+        return None
     try:
         return jwt.decode(
             token,
