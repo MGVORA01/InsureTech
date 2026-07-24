@@ -6,6 +6,14 @@ import Button from "../components/Button";
 
 type PageState = "form" | "submitting" | "success" | "invalid";
 
+// Stages of the "correct OTP" reveal sequence, played after the API call
+// succeeds and before we switch pageState to "success":
+//   idle       -> normal form
+//   converging -> boxes shrink + slide toward center and fade out
+//   circle     -> a blue circle blooms where the boxes were, then holds
+//   checked    -> circle turns green, checkmark draws, text/confetti show
+type SuccessStage = "idle" | "converging" | "circle" | "checked";
+
 interface VerifyEmailPageProps {
   inline?: boolean;
   onClose?: () => void;
@@ -13,12 +21,23 @@ interface VerifyEmailPageProps {
 
 const OTP_LENGTH = 4;
 
+// Horizontal distance (px) each box needs to travel to reach the group's
+// center, precomputed for 4 boxes at h-14 w-14 (56px) with gap-3 (12px).
+const OTP_CONVERGE_DX = [102, 34, -34, -102];
+
+// Timing for the success reveal. Slowed down from the original fast pass
+// (220/260ms) so each stage is clearly perceivable rather than a blur:
+//   converge (boxes shrink away) -> circle (bloom in + brief hold) -> checked
+const CONVERGE_MS = 450;
+const CIRCLE_MS = 550;
+const HOLD_MS = 200; // pause after the circle has fully bloomed, before it flips green
+
 function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const backgroundLocation = (
-    location.state as { backgroundLocation?: Location } | null
-  )?.backgroundLocation;
+  const backgroundLocation =
+    (location.state as { backgroundLocation?: Location } | null)
+      ?.backgroundLocation;
 
   const [pageState, setPageState] = useState<PageState>("form");
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +47,20 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
   );
   const [email, setEmail] = useState<string | null>(null);
 
-  // Individual OTP digit boxes instead of a single text input
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [otpError, setOtpError] = useState<string | null>(null);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  const [pulseIndex, setPulseIndex] = useState<number | null>(null);
+  const [isShaking, setIsShaking] = useState(false);
+  const [successStage, setSuccessStage] = useState<SuccessStage>("idle");
+
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const clearQueuedTimers = () => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  };
+  useEffect(() => () => clearQueuedTimers(), []);
 
   useEffect(() => {
     const token = sessionStorage.getItem("verify_email_token");
@@ -46,7 +75,6 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
     setEmail(savedEmail);
   }, []);
 
-  // Autofocus the first box once the form is ready
   useEffect(() => {
     if (pageState === "form") {
       inputRefs.current[0]?.focus();
@@ -61,7 +89,6 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
   const handleDigitChange = (index: number, rawValue: string) => {
     const value = rawValue.replace(/[^0-9]/g, "");
 
-    // Handle pasting a full code into any box
     if (value.length > 1) {
       const pasted = value.slice(0, OTP_LENGTH).split("");
       const next = Array(OTP_LENGTH).fill("");
@@ -71,6 +98,7 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
       setOtp(next);
       const lastFilled = Math.min(pasted.length, OTP_LENGTH) - 1;
       inputRefs.current[Math.max(lastFilled, 0)]?.focus();
+      setPulseIndex(Math.max(lastFilled, 0));
       return;
     }
 
@@ -80,8 +108,14 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
       return next;
     });
 
-    if (value && index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
+    if (otpError) setOtpError(null);
+    if (error) setError(null);
+
+    if (value) {
+      setPulseIndex(index);
+      if (index < OTP_LENGTH - 1) {
+        inputRefs.current[index + 1]?.focus();
+      }
     }
   };
 
@@ -91,6 +125,12 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
   ) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      e.preventDefault();
+      inputRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < OTP_LENGTH - 1) {
+      e.preventDefault();
+      inputRefs.current[index + 1]?.focus();
     }
   };
 
@@ -101,12 +141,39 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
     return null;
   };
 
+  const triggerWrongOtpAnimation = () => {
+    setOtp(Array(OTP_LENGTH).fill(""));
+    setIsShaking(true);
+    inputRefs.current[0]?.focus();
+  };
+
+  // Plays the converge -> circle (bloom + hold) -> checked sequence, then
+  // commits to the permanent "success" pageState once it's fully played out.
+  const runSuccessSequence = () => {
+    clearQueuedTimers();
+    setSuccessStage("converging");
+
+    const toCircle = setTimeout(() => {
+      setSuccessStage("circle");
+    }, CONVERGE_MS);
+
+    const toChecked = setTimeout(() => {
+      setSuccessStage("checked");
+      setPageState("success");
+      sessionStorage.removeItem("verify_email_token");
+      sessionStorage.removeItem("verify_email_address");
+    }, CONVERGE_MS + CIRCLE_MS + HOLD_MS);
+
+    timersRef.current.push(toCircle, toChecked);
+  };
+
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = otp.join("");
     const validationError = validateOtp(code);
     if (validationError) {
       setOtpError(validationError);
+      triggerWrongOtpAnimation();
       return;
     }
     setOtpError(null);
@@ -124,13 +191,12 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
         token: verificationToken,
         otp: code,
       });
-      setPageState("success");
-      sessionStorage.removeItem("verify_email_token");
-      sessionStorage.removeItem("verify_email_address");
+      runSuccessSequence();
     } catch (err) {
       const message = getAuthErrorMessage(err);
       setError(message);
       setPageState("form");
+      triggerWrongOtpAnimation();
     }
   };
 
@@ -144,6 +210,8 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
     setError(null);
     setInfoMessage(null);
     setOtp(Array(OTP_LENGTH).fill(""));
+    clearQueuedTimers();
+    setSuccessStage("idle");
     try {
       const response = await authApi.resendOtp({ token: verificationToken });
       if (response?.verification_token) {
@@ -178,9 +246,14 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
     navigate("/");
   };
 
+  const showCircleTransition =
+    pageState === "submitting" &&
+    (successStage === "circle" || successStage === "checked");
+  const isConverging = successStage === "converging";
+  const isCircleGreen = successStage === "checked";
+
   const content = (
     <div className="relative w-full max-w-md overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-card)]">
-      {/* Floating decorative background blobs */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-gradient-to-br from-indigo-400/30 to-purple-400/30 blur-2xl animate-blob-float-slow"
@@ -210,7 +283,25 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
             </Button>
           </div>
         ) : pageState === "success" ? (
-          <div className="animate-fade-in-up text-center">
+          <div className="relative animate-fade-in-up text-center">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1/2 top-4 h-0 w-0"
+            >
+              {CONFETTI_PIECES.map((piece, i) => (
+                <span
+                  key={i}
+                  className="absolute block h-2 w-2 rounded-sm animate-confetti-piece"
+                  style={{
+                    backgroundColor: piece.color,
+                    animationDelay: `${piece.delay}ms`,
+                    ["--tx" as string]: `${piece.x}px`,
+                    ["--rot" as string]: `${piece.rotate}deg`,
+                  }}
+                />
+              ))}
+            </div>
+
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 animate-pop-in">
               <svg
                 className="h-9 w-9 text-emerald-500"
@@ -243,10 +334,31 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
               Go to Login
             </Button>
           </div>
+        ) : showCircleTransition ? (
+          // Stage 2: the boxes have fully converged and vanished — a blue
+          // circle blooms in and holds, then (isCircleGreen) flips green
+          // right before the "success" pageState/checkmark takes over.
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="relative flex h-16 w-16 items-center justify-center">
+              <span
+                className={`absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping-slow ${
+                  isCircleGreen ? "bg-emerald-400" : "bg-indigo-400"
+                }`}
+              />
+              <span
+                className={`relative flex h-16 w-16 items-center justify-center rounded-full shadow-lg animate-circle-grow transition-colors duration-300 ${
+                  isCircleGreen
+                    ? "bg-gradient-to-br from-emerald-500 to-emerald-400"
+                    : "bg-gradient-to-br from-indigo-500 to-purple-500"
+                }`}
+              />
+            </div>
+          </div>
         ) : (
           <>
-            <header className="grid justify-items-center gap-2 text-center">
-              {/* Bouncing mail icon */}
+            <header
+              className={`grid justify-items-center gap-2 text-center ${isConverging ? "animate-fade-out" : ""}`}
+            >
               <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg animate-bounce-in">
                 <svg
                   className="h-8 w-8 text-white animate-icon-pulse"
@@ -281,13 +393,13 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
               ) : null}
             </header>
 
-            <form
-              className="grid gap-4 mt-6"
-              noValidate
-              onSubmit={handleVerify}
-            >
-              {/* 4 individual OTP boxes, each pops in with a staggered delay */}
-              <div className="flex justify-center gap-3">
+            <form className="grid gap-4 mt-6" noValidate onSubmit={handleVerify}>
+              <div
+                className={`flex justify-center gap-3 ${isShaking ? "animate-shake" : ""}`}
+                onAnimationEnd={(e) => {
+                  if (e.animationName === "shake") setIsShaking(false);
+                }}
+              >
                 {otp.map((digit, index) => (
                   <input
                     key={index}
@@ -295,19 +407,36 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
                       inputRefs.current[index] = el;
                     }}
                     autoComplete={index === 0 ? "one-time-code" : "off"}
-                    className="h-14 w-14 rounded-[var(--radius-md)] border-2 border-[var(--color-border)] bg-white text-center text-2xl font-bold text-[var(--color-primary)] outline-none transition-all duration-150 animate-otp-pop-in focus:scale-105 focus:border-indigo-500 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.15)]"
+                    className={`h-14 w-14 rounded-2xl border-2 bg-white text-center text-2xl font-bold outline-none transition-all duration-150 animate-otp-pop-in focus:scale-105 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.15)] ${
+                      isShaking || otpError
+                        ? "border-[var(--color-risk-high)] text-[var(--color-risk-high)]"
+                        : "border-[var(--color-border)] text-[var(--color-primary)] focus:border-indigo-500"
+                    } ${pulseIndex === index ? "animate-otp-pulse" : ""} ${
+                      isConverging ? "animate-converge" : ""
+                    }`}
+                    disabled={pageState === "submitting"}
                     inputMode="numeric"
                     maxLength={OTP_LENGTH}
-                    style={{ animationDelay: `${index * 90}ms` }}
+                    style={{
+                      animationDelay: isConverging
+                        ? `${index * 40}ms`
+                        : `${index * 90}ms`,
+                      ["--dx" as string]: `${OTP_CONVERGE_DX[index]}px`,
+                    }}
                     type="text"
                     value={digit}
+                    onAnimationEnd={(e) => {
+                      if (e.animationName === "otpPulse" && pulseIndex === index) {
+                        setPulseIndex(null);
+                      }
+                    }}
                     onChange={(e) => handleDigitChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                   />
                 ))}
               </div>
               {otpError ? (
-                <p className="text-center text-sm text-[var(--color-risk-high)]">
+                <p className="text-center text-sm text-[var(--color-risk-high)] animate-fade-in-up">
                   {otpError}
                 </p>
               ) : null}
@@ -330,31 +459,35 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
                 </p>
               ) : null}
 
-              <Button
-                className="transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98]"
-                disabled={pageState === "submitting"}
-                fullWidth
-                type="submit"
+              <div
+                className={`grid gap-4 ${isConverging ? "animate-fade-out" : ""}`}
               >
-                {pageState === "submitting"
-                  ? "Verifying..."
-                  : AUTH_MESSAGES.verifyButton}
-              </Button>
+                <Button
+                  className="transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98]"
+                  disabled={pageState === "submitting"}
+                  fullWidth
+                  type="submit"
+                >
+                  {pageState === "submitting"
+                    ? "Verifying..."
+                    : AUTH_MESSAGES.verifyButton}
+                </Button>
 
-              <Button
-                fullWidth
-                type="button"
-                variant="secondary"
-                onClick={handleResend}
-              >
-                {AUTH_MESSAGES.resendOtp}
-              </Button>
+                <Button
+                  disabled={pageState === "submitting"}
+                  fullWidth
+                  type="button"
+                  variant="secondary"
+                  onClick={handleResend}
+                >
+                  {AUTH_MESSAGES.resendOtp}
+                </Button>
+              </div>
             </form>
           </>
         )}
       </div>
 
-      {/* Keyframes for the animations used above */}
       <style>{`
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(10px); }
@@ -364,6 +497,15 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
           animation: fadeInUp 0.45s ease-out both;
         }
 
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+        .animate-fade-out {
+          animation: fadeOut 0.3s ease-out forwards;
+        }
+
+        /* One-time entrance pop for each box when the form first mounts */
         @keyframes otpPopIn {
           0% { opacity: 0; transform: scale(0.4) translateY(12px); }
           60% { opacity: 1; transform: scale(1.08) translateY(0); }
@@ -371,6 +513,59 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
         }
         .animate-otp-pop-in {
           animation: otpPopIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+
+        /* Replayable pop that fires every time a digit is typed */
+        @keyframes otpPulse {
+          0% { transform: scale(1); }
+          40% { transform: scale(1.18); }
+          100% { transform: scale(1); }
+        }
+        .animate-otp-pulse {
+          animation: otpPulse 0.22s ease-out;
+        }
+
+        /* Wrong-OTP shake, replayable via the isShaking state toggle */
+        @keyframes shake {
+          10%, 90% { transform: translateX(-1px); }
+          20%, 80% { transform: translateX(2px); }
+          30%, 50%, 70% { transform: translateX(-6px); }
+          40%, 60% { transform: translateX(6px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+        }
+
+        /* Correct-OTP: boxes shrink + slide toward the group's center.
+           Duration now matches CONVERGE_MS (450ms) so it reads as a
+           deliberate motion instead of an instant snap. */
+        @keyframes converge {
+          0% { transform: translateX(0) scale(1); opacity: 1; }
+          100% { transform: translateX(var(--dx)) scale(0.15); opacity: 0; }
+        }
+        .animate-converge {
+          animation: converge 0.45s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+        }
+
+        /* Blue circle blooming where the boxes converged to. Duration
+           matches CIRCLE_MS (550ms): a slower bloom-in, a gentle overshoot,
+           then it settles and holds (color flip is handled by the
+           transition-colors class in JSX, not this keyframe). */
+        @keyframes circleGrow {
+          0% { transform: scale(0.3); opacity: 0; }
+          65% { transform: scale(1.08); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-circle-grow {
+          animation: circleGrow 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+
+        @keyframes pingSlow {
+          0% { transform: scale(1); opacity: 0.6; }
+          100% { transform: scale(1.8); opacity: 0; }
+        }
+        .animate-ping-slow {
+          animation: pingSlow 1.2s ease-out infinite;
         }
 
         @keyframes bounceIn {
@@ -397,7 +592,7 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
           100% { opacity: 1; transform: scale(1); }
         }
         .animate-pop-in {
-          animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+          animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
         }
 
         @keyframes drawCheck {
@@ -407,7 +602,7 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
         .animate-draw-check {
           stroke-dasharray: 1;
           stroke-dashoffset: 1;
-          animation: drawCheck 0.5s ease-out 0.2s forwards;
+          animation: drawCheck 0.3s ease-out 0.1s forwards;
         }
 
         @keyframes blobFloatSlow {
@@ -424,6 +619,14 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
         }
         .animate-blob-float-slow-reverse {
           animation: blobFloatSlowReverse 8s ease-in-out infinite;
+        }
+
+        @keyframes confettiPiece {
+          0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+          100% { opacity: 0; transform: translate(var(--tx), 90px) rotate(var(--rot)); }
+        }
+        .animate-confetti-piece {
+          animation: confettiPiece 0.9s ease-out both;
         }
       `}</style>
     </div>
@@ -469,5 +672,19 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
     </div>
   );
 }
+
+// Fixed set of confetti pieces (positions/colors/delays) so they don't
+// re-randomize on every render — only computed once per module load.
+const CONFETTI_COLORS = ["#4F46E5", "#7C3AED", "#F59E0B", "#22C55E", "#EC4899"];
+const CONFETTI_PIECES = Array.from({ length: 18 }).map((_, i) => {
+  const angle = (i / 18) * Math.PI * 2;
+  const distance = 60 + Math.random() * 50;
+  return {
+    x: Math.cos(angle) * distance,
+    rotate: Math.random() * 360,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    delay: Math.random() * 120,
+  };
+});
 
 export default VerifyEmailPage;
