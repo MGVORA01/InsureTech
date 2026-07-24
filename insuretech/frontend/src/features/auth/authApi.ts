@@ -133,7 +133,9 @@ export function clearSessionMarkers() {
   localStorage.removeItem(AUTH_MARKER_KEY);
   sessionStorage.removeItem(AUTH_MARKER_KEY);
   localStorage.removeItem(USER_STORAGE_KEY);
+  sessionStorage.removeItem(USER_STORAGE_KEY);
   localStorage.removeItem(TOKEN_STORAGE_KEY);
+  sessionStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
 export function hasSessionMarker(): boolean {
@@ -143,18 +145,24 @@ export function hasSessionMarker(): boolean {
   );
 }
 
-export function saveUserToStorage(user: User, token: string) {
-  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+export function saveUserToStorage(user: User, token: string, rememberMe: boolean) {
+  const storage = rememberMe ? localStorage : sessionStorage;
+  storage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  storage.setItem(TOKEN_STORAGE_KEY, token);
 }
 
 export function getUserFromStorage(): User | null {
-  const stored = localStorage.getItem(USER_STORAGE_KEY);
+  const stored =
+    localStorage.getItem(USER_STORAGE_KEY) ??
+    sessionStorage.getItem(USER_STORAGE_KEY);
   return stored ? JSON.parse(stored) : null;
 }
 
 export function getTokenFromStorage(): string | null {
-  return localStorage.getItem(TOKEN_STORAGE_KEY);
+  return (
+    localStorage.getItem(TOKEN_STORAGE_KEY) ??
+    sessionStorage.getItem(TOKEN_STORAGE_KEY)
+  );
 }
 
 export const authApi = {
@@ -211,9 +219,9 @@ export const authApi = {
       email: data.email as string,
       role: normalizeRole(data.role),
     };
-    setSessionMarker(payload.rememberMe ?? false);
-    // Persist user and token to localStorage for server restart recovery
-    saveUserToStorage(user, data.access_token as string);
+    const rememberMe = payload.rememberMe ?? false;
+    setSessionMarker(rememberMe);
+    saveUserToStorage(user, data.access_token as string, rememberMe);
     return { user };
   },
 

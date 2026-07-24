@@ -41,10 +41,14 @@ baseApi.interceptors.response.use(
         // Retry original request after refresh; credentials/cookies will be sent.
         return baseApi(originalRequest);
       } catch (refreshErr) {
-        // On refresh failure, clear client-side session marker and let caller handle logout.
+        // On refresh failure, clear client-side auth storage and let caller handle logout.
         try {
           localStorage.removeItem("ins_auth_session");
           sessionStorage.removeItem("ins_auth_session");
+          localStorage.removeItem("ins_user_data");
+          localStorage.removeItem("ins_access_token");
+          sessionStorage.removeItem("ins_user_data");
+          sessionStorage.removeItem("ins_access_token");
         } catch (e) {
           // ignore
         }
