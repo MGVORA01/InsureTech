@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from app.core.config import settings
+from app.modules.auth.constants import EMAIL_VERIFICATION_TOKEN_TYPE
 
 
 def create_access_token(user):
@@ -38,6 +39,15 @@ def decode_token(token: str):
         )
     except JWTError:
         return None
+
+
+def create_email_verification_token(payload: dict, expires_minutes: int) -> str:
+    token_payload = payload.copy()
+    token_payload["type"] = EMAIL_VERIFICATION_TOKEN_TYPE
+    token_payload["exp"] = datetime.now(timezone.utc) + timedelta(
+        minutes=expires_minutes,
+    )
+    return jwt.encode(token_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def create_password_reset_token(user):

@@ -1,9 +1,8 @@
   import { useCallback, useEffect, useRef, useState } from 'react'
 import { animate } from 'framer-motion'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { ChatPopup } from '../features/chat'
-import AuthModal from '../features/auth-modal/AuthModal'
-  import type { AuthModalTab } from '../features/auth-modal/AuthModal'
   import { submitContact } from '../features/contact/contactApi'
   
   // Fonts used throughout the page — Poppins for headings (bold, modern),
@@ -15,7 +14,6 @@ import AuthModal from '../features/auth-modal/AuthModal'
   function HomePage() {
     const [scrolled, setScrolled] = useState(false)
     const [menuOpen, setMenuOpen] = useState(false)
-    const [authModalTab, setAuthModalTab] = useState<AuthModalTab | null>(null)
     const [contactName, setContactName] = useState('')
     const [contactEmail, setContactEmail] = useState('')
     const [contactMessage, setContactMessage] = useState('')
@@ -50,6 +48,9 @@ import AuthModal from '../features/auth-modal/AuthModal'
     // Hero content fades/slides in on first mount (it's above the fold, so it
     // can't rely on scroll-triggering like the rest of the page).
     const [heroVisible, setHeroVisible] = useState(false)
+    const navigate = useNavigate()
+    const location = useLocation()
+
     useEffect(() => {
       const id = setTimeout(() => setHeroVisible(true), 100)
       return () => clearTimeout(id)
@@ -319,7 +320,7 @@ import AuthModal from '../features/auth-modal/AuthModal'
   
               <div className="hidden lg:flex items-center gap-3">
                 <button
-                  onClick={() => setAuthModalTab('login')}
+                  onClick={() => navigate('/login', { state: { backgroundLocation: location } })}
                   className={`text-sm font-medium px-4 py-2 rounded-md border transition-all duration-200 ${
                     scrolled
                       ? 'text-text-primary border-border-strong hover:bg-surface-alt'
@@ -329,7 +330,7 @@ import AuthModal from '../features/auth-modal/AuthModal'
                   Login
                 </button>
                 <button
-                  onClick={() => setAuthModalTab('register')}
+                  onClick={() => navigate('/register', { state: { backgroundLocation: location } })}
                   className="text-sm font-semibold px-5 py-2.5 rounded-md transition-all duration-200"
                   style={{ background: 'var(--color-cta)', color: 'var(--color-cta-contrast)' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.filter = 'brightness(0.9)' }}
@@ -380,13 +381,13 @@ import AuthModal from '../features/auth-modal/AuthModal'
                 })}
                 <div className="flex gap-3 pt-3 border-t border-border">
                   <button
-                    onClick={() => { setMenuOpen(false); setAuthModalTab('login') }}
+                    onClick={() => { setMenuOpen(false); navigate('/login', { state: { backgroundLocation: location } }) }}
                     className="flex-1 text-center px-4 py-2 rounded-md border border-border-strong text-text-primary"
                   >
                     Login
                   </button>
                   <button
-                    onClick={() => { setMenuOpen(false); setAuthModalTab('register') }}
+                    onClick={() => { setMenuOpen(false); navigate('/register', { state: { backgroundLocation: location } }) }}
                     className="flex-1 text-center px-4 py-2 rounded-md font-semibold"
                     style={{ background: 'var(--color-cta)', color: 'var(--color-cta-contrast)' }}
                   >
@@ -444,7 +445,7 @@ import AuthModal from '../features/auth-modal/AuthModal'
   
                 <div className="mt-8 flex flex-wrap items-center gap-4">
                   <button
-                    onClick={() => setAuthModalTab('register')}
+                    onClick={() => navigate('/register', { state: { backgroundLocation: location } })}
                     className="inline-flex items-center gap-2 text-sm font-semibold px-6 py-3.5 rounded-md transition-all duration-200 hover:scale-105"
                     style={{ background: 'var(--color-cta)', color: 'var(--color-cta-contrast)' }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.filter = 'brightness(0.9)' }}
@@ -1190,7 +1191,7 @@ import AuthModal from '../features/auth-modal/AuthModal'
   
                 <div className="mt-8 flex flex-wrap items-center gap-4">
                   <button
-                    onClick={() => setAuthModalTab('register')}
+                    onClick={() => navigate('/register', { state: { backgroundLocation: location } })}
                     className="inline-flex items-center gap-2 text-sm font-semibold px-6 py-3.5 rounded-md transition-all duration-200"
                     style={{ background: 'var(--color-cta)', color: 'var(--color-cta-contrast)' }}
                   >
@@ -1417,13 +1418,7 @@ import AuthModal from '../features/auth-modal/AuthModal'
           <span className="text-sm font-semibold">Chat with us</span>
         </button>
   
-        {authModalTab && (
-          <AuthModal
-            inline
-            initialTab={authModalTab}
-            onClose={() => setAuthModalTab(null)}
-          />
-        )}
+{/* Auth modal is now routed via /login and /register with background location state. */}
 
         {chatOpen && (
           <ChatPopup onClose={() => setChatOpen(false)} />

@@ -46,6 +46,33 @@ async def send_reset_password_email(
   await fm.send_message(message)
 
 
+async def send_verification_email(email: str, otp: str):
+  html = f"""
+    <h2>Verify Your Email</h2>
+
+    <p>
+        Use the code below to verify your email address and complete registration.
+    </p>
+
+    <p><strong>{otp}</strong></p>
+
+    <p>
+        This code expires in {settings.EMAIL_OTP_EXPIRE_MINUTES} minutes.
+    </p>
+    """
+
+  message = MessageSchema(
+    subject="Email Verification Code",
+    recipients=[email],
+    body=html,
+    subtype="html"
+  )
+
+  fm = FastMail(conf)
+
+  await fm.send_message(message)
+
+
 async def send_contact_email(name: str, email: str, message: str):
   html = f"""
     <h2>New Contact Form Submission</h2>

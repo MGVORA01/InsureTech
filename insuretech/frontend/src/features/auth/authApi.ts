@@ -11,6 +11,8 @@ import type {
   PasswordResponse,
   RegisterFormData,
   ResetPasswordRequest,
+  VerifyEmailRequest,
+  ResendOtpRequest,
   User,
 } from "./auth.types";
 // In-memory token storage to work with backend Bearer auth in current phase
@@ -167,6 +169,22 @@ export const authApi = {
     const response = await authHttp.post<
       ApiEnvelope<AuthResponse> | AuthResponse
     >(AUTH_ENDPOINTS.register, requestBody);
+
+    return unwrapData(response);
+  },
+
+  async verifyEmail(payload: VerifyEmailRequest): Promise<AuthResponse> {
+    const response = await authHttp.post<
+      ApiEnvelope<AuthResponse> | AuthResponse
+    >(AUTH_ENDPOINTS.verifyEmail, payload);
+
+    return unwrapData(response);
+  },
+
+  async resendOtp(payload: ResendOtpRequest): Promise<AuthResponse> {
+    const response = await authHttp.post<
+      ApiEnvelope<AuthResponse> | AuthResponse
+    >(AUTH_ENDPOINTS.resendOtp, payload);
 
     return unwrapData(response);
   },
