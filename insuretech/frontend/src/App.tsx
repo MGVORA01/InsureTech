@@ -31,7 +31,8 @@ function App() {
   const nestedBackground =
     background &&
     ((background.state as { backgroundLocation?: Location } | null)
-      ?.backgroundLocation ?? null);
+      ?.backgroundLocation ??
+      null);
   const mainLocation = nestedBackground ?? background ?? location;
   const { checking, serverDown } = useSessionCheck();
 
@@ -92,7 +93,9 @@ function App() {
                 <AuthModal
                   initialTab="login"
                   onClose={() =>
-                    navigate(nestedBackground.pathname + nestedBackground.search)
+                    navigate(
+                      nestedBackground.pathname + nestedBackground.search,
+                    )
                   }
                 />
               }
@@ -103,7 +106,9 @@ function App() {
                 <AuthModal
                   initialTab="register"
                   onClose={() =>
-                    navigate(nestedBackground.pathname + nestedBackground.search)
+                    navigate(
+                      nestedBackground.pathname + nestedBackground.search,
+                    )
                   }
                 />
               }
@@ -114,7 +119,9 @@ function App() {
                 <AuthModal
                   initialTab="forgotPassword"
                   onClose={() =>
-                    navigate(nestedBackground.pathname + nestedBackground.search)
+                    navigate(
+                      nestedBackground.pathname + nestedBackground.search,
+                    )
                   }
                 />
               }
@@ -125,7 +132,9 @@ function App() {
                 <AuthModal
                   initialTab="resetPassword"
                   onClose={() =>
-                    navigate(nestedBackground.pathname + nestedBackground.search)
+                    navigate(
+                      nestedBackground.pathname + nestedBackground.search,
+                    )
                   }
                 />
               }

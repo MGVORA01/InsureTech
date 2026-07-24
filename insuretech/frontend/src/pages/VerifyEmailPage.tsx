@@ -16,9 +16,9 @@ const OTP_LENGTH = 4;
 function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const backgroundLocation =
-    (location.state as { backgroundLocation?: Location } | null)
-      ?.backgroundLocation;
+  const backgroundLocation = (
+    location.state as { backgroundLocation?: Location } | null
+  )?.backgroundLocation;
 
   const [pageState, setPageState] = useState<PageState>("form");
   const [error, setError] = useState<string | null>(null);
@@ -281,7 +281,11 @@ function VerifyEmailPage({ inline = false, onClose }: VerifyEmailPageProps) {
               ) : null}
             </header>
 
-            <form className="grid gap-4 mt-6" noValidate onSubmit={handleVerify}>
+            <form
+              className="grid gap-4 mt-6"
+              noValidate
+              onSubmit={handleVerify}
+            >
               {/* 4 individual OTP boxes, each pops in with a staggered delay */}
               <div className="flex justify-center gap-3">
                 {otp.map((digit, index) => (
