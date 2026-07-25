@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Navigate } from "react-router-dom";
+import { Loader } from "@/components/Loader";
 import { useAuth } from "../hooks/useAuth";
 import RegisterForm from "../features/auth/RegisterForm";
 
@@ -22,7 +23,7 @@ function RegisterPage() {
   if (status === "loading" || status === "idle") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <Loader variant="badge-check" label="Loading your account..." size={56} />
       </div>
     );
   }

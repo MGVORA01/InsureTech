@@ -9,6 +9,7 @@ import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
+import { Loader } from "@/components/Loader";
 import {
   generateRecommendations,
   getRecommendations,
@@ -92,19 +93,17 @@ function LoadingView() {
       style={{ background: "var(--color-background)" }}
     >
       <div
-        className="flex items-center gap-3 rounded-xl border px-6 py-5 shadow-sm"
+        className="rounded-xl border px-8 py-7 shadow-sm"
         style={{
           background: "var(--color-surface)",
           borderColor: "var(--color-border)",
         }}
       >
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        <span
-          className="text-sm font-semibold"
-          style={{ color: "var(--color-text-primary)" }}
-        >
-          Preparing advisor recommendations…
-        </span>
+        <Loader
+          variant="gauge-sweep"
+          label="Preparing advisor recommendations…"
+          size={72}
+        />
       </div>
     </div>
   );

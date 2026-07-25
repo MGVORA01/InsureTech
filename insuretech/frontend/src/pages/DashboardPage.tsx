@@ -22,6 +22,7 @@ import {
 } from "../features/profiling";
 import { useNavigationLock } from "../store/navigationLock";
 import type { ProfilingCompleteOut } from "../features/profiling";
+import { Loader } from "@/components/Loader";
 import { getRecommendations } from "../features/recommendations/recommendationsApi";
 import type { RecommendationOut } from "../features/recommendations/recommendations.types";
 import { FeedbackForm } from "../features/feedback";
@@ -850,18 +851,7 @@ export default function DashboardPage() {
             boxShadow: "var(--shadow-lg)",
           }}
         >
-          <div className="flex flex-col items-center gap-3">
-            <div
-              className="h-8 w-8 animate-spin rounded-full border-2"
-              style={{
-                borderColor: "var(--color-text-muted)",
-                borderTopColor: "transparent",
-              }}
-            />
-            <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-              Checking profiling status...
-            </p>
-          </div>
+          <Loader variant="gauge-sweep" label="Checking profiling status..." size={60} />
         </div>
       );
     }

@@ -52,7 +52,7 @@ function App() {
     <NavigationLockProvider>
       <>
         {/* Main routes. If we came here with a background location, render that background */}
-        <Routes location={background ?? location}>
+        <Routes location={mainLocation}>
           <Route path="/" element={<HomePage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />

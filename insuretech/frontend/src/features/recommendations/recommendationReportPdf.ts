@@ -5,7 +5,6 @@ import type {
   RiskScoreOut,
 } from './recommendations.types'
 import type { BusinessProfile } from '../profile/profile.types'
-import { TURNOVER_RANGES } from '../profile/profile.constants'
 
 const NA = '—'
 const PAGE_WIDTH = 210
@@ -77,11 +76,6 @@ function levelColors(level?: string): { fg: Rgb; bg: Rgb } {
   if (normalized === 'high') return { fg: COLORS.orange, bg: COLORS.orangeSoft }
   if (normalized === 'medium') return { fg: COLORS.amber, bg: COLORS.amberSoft }
   return { fg: COLORS.green, bg: COLORS.greenSoft }
-}
-
-function turnoverLabel(value: string | null | undefined): string {
-  if (!hasValue(value)) return NA
-  return TURNOVER_RANGES.find((range) => range.value === value)?.label ?? String(value)
 }
 
 function firstPolicy(recommendation: RecommendationOut) {
@@ -688,6 +682,6 @@ export async function downloadRecommendationReportPdf(
   drawRecommendedPolicies(doc, data.recommendations)
 
   const namePart = business?.business_name ? safeId(business.business_name).toLowerCase() : 'business'
-  const datePart = new Intl.DateTimeFormat('en-CA').format(new Date()) // YYYY-MM-DD, no internal IDs
+  const datePart = new Intl.DateTimeFormat('en-CA').format(new Date())
   doc.save(`insurance-advisory-report-${namePart}-${datePart}.pdf`)
 }

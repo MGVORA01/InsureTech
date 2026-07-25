@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Loader } from "@/components/Loader";
 import { useAuth } from '../../hooks/useAuth'
 import sessionStore from '../../store/sessionStore'
 import { profilingApi, getProfilingErrorMessage } from "./profilingApi";
@@ -507,9 +508,8 @@ export default function ProfilingWizard({
     if (loading && !section) {
       return (
         <div className="w-full min-h-[20rem] pb-20">
-          <div className="flex min-h-[14rem] flex-col items-center justify-center gap-3 px-0 py-8 text-sm text-text-secondary">
-            <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-border border-t-primary" />
-            <p>Loading profiling session...</p>
+          <div className="flex min-h-[14rem] items-center justify-center px-0 py-8">
+            <Loader variant="gauge-sweep" label="Loading profiling session..." size={60} />
           </div>
         </div>
       );
@@ -632,9 +632,8 @@ export default function ProfilingWizard({
 
           <div className="flex flex-col gap-4">
             {loading ? (
-              <div className="flex min-h-[14rem] flex-col items-center justify-center gap-3 px-0 py-8 text-sm text-text-secondary">
-                <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-border border-t-primary" />
-                <p>Loading questions...</p>
+              <div className="flex min-h-[14rem] items-center justify-center px-0 py-8">
+                <Loader variant="gauge-sweep" label="Loading questions..." size={60} />
               </div>
             ) : (
               <>

@@ -4,8 +4,8 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
-import CompareArrowsRoundedIcon from '@mui/icons-material/CompareArrowsRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
+import { Loader } from '@/components/Loader'
 import UserLayout from '../layouts/UserLayout'
 import type { Section } from '../components/UserSidebar'
 import { ComparisonView } from '../features/comparison'
@@ -149,14 +149,7 @@ export default function PolicyComparisonPage() {
       <UserLayout activeSection="comparison" onSectionChange={handleSectionChange} contentClassName="w-full">
         <div className="relative flex min-h-screen flex-col items-center justify-center gap-5 overflow-hidden bg-[#f7faf9]">
           <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-teal-400/20 blur-3xl" />
-          <div className="relative flex h-16 w-16 items-center justify-center">
-            <div className="absolute h-16 w-16 animate-spin rounded-full border-[3px] border-teal-100 border-t-teal-600" />
-            <CompareArrowsRoundedIcon className="h-6 w-6 text-teal-700" />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-semibold text-slate-700">Preparing your policy comparison</p>
-            <p className="mt-1 text-xs text-slate-400">Analyzing coverage, pricing, and terms…</p>
-          </div>
+          <Loader variant="gauge-sweep" label="Analyzing coverage, pricing, and terms..." size={72} />
         </div>
       </UserLayout>
     )

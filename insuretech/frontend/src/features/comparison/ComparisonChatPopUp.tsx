@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { Loader } from "@/components/Loader";
 import { compareChat } from "./comparisonApi";
 import type {
   CompareChatRequest,
@@ -267,11 +268,7 @@ export default function ComparisonChatPopUp({
               {loading && (
                 <div className="flex justify-start">
                   <div className="max-w-[82%] rounded-[var(--radius-md)] rounded-bl-[2px] border border-border bg-surface px-4 py-3">
-                    <div className="flex gap-1 py-1">
-                      <span className="h-[6px] w-[6px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary" />
-                      <span className="h-[6px] w-[6px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary [animation-delay:0.15s]" />
-                      <span className="h-[6px] w-[6px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary [animation-delay:0.3s]" />
-                    </div>
+                    <Loader variant="dots" label="Assistant is typing..." size={18} />
                   </div>
                 </div>
               )}

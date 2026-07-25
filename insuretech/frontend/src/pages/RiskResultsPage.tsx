@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { Loader } from '@/components/Loader'
 import { fetchSessionScores } from '../features/risk-assessment'
 import type { RiskScore } from '../features/risk-assessment'
 
@@ -124,7 +125,7 @@ function RiskResultsPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <Loader variant="gauge-sweep" label="Analyzing risk..." size={72} />
       </div>
     )
   }
