@@ -994,20 +994,8 @@ export default function DashboardPage() {
 
   const renderFeedbackTab = () => {
     return (
-      <div className="rounded-[28px] bg-white p-8 shadow-[0_24px_70px_rgba(20,20,19,0.08)] lg:p-10">
-        <div className="max-w-[720px]">
-          <div className="mb-8">
-            <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--color-secondary)]">
-              Feedback
-            </p>
-            <h1 className="text-[36px] font-extrabold leading-[1.08] tracking-tight text-gray-950">
-              Help us improve
-            </h1>
-            <p className="mt-3 max-w-2xl text-[15px] font-medium leading-6 text-gray-500">
-              Tell us how the recommendations felt and where the experience can
-              be sharper.
-            </p>
-          </div>
+      <div className="mx-auto flex max-w-[920px] flex-col items-center text-center">
+        <div className="w-full">
           <FeedbackForm businessId={selectedBusinessId ?? undefined} />
         </div>
       </div>

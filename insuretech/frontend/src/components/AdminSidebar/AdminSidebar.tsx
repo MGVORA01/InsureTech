@@ -89,6 +89,24 @@ function IconFileText(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function IconFeedback(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v10Z" />
+      <path d="M8 10h8" />
+      <path d="M8 14h5" />
+    </svg>
+  );
+}
+
 function IconLogOut(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -166,6 +184,7 @@ export function AdminSidebar({ onAfterNavigate }: AdminSidebarProps) {
     { to: "/admin/policies", icon: IconFileText, label: "Policies" },
     { to: "/admin/insurers", icon: IconFileText, label: "Insurers" },
     { to: "/admin/categories", icon: IconFileText, label: "Categories" },
+    { to: "/admin/feedback", icon: IconFeedback, label: "Feedback Responses" },
   ];
 
   const isActive = (to: string) => {

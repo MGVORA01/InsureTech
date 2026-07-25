@@ -2,13 +2,14 @@
 
 from uuid import UUID
 
-from sqlalchemy import delete as sa_delete
+from sqlalchemy import delete as sa_delete, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy.sql import func, select
+from sqlalchemy.sql import asc
 
 from app.models import (
     CustomerSupportChunk,
+    Feedback,
     InsuranceCategory,
     Insurer,
     Policy,
@@ -90,6 +91,47 @@ async def get_all_users(
         TOTAL_KEY: total,
         PAGE_KEY: page,
         LIMIT_KEY: limit,
+    }
+
+
+async def get_feedback_responses(
+    db: AsyncSession,
+    page: int = 1,
+    limit: int = 20,
+    search: str | None = None,
+    sort_order: str = "desc",
+) -> dict[str, object]:
+    """Fetch admin-visible feedback responses with pagination and optional search."""
+    query = select(Feedback).join(Feedback.user).options(selectinload(Feedback.user))
+    count_query = select(func.count(Feedback.id)).select_from(Feedback)
+
+    if search:
+        term = f"%{search.strip()}%"
+        query = query.where(
+            or_(User.full_name.ilike(term), User.email.ilike(term))
+        )
+        count_query = count_query.join(User).where(
+            or_(User.full_name.ilike(term), User.email.ilike(term))
+        )
+
+    if sort_order.lower() == "asc":
+        query = query.order_by(asc(Feedback.created_at))
+    else:
+        query = query.order_by(desc(Feedback.created_at))
+
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    offset = (page - 1) * limit
+    query = query.offset(offset).limit(limit)
+    result = await db.execute(query)
+    feedbacks = result.scalars().all()
+
+    return {
+        "feedbacks": feedbacks,
+        "total": total,
+        "page": page,
+        "limit": limit,
     }
 
 

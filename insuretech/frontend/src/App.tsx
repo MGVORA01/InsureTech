@@ -12,6 +12,7 @@ import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminPoliciesPage from "./pages/AdminPoliciesPage";
 import AdminInsurersPage from "./pages/AdminInsurersPage";
 import AdminCategoriesPage from "./pages/AdminCategoriesPage";
+import AdminFeedbackPage from "./pages/AdminFeedbackPage";
 import AuthModal from "./features/auth-modal/AuthModal";
 import DashboardPage from "./pages/DashboardPage";
 import RecommendationsPage from "./pages/RecommendationsPage";
@@ -81,6 +82,7 @@ function App() {
             <Route path="/admin/policies" element={<AdminPoliciesPage />} />
             <Route path="/admin/insurers" element={<AdminInsurersPage />} />
             <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+            <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
           </Route>
         </Routes>
 

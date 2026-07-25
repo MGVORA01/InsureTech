@@ -1,6 +1,10 @@
 import axios, { type AxiosError } from 'axios'
 import baseApi from '../../config/api'
-import type { CreateFeedbackPayload, FeedbackResponse } from './feedback.types'
+import type {
+  AdminFeedbackListResponse,
+  CreateFeedbackPayload,
+  FeedbackResponse,
+} from './feedback.types'
 import { FEEDBACK_MESSAGES } from './feedback.constants'
 
 interface ApiEnvelope<T> {
@@ -48,5 +52,21 @@ export const feedbackApi = {
     const params = businessId ? { business_id: businessId } : undefined
     const response = await baseApi.get<ApiEnvelope<FeedbackResponse[]>>('/feedback', { params })
     return unwrapData<FeedbackResponse[]>(response)
+  },
+
+  async getAdminFeedbackResponses(
+    page = 1,
+    limit = 20,
+    search?: string,
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ): Promise<AdminFeedbackListResponse> {
+    const params: Record<string, string | number> = { page, limit, sort_order: sortOrder }
+    if (search) params.search = search.trim()
+
+    const response = await baseApi.get<ApiEnvelope<AdminFeedbackListResponse>>(
+      '/admin/feedback',
+      { params },
+    )
+    return unwrapData<AdminFeedbackListResponse>(response)
   },
 }
