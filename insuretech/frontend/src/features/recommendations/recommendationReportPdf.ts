@@ -24,6 +24,8 @@ const COLORS = {
   card: [255, 255, 255] as Rgb,
   navy: [12, 32, 52] as Rgb,
   teal: [15, 118, 110] as Rgb,
+  // Exact brand teal from the InsureTech logo badge
+  logoTeal: [15, 110, 86] as Rgb,
   green: [22, 101, 52] as Rgb,
   greenSoft: [220, 252, 231] as Rgb,
   amber: [146, 64, 14] as Rgb,
@@ -123,13 +125,68 @@ function makeReportId(): string {
   return `RPT-${stamp}-${random}`
 }
 
+// Draws the InsureTech shield-and-checkmark mark inside a rounded square,
+// matching the site logo. `size` is the square's side length in mm.
+// Coordinates are authored against a 34x34 unit icon, then scaled to fit.
+function drawShieldBadge(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  size: number,
+  bg: Rgb = COLORS.logoTeal,
+  icon: Rgb = [255, 255, 255],
+) {
+  setFill(doc, bg)
+  doc.roundedRect(x, y, size, size, size * 0.28, size * 0.28, 'F')
+
+  // Shrink the icon to ~68% of the box and center it, so it sits inside
+  // the teal square with breathing room instead of touching the edges.
+  const iconSize = size * 0.68
+  const offset = (size - iconSize) / 2
+  const iconX = x + offset
+  const iconY = y + offset
+  const scale = iconSize / 34
+
+  setDraw(doc, icon)
+  doc.setLineWidth(Math.max(0.35, size * 0.075))
+  doc.setLineCap('round')
+  doc.setLineJoin('round')
+
+  // Shield outline: M17 3 L29 8 V16 C29 24 24 29 17 31 C10 29 5 24 5 16 V8 Z
+  const shieldStartX = iconX + 17 * scale
+  const shieldStartY = iconY + 3 * scale
+  const shieldSegments: number[][] = [
+    [12, 5],
+    [0, 8],
+    [0, 8, -5, 13, -12, 15],
+    [-7, -2, -12, -7, -12, -15],
+    [0, -8],
+  ]
+  doc.lines(shieldSegments, shieldStartX, shieldStartY, [scale, scale], 'S', true)
+
+  // Checkmark: M11 17 L15.5 21.5 L23 12.5
+  const checkStartX = iconX + 11 * scale
+  const checkStartY = iconY + 17 * scale
+  const checkSegments: number[][] = [
+    [4.5, 4.5],
+    [7.5, -9],
+  ]
+  doc.lines(checkSegments, checkStartX, checkStartY, [scale, scale], 'S', false)
+}
+
 function addPageShell(doc: jsPDF, title: string, pageNumber: number) {
   setFill(doc, COLORS.surface)
   doc.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, 'F')
+
+  // Badge is centered on the text's visual middle (baseline 9, 8pt font),
+  // not just dropped at a fixed y — otherwise it floats above the text.
+  const badgeSize = 6
+  drawShieldBadge(doc, MARGIN, 5.4, badgeSize)
+
   setText(doc, COLORS.muted)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8)
-  doc.text('INSURETECH ADVISORY', MARGIN, 9)
+  doc.text('INSURETECH ADVISORY', MARGIN + badgeSize + 3, 9)
   doc.text(title.toUpperCase(), PAGE_WIDTH - MARGIN, 9, { align: 'right' })
   setDraw(doc, COLORS.line)
   doc.setLineWidth(0.2)
@@ -326,14 +383,12 @@ function drawCover(
   setFill(doc, [20, 116, 112])
   doc.circle(190, 76, 28, 'F')
 
-  setFill(doc, COLORS.teal)
-  doc.roundedRect(MARGIN, 16, 12, 12, 3, 3, 'F')
+  drawShieldBadge(doc, MARGIN, 16, 16)
+
   setText(doc, [255, 255, 255])
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8)
-  doc.text('IT', MARGIN + 6, 23.8, { align: 'center' })
-  doc.setFontSize(10)
-  doc.text('INSURETECH ADVISORY', MARGIN + 16, 24)
+  doc.setFontSize(12)
+  doc.text('INSURETECH ADVISORY', MARGIN + 22, 26)
   setDraw(doc, [255, 255, 255])
   doc.roundedRect(156, 17, 36, 9, 4.5, 4.5)
   doc.setFontSize(7)
@@ -357,10 +412,7 @@ function drawCover(
     ['Industry', textOr(business?.industry?.name)],
     ['Segment', textOr(business?.segment?.name)],
     ['Location', [business?.city, business?.state].filter(hasValue).join(', ') || NA],
-    ['Address', textOr(business?.address)],
-    ['Year Established', textOr(business?.year_established)],
     ['Employee Count', textOr(business?.employee_count)],
-    ['Annual Turnover', turnoverLabel(business?.annual_turnover_range)],
   ]
   let dy = 121
   detailRows.forEach(([label, value]) => {
