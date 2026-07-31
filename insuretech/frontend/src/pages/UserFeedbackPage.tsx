@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import UserLayout from "../layouts/UserLayout";
 import type { Section } from "../components/UserSidebar";
-import { FeedbackForm, FeedbackList } from "../features/feedback";
+import { FeedbackForm } from "../features/feedback";
 
 export default function UserFeedbackPage() {
   const navigate = useNavigate();
