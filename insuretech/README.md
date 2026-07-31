@@ -48,7 +48,8 @@ InsureTech enables:
 
 ### Data and AI
 
-- Policy and question data in `insuretech/backend/question.json`
+- Policy and question seed data in `insuretech/backend/seed/question.json`
+- Generated ingestion outputs in `insuretech/backend/output/`
 - RAG and vector workflows under `insuretech/backend/app/ai`
 - Cloudinary support for policy file uploads
 - AI question answering powered by `GROQ_API_KEY`
@@ -113,7 +114,7 @@ alembic upgrade head
 Seed initial data if required:
 
 ```bash
-python seed.py
+python seed/seed.py
 ```
 
 Start the backend service:

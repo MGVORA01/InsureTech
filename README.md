@@ -63,7 +63,7 @@ alembic upgrade head
 Seed data if needed:
 
 ```bash
-python seed.py
+python seed/seed.py
 ```
 
 Start backend server:

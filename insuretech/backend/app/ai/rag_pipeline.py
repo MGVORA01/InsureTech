@@ -1,4 +1,5 @@
 import asyncio
+import re
 from uuid import UUID
 
 from sqlalchemy import bindparam, select, text
@@ -59,6 +60,13 @@ def _format_vector(embedding: list[float]) -> str:
     return "[" + ",".join(str(v) for v in embedding) + "]"
 
 
+def _normalize_query_text(query: str) -> str:
+    cleaned = " ".join((query or "").split())
+    if not cleaned:
+        return "%"
+    return f"%{'%'.join(cleaned.split())}%"
+
+
 async def retrieve_chunks(
     db: AsyncSession,
     query: str,
@@ -108,6 +116,30 @@ async def retrieve_chunks(
 
     result = await db.execute(sql, params)
     rows = result.fetchall()
+
+    if not rows and query:
+        params["query_text"] = _normalize_query_text(query)
+        keyword_where = " AND ".join(f"({c})" for c in conditions) if conditions else "TRUE"
+        keyword_sql = text(f"""
+            SELECT
+                id, chunk_text, policy_id, document_id,
+                chunk_index, page_number, document_metadata,
+                0.0 AS similarity
+            FROM document_chunks
+            WHERE {keyword_where}
+              AND (
+                  chunk_text ILIKE :query_text
+                  OR document_metadata->>'section_name' ILIKE :query_text
+                  OR document_metadata->>'policy_name' ILIKE :query_text
+                  OR document_metadata->>'insurance_category' ILIKE :query_text
+              )
+            ORDER BY policy_id, chunk_index
+            LIMIT :limit
+        """)
+        if has_policy_filter:
+            keyword_sql = keyword_sql.bindparams(bindparam("policy_ids", expanding=True))
+        result = await db.execute(keyword_sql, params)
+        rows = result.fetchall()
 
     return [
         {

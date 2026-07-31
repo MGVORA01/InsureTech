@@ -3,9 +3,10 @@ import re
 from pathlib import Path
 from app.ai.insurer_normalizer import CANONICAL_MAP
 
-CLEANED_DIR = Path(__file__).resolve().parents[2] / "cleaned_output"
-METADATA_DIR = Path(__file__).resolve().parents[2] / "metadata_output"
-SECTION_DIR = Path(__file__).resolve().parents[2] / "section_output"
+OUTPUT_BASE_DIR = Path(__file__).resolve().parents[2] / "output"
+CLEANED_DIR = OUTPUT_BASE_DIR / "cleaned_output"
+METADATA_DIR = OUTPUT_BASE_DIR / "metadata_output"
+SECTION_DIR = OUTPUT_BASE_DIR / "section_output"
 
 SECTION_TYPE_RULES = [
     ("coverage", [

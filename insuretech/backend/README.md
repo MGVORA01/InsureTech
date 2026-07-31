@@ -76,7 +76,7 @@ alembic upgrade head
 If the backend includes seed scripts, use them to load initial metadata and default data:
 
 ```bash
-python seed.py
+python seed/seed.py
 ```
 
 ## Run locally

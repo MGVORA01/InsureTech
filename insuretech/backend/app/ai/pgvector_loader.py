@@ -8,7 +8,7 @@ from app.models import Insurer, InsuranceCategory, Policy, PolicyDocument, Docum
 from app.ai.embeddings import generate_embeddings_batch
 from app.ai.insurer_normalizer import normalize_insurer_name as canonicalize_insurer
 
-CHUNK_DIR = Path(__file__).resolve().parents[2] / "chunk_output"
+CHUNK_DIR = Path(__file__).resolve().parents[2] / "output" / "chunk_output"
 
 
 def load_all_chunks() -> list[dict]:

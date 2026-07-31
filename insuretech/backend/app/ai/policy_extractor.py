@@ -12,10 +12,11 @@ from app.core.config import settings
 # ==========================================
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+OUTPUT_BASE_DIR = BASE_DIR / "output"
 
 DATA_DIR = BASE_DIR.parent / "data"
 
-OUTPUT_DIR = BASE_DIR / "parsed_output"
+OUTPUT_DIR = OUTPUT_BASE_DIR / "parsed_output"
 
 OUTPUT_DIR.mkdir(
     parents=True,

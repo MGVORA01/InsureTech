@@ -2,8 +2,9 @@ import json
 import uuid
 from pathlib import Path
 
-SECTION_DIR = Path(__file__).resolve().parents[2] / "section_output"
-CHUNK_DIR = Path(__file__).resolve().parents[2] / "chunk_output"
+OUTPUT_BASE_DIR = Path(__file__).resolve().parents[2] / "output"
+SECTION_DIR = OUTPUT_BASE_DIR / "section_output"
+CHUNK_DIR = OUTPUT_BASE_DIR / "chunk_output"
 
 TOKEN_THRESHOLD = 800
 

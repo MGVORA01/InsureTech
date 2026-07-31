@@ -3,8 +3,9 @@ import re
 from pathlib import Path
 from html import unescape
 
-INPUT_DIR = Path(__file__).resolve().parents[2] / "parsed_output"
-OUTPUT_DIR = Path(__file__).resolve().parents[2] / "cleaned_output"
+OUTPUT_BASE_DIR = Path(__file__).resolve().parents[2] / "output"
+INPUT_DIR = OUTPUT_BASE_DIR / "parsed_output"
+OUTPUT_DIR = OUTPUT_BASE_DIR / "cleaned_output"
 
 FOOTER_PATTERNS = [
     r"Registered\s*Office",

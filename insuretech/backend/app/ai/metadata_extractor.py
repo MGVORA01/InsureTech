@@ -5,8 +5,9 @@ from collections import Counter
 
 from app.ai.insurer_normalizer import CANONICAL_MAP, normalize_insurer_name as canonicalize_insurer
 
-CLEANED_DIR = Path(__file__).resolve().parents[2] / "cleaned_output"
-METADATA_DIR = Path(__file__).resolve().parents[2] / "metadata_output"
+OUTPUT_BASE_DIR = Path(__file__).resolve().parents[2] / "output"
+CLEANED_DIR = OUTPUT_BASE_DIR / "cleaned_output"
+METADATA_DIR = OUTPUT_BASE_DIR / "metadata_output"
 
 CANONICAL_VARIANTS = list(CANONICAL_MAP.keys())
 
