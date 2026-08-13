@@ -341,6 +341,7 @@ async def insert_chunk(
     chunk_text: str,
     embedding: list[float],
     metadata: dict[str, Any],
+    page_number: int | None = None,
 ) -> DocumentChunk:
     """Create and persist a document chunk."""
     chunk = DocumentChunk(
@@ -349,6 +350,7 @@ async def insert_chunk(
         chunk_index=chunk_index,
         chunk_text=chunk_text,
         embedding=embedding,
+        page_number=page_number,
         document_metadata=metadata,
     )
     db.add(chunk)

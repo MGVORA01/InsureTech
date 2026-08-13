@@ -4,7 +4,7 @@ from sqlalchemy import select, text, delete
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from app.core.config import settings
 from app.models import Insurer, Policy, PolicyDocument, DocumentChunk
-from app.ai.insurer_normalizer import normalize_insurer_name as canonicalize_insurer
+from app.ai.shared.insurer_name_normalizer import normalize_insurer_name as canonicalize_insurer
 
 
 async def main():

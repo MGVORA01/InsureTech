@@ -15,7 +15,6 @@ import AdminCategoriesPage from "./pages/AdminCategoriesPage";
 import AdminFeedbackPage from "./pages/AdminFeedbackPage";
 import AuthModal from "./features/auth-modal/AuthModal";
 import DashboardPage from "./pages/DashboardPage";
-import UserFeedbackPage from "./pages/UserFeedbackPage";
 import RecommendationsPage from "./pages/RecommendationsPage";
 import PolicyComparisonPage from "./pages/PolicyComparisonPage";
 import ChatPage from "./pages/ChatPage";
@@ -66,7 +65,6 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/dashboard/:section" element={<DashboardPage />} />
-            <Route path="/dashboard/feedback" element={<UserFeedbackPage />} />
             <Route
               path="/recommendations/:sessionId"
               element={<RecommendationsPage />}

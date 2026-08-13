@@ -14,7 +14,8 @@ from app.core.config import settings
 BASE_DIR = Path(__file__).resolve().parents[2]
 OUTPUT_BASE_DIR = BASE_DIR / "output"
 
-DATA_DIR = BASE_DIR.parent / "data"
+# Input PDFs live at backend/data; generated artifacts live at app/ai/output.
+DATA_DIR = BASE_DIR.parents[1] / "data"
 
 OUTPUT_DIR = OUTPUT_BASE_DIR / "parsed_output"
 
@@ -155,14 +156,18 @@ def save_policy_json(
 # PROCESS ALL PDFs
 # ==========================================
 
-def process_all_policies():
+def process_all_policies(data_dir=None):
+    # Local import avoids the parser fallback importing this module at startup.
+    from app.ai.ingestion.pipeline.pdf_text_extractor import parse_pdf
+    if data_dir is None:
+        data_dir = DATA_DIR
 
     pdf_files = list(
-        DATA_DIR.rglob("*.pdf")
+        Path(data_dir).rglob("*.pdf")
     )
 
     print(
-        f"\nFound {len(pdf_files)} PDFs"
+        f"\nFound {len(pdf_files)} PDFs in {Path(data_dir).resolve()}"
     )
 
     results = []
@@ -182,7 +187,7 @@ def process_all_policies():
 
         try:
 
-            policy_json = parse_policy(
+            policy_json = parse_pdf(
                 pdf_file
             )
 

@@ -8,31 +8,43 @@ venv/
 env/
 .venv/
 
+# Pytest & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
 # Environment files
 .env
+.env.local
+.env.*.local
+!*.env.example
 
-# Node
+# Node / Frontend
 node_modules/
 dist/
-
-# Build
+dist-ssr/
 build/
+*.log
 
-# OS files
+# OS & IDE files
 .DS_Store
 .idea/
-**/pdfs/
+.vscode/*
+!.vscode/extensions.json
 
-# Dev artifacts
+# Dev & temporary artifacts
 .antigravitycli/
+.antigravity/
 cleanup_seed.py
 seed_meta.py
 master_seed_clean.json
-backend/seed/
-backend/output/
-data/
-data.zip
 backfill_cloudinary.py
+data.zip
+docs/
+
+# Backend generated & data artifacts
+backend/app/ai/output/
+backend/data/*
+!backend/data/README.md
 backend/notebooks/
 backend/generated_reports/
-docs/

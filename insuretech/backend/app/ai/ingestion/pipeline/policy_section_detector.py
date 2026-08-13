@@ -1,7 +1,7 @@
 import json
 import re
 from pathlib import Path
-from app.ai.insurer_normalizer import CANONICAL_MAP
+from app.ai.shared.insurer_name_normalizer import CANONICAL_MAP
 
 OUTPUT_BASE_DIR = Path(__file__).resolve().parents[2] / "output"
 CLEANED_DIR = OUTPUT_BASE_DIR / "cleaned_output"
@@ -175,6 +175,16 @@ def extract_sections(text: str) -> list:
             "char_count": len(content),
         })
 
+    if not sections and text.strip():
+        # PyMuPDF/OCR text may not carry Markdown headings. Keep it searchable
+        # instead of dropping the entire document.
+        return [{
+            "heading": "Policy wording",
+            "type": "other",
+            "level": 1,
+            "content": text.strip(),
+            "char_count": len(text.strip()),
+        }]
     return sections
 
 

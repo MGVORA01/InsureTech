@@ -35,7 +35,7 @@ CONTEXT_SEPARATOR = "\n\n"
 USER_PROMPT_TEMPLATE = "Context:\n{context}\n\nQuestion: {question}"
 CONTEXT_PART_TEMPLATE = (
     "[{index}] Policy: {policy_name} | Insurer: {insurer} | "
-    "Section: {section_name}\n{text}"
+    "Section: {section_name} | Page: {page_number} | Clause: {clause_id}\n{text}"
 )
 
 SYSTEM_PROMPT = """You are an expert insurance policy analyst. Your role is to answer questions 

@@ -4,14 +4,13 @@ import uuid
 import tempfile
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.ai.policy_extractor import parse_policy
+from app.ai.ingestion.pipeline.pdf_text_extractor import parse_pdf
 from app.core.config import settings
-from app.ai.policy_cleaner import clean_page_text, is_admin_page
-from app.ai.metadata_extractor import clean_insurer_name
-from app.ai.section_detector import extract_sections, merge_consecutive_same_type, merge_insurer_headers
-from app.ai.policy_chunker import chunk_section
-from app.ai.embeddings import generate_embeddings_batch
-from app.ai.insurer_normalizer import normalize_insurer_name as canonicalize_insurer
+from app.ai.ingestion.pipeline.policy_text_cleaner import clean_page_text, is_admin_page
+from app.ai.ingestion.pipeline.policy_section_detector import extract_sections, merge_consecutive_same_type, merge_insurer_headers
+from app.ai.ingestion.pipeline.clause_aware_chunker import chunk_section
+from app.ai.models.bge_embedding_service import generate_embeddings_batch
+from app.ai.shared.insurer_name_normalizer import normalize_insurer_name as canonicalize_insurer
 from app.modules.policies import repository as Repo
 
 
@@ -36,7 +35,7 @@ async def ingest_single_pdf(
             tmp.write(pdf_bytes)
             tmp_path = tmp.name
 
-        parsed = await asyncio.to_thread(parse_policy, Path(tmp_path))
+        parsed = await asyncio.to_thread(parse_pdf, Path(tmp_path))
         pages = parsed.get("pages", [])
         if not pages:
             raise ValueError("No pages extracted from PDF")
@@ -109,6 +108,7 @@ async def ingest_single_pdf(
                 chunk_index=chunk_data["chunk_index"],
                 chunk_text=chunk_data["text"],
                 embedding=emb,
+                page_number=chunk_data.get("page_number"),
                 metadata={
                     "section_name": chunk_data["section_name"],
                     "section_type": chunk_data["section_type"],
@@ -118,6 +118,8 @@ async def ingest_single_pdf(
                     "chunk_index": chunk_data["chunk_index"],
                     "total_chunks": chunk_data["total_chunks"],
                     "file_name": file_name,
+                    "clause_id": chunk_data.get("clause_id"),
+                    "source_file": file_name,
                 },
             )
 

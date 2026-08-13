@@ -25,17 +25,30 @@ interface ComparisonRouteState {
   openChat?: boolean
 }
 
+function normalizePolicyName(name: string | null | undefined, insurer: string | null | undefined) {
+  const value = (name || insurer || 'Recommended policy').trim()
+  const lower = value.toLowerCase()
+  if (
+    /(hereinafter|hereafter|full premium|mentioned in the said|subject to|entitled to|the company)/.test(lower)
+  ) {
+    if (insurer) return `${insurer} policy`
+    return 'Recommended policy'
+  }
+  return value
+}
+
 function toPolicyOption(rec: RecommendationOut): PolicyListItem | null {
   const policyId = rec.policy_id ?? rec.policies[0]?.id
   if (!policyId) return null
 
+  const insurerName = rec.company_name ?? rec.policies[0]?.insurer_name ?? 'Unknown'
   return {
     id: policyId,
     insurer_id: '',
-    insurer_name: rec.company_name ?? rec.policies[0]?.insurer_name ?? 'Unknown',
+    insurer_name: insurerName,
     insurance_category_id: '',
     insurance_category_name: rec.policies[0]?.insurance_category_name ?? rec.risk_category_name,
-    policy_name: rec.policy_name ?? rec.policies[0]?.policy_name ?? 'Recommended policy',
+    policy_name: normalizePolicyName(rec.policy_name ?? rec.policies[0]?.policy_name, insurerName),
     policy_number: null,
     is_active: true,
     documents_count: rec.policies[0]?.pdf_url ? 1 : 0,

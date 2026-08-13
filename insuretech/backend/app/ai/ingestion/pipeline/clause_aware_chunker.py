@@ -6,7 +6,37 @@ OUTPUT_BASE_DIR = Path(__file__).resolve().parents[2] / "output"
 SECTION_DIR = OUTPUT_BASE_DIR / "section_output"
 CHUNK_DIR = OUTPUT_BASE_DIR / "chunk_output"
 
-TOKEN_THRESHOLD = 800
+TOKEN_THRESHOLD = 450
+TOKEN_OVERLAP = 60
+
+
+def _token_chunks(text: str) -> list[str]:
+    """Recursively split long text while preserving paragraph/sentence boundaries."""
+    words = text.split()
+    if len(words) <= TOKEN_THRESHOLD:
+        return [text.strip()] if text.strip() else []
+    units = [part.strip() for part in text.split("\n\n") if part.strip()]
+    if len(units) <= 1:
+        units = [part.strip() for part in __import__("re").split(r"(?<=[.!?])\s+", text) if part.strip()]
+    chunks, current, length = [], [], 0
+    for unit in units:
+        unit_words = unit.split()
+        if len(unit_words) > TOKEN_THRESHOLD:
+            if current:
+                chunks.append("\n\n".join(current))
+                current, length = [], 0
+            for start in range(0, len(unit_words), TOKEN_THRESHOLD - TOKEN_OVERLAP):
+                chunks.append(" ".join(unit_words[start:start + TOKEN_THRESHOLD]))
+            continue
+        if current and length + len(unit_words) > TOKEN_THRESHOLD:
+            chunks.append("\n\n".join(current))
+            overlap = " ".join(chunks[-1].split()[-TOKEN_OVERLAP:])
+            current, length = ([overlap] if overlap else []), len(overlap.split())
+        current.append(unit)
+        length += len(unit_words)
+    if current:
+        chunks.append("\n\n".join(current))
+    return chunks
 
 
 def chunk_section(section: dict, doc_info: dict) -> list[dict]:
@@ -17,71 +47,18 @@ def chunk_section(section: dict, doc_info: dict) -> list[dict]:
     if not content:
         return []
 
-    tokens = content.split()
-    token_count = len(tokens)
-
-    if token_count <= TOKEN_THRESHOLD:
-        return [{
-            "chunk_id": str(uuid.uuid4()),
-            "document_id": doc_info["document_id"],
-            "policy_name": doc_info["policy_name"],
-            "insurer": doc_info["insurer_name"],
-            "insurance_category": doc_info["insurance_category"],
-            "section_name": heading,
-            "section_type": section_type,
-            "chunk_index": 1,
-            "total_chunks": 1,
-            "text": content,
-        }]
-
-    paragraphs = content.split("\n\n")
+    clause_units = section.get("clauses") or [{"clause_id": None, "text": content}]
     chunks = []
-    current_parts = []
-    current_length = 0
-    part_index = 0
-
-    for para in paragraphs:
-        para = para.strip()
-        if not para:
-            continue
-        para_tokens = len(para.split())
-
-        if current_length + para_tokens > TOKEN_THRESHOLD and current_parts:
-            chunk_text = "\n\n".join(current_parts)
-            part_index += 1
+    for clause in clause_units:
+        for chunk_text in _token_chunks(clause.get("text", "")):
             chunks.append({
                 "chunk_id": str(uuid.uuid4()),
-                "document_id": doc_info["document_id"],
-                "policy_name": doc_info["policy_name"],
-                "insurer": doc_info["insurer_name"],
-                "insurance_category": doc_info["insurance_category"],
-                "section_name": heading,
-                "section_type": section_type,
-                "chunk_index": part_index,
-                "total_chunks": 0,
-                "text": chunk_text,
+                "document_id": doc_info["document_id"], "policy_name": doc_info["policy_name"],
+                "insurer": doc_info["insurer_name"], "insurance_category": doc_info["insurance_category"],
+                "section_name": heading, "section_type": section_type,
+                "clause_id": clause.get("clause_id"), "page_number": section.get("page_number"),
+                "chunk_index": len(chunks) + 1, "total_chunks": 0, "text": chunk_text,
             })
-            current_parts = []
-            current_length = 0
-
-        current_parts.append(para)
-        current_length += para_tokens
-
-    if current_parts:
-        chunk_text = "\n\n".join(current_parts)
-        part_index += 1
-        chunks.append({
-            "chunk_id": str(uuid.uuid4()),
-            "document_id": doc_info["document_id"],
-            "policy_name": doc_info["policy_name"],
-            "insurer": doc_info["insurer_name"],
-            "insurance_category": doc_info["insurance_category"],
-            "section_name": heading,
-            "section_type": section_type,
-            "chunk_index": part_index,
-            "total_chunks": 0,
-            "text": chunk_text,
-        })
 
     total = len(chunks)
     for c in chunks:

@@ -1,0 +1,58 @@
+# Byte-compiled / optimized / DLL files
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+**/.venv/
+**/venv/
+**/env/
+
+# Environment secrets (keep example templates)
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example
+
+# Pytest & Coverage
+**/.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.cover
+
+# Node / Frontend
+**/node_modules/
+**/dist/
+**/dist-ssr/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+# AI, Data & Generated Reports Caches
+**/nltk_cache/
+**/tiktoken_cache/
+insuretech/backend/app/ai/output/
+insuretech/backend/generated_reports/
+insuretech/backend/data/processed/cache/
+master_seed_clean.json
+cleanup_seed.py
+seed_meta.py
+backfill_cloudinary.py
+
+# IDE & Editor files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+*.tmp
+
+# OS & Tooling artifacts
+.DS_Store
+Thumbs.db
+.antigravitycli/
+.antigravity/

@@ -5,8 +5,8 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.llm_providers import generate_response
-from app.ai.rag_pipeline import retrieve_chunks
+from app.ai.providers.llm_response_generator import generate_response
+from app.ai.retrieval.hybrid_policy_retriever import retrieve_chunks
 from app.core.config import settings
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.logging import get_logger
@@ -168,6 +168,9 @@ class RAGService:
                     section_name=metadata.get(SECTION_NAME_KEY, EMPTY_VALUE),
                     section_type=metadata.get(SECTION_TYPE_KEY, EMPTY_VALUE),
                     similarity=chunk[SIMILARITY_KEY],
+                    page_number=chunk.get("page_number"),
+                    clause_id=metadata.get("clause_id"),
+                    source_file=metadata.get("source_file", ""),
                 )
             )
         return chunk_results
@@ -184,6 +187,8 @@ class RAGService:
                     policy_name=metadata.get(POLICY_NAME_KEY, NOT_AVAILABLE_VALUE),
                     insurer=metadata.get(INSURER_KEY, NOT_AVAILABLE_VALUE),
                     section_name=metadata.get(SECTION_NAME_KEY, NOT_AVAILABLE_VALUE),
+                    page_number=chunk.get("page_number") or NOT_AVAILABLE_VALUE,
+                    clause_id=metadata.get("clause_id") or NOT_AVAILABLE_VALUE,
                     text=chunk[TEXT_KEY],
                 )
             )

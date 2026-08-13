@@ -25,6 +25,9 @@ class ChunkResult(BaseModel):
     section_name: str
     section_type: str
     similarity: float
+    page_number: int | None = None
+    clause_id: str | None = None
+    source_file: str = ""
 
 
 class RagQueryResponse(BaseModel):
