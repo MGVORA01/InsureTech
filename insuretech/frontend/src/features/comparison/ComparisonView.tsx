@@ -249,6 +249,56 @@ export default function ComparisonView({
     );
   }
 
+  function renderComparisonSkeleton() {
+    const line = (width: string) => (
+      <div className={`h-3 animate-pulse rounded-full bg-slate-200 ${width}`} />
+    );
+
+    return (
+      <div
+        className="relative overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <div className="relative border-b border-border bg-surface-alt px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-200 border-t-secondary" />
+            <div>
+              <p className="text-sm font-semibold text-text-primary">Building your policy comparison</p>
+              <p className="mt-0.5 text-xs text-text-tertiary">Reviewing coverage, exclusions, and policy terms…</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6 p-5">
+          <div className="rounded-[var(--radius-md)] border border-border p-4">
+            <div className="mb-4 h-4 w-36 animate-pulse rounded-full bg-slate-200" />
+            <div className="space-y-3">
+              {line('w-full')}
+              {line('w-11/12')}
+              {line('w-3/4')}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-[var(--radius-md)] border border-border">
+            <div className="grid grid-cols-[22%_39%_39%] gap-4 border-b border-border bg-surface-alt px-4 py-3">
+              <div className="h-3 w-16 animate-pulse rounded-full bg-slate-200" />
+              <div className="h-3 w-20 animate-pulse rounded-full bg-slate-200" />
+              <div className="h-3 w-20 animate-pulse rounded-full bg-slate-200" />
+            </div>
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="grid grid-cols-[22%_39%_39%] gap-4 border-b border-border px-4 py-4 last:border-b-0">
+                <div className="h-4 w-20 animate-pulse rounded-full bg-slate-200" />
+                <div className="space-y-2">{line('w-full')}{line('w-4/5')}</div>
+                <div className="space-y-2">{line('w-11/12')}{line('w-3/4')}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function renderResults() {
     if (!result) return null;
 
@@ -461,12 +511,7 @@ export default function ComparisonView({
         {comparing ? "Comparing..." : "Compare"}
       </button>
 
-      {comparing && (
-        <div className="flex flex-col items-center gap-3 rounded-[var(--radius-lg)] bg-surface-alt p-8 text-sm text-text-tertiary">
-          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-border border-t-secondary" />
-          <p>Analyzing policies... This may take a moment.</p>
-        </div>
-      )}
+      {comparing && renderComparisonSkeleton()}
 
       {error && (
         <div className="flex items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-risk-medium-bg)] bg-[var(--color-risk-medium-bg)] px-4 py-3 text-sm text-[var(--color-risk-medium)]">
