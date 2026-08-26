@@ -26,15 +26,15 @@ jobs:
           cache-dependency-path: '**/frontend/package-lock.json'
 
       - name: Install Frontend Dependencies
-        working-directory: ./insuretech/frontend
+        working-directory: ./frontend
         run: npm ci
 
       - name: Run ESLint
-        working-directory: ./insuretech/frontend
+        working-directory: ./frontend
         run: npm run lint
 
       - name: Verify Frontend Production Build
-        working-directory: ./insuretech/frontend
+        working-directory: ./frontend
         run: npm run build
 
   # -----------------------------------------------------------------
@@ -55,13 +55,13 @@ jobs:
           cache: 'pip'
 
       - name: Install Backend Dependencies
-        working-directory: ./insuretech/backend
+        working-directory: ./backend
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Run Pytest Test Suite
-        working-directory: ./insuretech/backend
+        working-directory: ./backend
         env:
           SECRET_KEY: ci_secret_key_for_testing_purposes_only_32bytes
         run: |
