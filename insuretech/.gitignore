@@ -18,9 +18,13 @@ dist/
 # Build
 build/
 
-# OS files
+# OS and IDE files
 .DS_Store
 .idea/
+**/.idea/
+.ai/
+**/.ai/
+*.iml
 **/pdfs/
 
 # Dev artifacts
@@ -43,4 +47,5 @@ backend/seed-segments.py
 backend/seed_wizard.py
 backend/notebooks/
 backend/generated_reports/
+backend/app/ai/output/
 docs/
