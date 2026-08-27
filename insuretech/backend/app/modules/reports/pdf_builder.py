@@ -1,0 +1,389 @@
+"""PDF report builder for risk advisory reports."""
+
+import textwrap
+from pathlib import Path
+
+from app.modules.reports.constants import (
+    COVERAGE_HIGHLIGHTS_LIMIT,
+    HIGH_RISK_LEVELS,
+    IMPORTANT_LIMITATIONS_LIMIT,
+    KEY_BENEFITS_LIMIT,
+    MAX_LINES_PER_PAGE,
+    NOT_AVAILABLE_LABEL,
+    RISK_FACTORS_LIMIT,
+    RISK_LEVEL_CRITICAL,
+    RISK_LEVEL_HIGH,
+    RISK_LEVEL_MEDIUM,
+    RISK_PRIORITY_LABELS,
+    TOP_RISKS_LIMIT,
+    UNKNOWN_COMPANY_LABEL,
+    UNKNOWN_LABEL,
+    UNKNOWN_LEVEL_LABEL,
+    UNKNOWN_POLICY_LABEL,
+)
+from app.modules.reports.schemas import (
+    ReportPolicyOut,
+    ReportRiskFactorOut,
+    ReportRiskScoreOut,
+    RiskAdvisoryReportOut,
+)
+
+
+class PdfReportBuilder:
+    """Encapsulates raw PDF generation for risk advisory reports.
+
+    Builds a minimal valid PDF (PDF 1.4) directly — no third-party PDF
+    library is required.
+    """
+
+    def build(self, report: RiskAdvisoryReportOut, output_dir: Path, filename_template: str) -> Path:
+        """Generate the PDF file on disk and return its path."""
+        output_dir.mkdir(parents=True, exist_ok=True)
+        file_path = output_dir / filename_template.format(report_id=report.report_id)
+        file_path.write_bytes(self._report_pdf(report))
+        return file_path
+
+    # ------------------------------------------------------------------
+    # Public helpers used by the service
+    # ------------------------------------------------------------------
+
+    def risk_priority_label(self, risk_level: str | None) -> str:
+        return RISK_PRIORITY_LABELS.get(
+            (risk_level or "").lower(), (risk_level or UNKNOWN_LABEL).title()
+        )
+
+    def risk_action(self, risk: ReportRiskScoreOut) -> str:
+        category = risk.risk_category_name
+        level = (risk.risk_level or "").lower()
+        if level == RISK_LEVEL_CRITICAL:
+            return f"Immediately review {category} coverage, limits, exclusions, and operational controls."
+        if level == RISK_LEVEL_HIGH:
+            return f"Prioritize {category} in the next insurer or advisor discussion and confirm gaps."
+        if level == RISK_LEVEL_MEDIUM:
+            return f"Validate {category} controls and check whether existing cover limits remain adequate."
+        return f"Monitor {category} during routine risk and renewal reviews."
+
+    def pct(self, value: float | int | None) -> str:
+        if value is None:
+            return NOT_AVAILABLE_LABEL
+        number = float(value)
+        if number <= 1:
+            number *= 100
+        return f"{round(number)}%"
+
+    # ------------------------------------------------------------------
+    # Internal PDF building
+    # ------------------------------------------------------------------
+
+    def _report_pdf(self, report: RiskAdvisoryReportOut) -> bytes:
+        pages = self._report_pdf_pages(report)
+        return self._build_pdf(pages)
+
+    def _report_pdf_pages(self, report: RiskAdvisoryReportOut) -> list[list[tuple[str, int, bool]]]:
+        pages: list[list[tuple[str, int, bool]]] = []
+        current: list[tuple[str, int, bool]] = []
+        max_lines = MAX_LINES_PER_PAGE
+
+        def add_raw(text: str = "", size: int = 10, bold: bool = False) -> None:
+            nonlocal current
+            if len(current) >= max_lines:
+                pages.append(current)
+                current = []
+            current.append((text, size, bold))
+
+        def add(text: str = "", size: int = 10, bold: bool = False, indent: int = 0) -> None:
+            if not text:
+                add_raw("", size, bold)
+                return
+            width = max(35, int(96 - indent * 2 - (size - 10) * 4))
+            prefix = " " * indent
+            for line in textwrap.wrap(str(text), width=width):
+                add_raw(f"{prefix}{line}", size, bold)
+
+        def section(title: str, min_lines: int = 8) -> None:
+            nonlocal current
+            if current and len(current) + min_lines > max_lines:
+                pages.append(current)
+                current = []
+            if current:
+                add()
+            add(title.upper(), 12, True)
+
+        location = (
+            ", ".join(
+                part for part in [report.business.city, report.business.state] if part
+            )
+            or NOT_AVAILABLE_LABEL
+        )
+        sorted_risks = sorted(
+            report.risk_scores, key=lambda item: item.score, reverse=True
+        )
+        top_risks = sorted_risks[:TOP_RISKS_LIMIT]
+        high_risk_count = sum(
+            1
+            for risk in report.risk_scores
+            if (risk.risk_level or "").lower() in HIGH_RISK_LEVELS
+        )
+
+        add("INSURETECH RISK ADVISORY REPORT", 18, True)
+        add(
+            "Business risk profile, coverage priorities, and policy recommendation notes",
+            11,
+        )
+        add(f"Generated: {report.generated_at.strftime('%d %b %Y, %I:%M %p')}", 9)
+        add()
+        section("1. Business Profile")
+        add(f"Business name: {report.business.business_name}")
+        add(f"Industry: {report.business.industry or NOT_AVAILABLE_LABEL}")
+        add(f"Segment: {report.business.segment or NOT_AVAILABLE_LABEL}")
+        add(f"Location: {location}")
+        add(
+            f"Employees: {report.business.employee_count if report.business.employee_count is not None else NOT_AVAILABLE_LABEL}"
+        )
+        add(
+            f"Annual turnover: {report.business.annual_turnover_range or NOT_AVAILABLE_LABEL}"
+        )
+
+        section("2. Executive Summary")
+        add(report.executive_summary)
+        add(
+            f"The assessment reviewed {len(report.risk_scores)} risk categories and found "
+            f"{high_risk_count} category or categories at high or critical priority. "
+            "Recommended policies are ranked from the business profile, calculated risk scores, "
+            "and available policy wording evidence."
+        )
+        if top_risks:
+            add("Highest priority risks:", 10, True)
+            for index, risk in enumerate(top_risks, start=1):
+                add(
+                    f"{index}. {risk.risk_category_name}: {self.pct(risk.score)} "
+                    f"({self.risk_priority_label(risk.risk_level)})",
+                    indent=2,
+                )
+
+        section("3. How To Read This Report")
+        add(
+            "Risk scores are shown from 0 to 100. A higher score means the category should be "
+            "reviewed earlier because the business profile indicates greater exposure or weaker "
+            "controls for that area."
+        )
+        add("Priority guide:", 10, True)
+        add("Low: monitor during normal renewal reviews.", indent=2)
+        add("Medium: validate controls and confirm policy limits.", indent=2)
+        add("High: review coverage soon and resolve material gaps.", indent=2)
+        add("Critical: treat as an immediate coverage and control priority.", indent=2)
+
+        section("4. Risk Score Details")
+        if sorted_risks:
+            for risk in sorted_risks:
+                add(
+                    f"{risk.risk_category_name}: {self.pct(risk.score)} "
+                    f"risk score - {self.risk_priority_label(risk.risk_level)}",
+                    10,
+                    True,
+                )
+                add(self.risk_action(risk), indent=2)
+                if risk.risk_factors:
+                    add("Top contributing factors:", 10, True, indent=2)
+                    for factor in risk.risk_factors[:RISK_FACTORS_LIMIT]:
+                        add(
+                            f"- {factor.name}: {self.pct(factor.score)} contribution",
+                            indent=4,
+                        )
+                else:
+                    add(
+                        "No factor-level breakdown was available for this category.",
+                        indent=2,
+                    )
+        else:
+            add("No risk score data was available for this session.")
+
+        section("5. Recommended Policy Matches")
+        if not report.recommended_policies:
+            add("No policy recommendations were available for this report.")
+        for index, policy in enumerate(report.recommended_policies, start=1):
+            add(f"{index}. {policy.policy_name or UNKNOWN_POLICY_LABEL}", 11, True)
+            add(f"Company: {policy.company_name or UNKNOWN_COMPANY_LABEL}", indent=2)
+            add(
+                f"Recommendation score: {self.pct(policy.recommendation_score)}",
+                indent=2,
+            )
+            add(
+                f"Matched risks: {', '.join(policy.matched_risk_categories) or 'None'}",
+                indent=2,
+            )
+            add("Reason for match:", 10, True, indent=2)
+            add(
+                policy.why_recommended
+                or "Not specified in available recommendation data.",
+                indent=4,
+            )
+            add("Coverage summary:", 10, True, indent=2)
+            add(
+                policy.coverage_summary
+                or "Not specified in available policy evidence.",
+                indent=4,
+            )
+            if policy.coverage_highlights:
+                add("Coverage highlights:", 10, True, indent=2)
+                for item in policy.coverage_highlights[:COVERAGE_HIGHLIGHTS_LIMIT]:
+                    add(f"- {item}", indent=4)
+            if policy.key_benefits:
+                add("Key benefits:", 10, True, indent=2)
+                for item in policy.key_benefits[:KEY_BENEFITS_LIMIT]:
+                    add(f"- {item}", indent=4)
+            if policy.important_limitations:
+                add("Important limitations:", 10, True, indent=2)
+                for item in policy.important_limitations[:IMPORTANT_LIMITATIONS_LIMIT]:
+                    add(f"- {item}", indent=4)
+            add()
+
+        section("6. Action Plan")
+        if top_risks:
+            add("Start with these coverage review actions:", 10, True)
+            for risk in top_risks:
+                add(f"- {self.risk_action(risk)}")
+        for step in report.next_steps:
+            add(f"- {step}")
+
+        section("7. Important Notes")
+        add(
+            "This report is an advisory summary generated from the profiling answers, calculated "
+            "risk scores, recommendations, and available policy wording data in the platform. It "
+            "does not replace the official policy schedule, insurer quotation, policy wording, or "
+            "licensed professional advice."
+        )
+        add(
+            "Before purchase or renewal, confirm sums insured, deductibles, exclusions, sub-limits, "
+            "warranties, waiting periods, claim documentation requirements, and add-ons directly "
+            "with the insurer or advisor."
+        )
+
+        if current:
+            pages.append(current)
+        return pages or [[("INSURETECH RISK ADVISORY REPORT", 18, True)]]
+
+    def _build_pdf(self, pages: list[list[tuple[str, int, bool]]]) -> bytes:
+        objects: list[bytes] = []
+
+        def add_object(body: bytes) -> int:
+            objects.append(body)
+            return len(objects)
+
+        catalog_id = add_object(b"<< /Type /Catalog /Pages 2 0 R >>")
+        pages_id = add_object(b"")
+        font_regular_id = add_object(
+            b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
+        )
+        font_bold_id = add_object(
+            b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"
+        )
+
+        page_ids: list[int] = []
+        for page_number, page in enumerate(pages, start=1):
+            content = self._pdf_page_stream(page, page_number, len(pages))
+            content_id = add_object(
+                b"<< /Length "
+                + str(len(content)).encode("ascii")
+                + b" >>\nstream\n"
+                + content
+                + b"\nendstream"
+            )
+            page_id = add_object(
+                (
+                    f"<< /Type /Page /Parent {pages_id} 0 R /MediaBox [0 0 612 792] "
+                    f"/Resources << /Font << /F1 {font_regular_id} 0 R /F2 {font_bold_id} 0 R >> >> "
+                    f"/Contents {content_id} 0 R >>"
+                ).encode("ascii")
+            )
+            page_ids.append(page_id)
+
+        kids = " ".join(f"{page_id} 0 R" for page_id in page_ids)
+        objects[pages_id - 1] = (
+            f"<< /Type /Pages /Kids [{kids}] /Count {len(page_ids)} >>".encode("ascii")
+        )
+
+        pdf = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+        offsets = [0]
+        for index, body in enumerate(objects, start=1):
+            offsets.append(len(pdf))
+            pdf.extend(f"{index} 0 obj\n".encode("ascii"))
+            pdf.extend(body)
+            pdf.extend(b"\nendobj\n")
+
+        xref_offset = len(pdf)
+        pdf.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+        pdf.extend(b"0000000000 65535 f \n")
+        for offset in offsets[1:]:
+            pdf.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
+        pdf.extend(
+            (
+                f"trailer\n<< /Size {len(objects) + 1} /Root {catalog_id} 0 R >>\n"
+                f"startxref\n{xref_offset}\n%%EOF\n"
+            ).encode("ascii")
+        )
+        return bytes(pdf)
+
+    def _pdf_page_stream(
+        self, lines: list[tuple[str, int, bool]], page_number: int, total_pages: int
+    ) -> bytes:
+        commands = [
+            "BT",
+            "/F2 9 Tf",
+            "54 760 Td",
+            f"({self._pdf_escape('InsureTech Advisory')}) Tj",
+            "ET",
+        ]
+        y = 724
+        for text, size, bold in lines:
+            font = "F2" if bold else "F1"
+            commands.extend(
+                [
+                    "BT",
+                    f"/{font} {size} Tf",
+                    f"54 {y} Td",
+                    f"({self._pdf_escape(text)}) Tj",
+                    "ET",
+                ]
+            )
+            y -= 18 if size >= 12 else 14
+
+        commands.extend(
+            [
+                "BT",
+                "/F1 8 Tf",
+                "54 34 Td",
+                f"({self._pdf_escape(f'Page {page_number} of {total_pages}')}) Tj",
+                "ET",
+            ]
+        )
+        return "\n".join(commands).encode("latin-1", errors="replace")
+
+    def _pdf_escape(self, text: str) -> str:
+        safe = str(text).encode("latin-1", errors="replace").decode("latin-1")
+        return safe.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+    def build_legacy_from_text(self, content: str) -> bytes:
+        pages: list[list[tuple[str, int, bool]]] = []
+        current: list[tuple[str, int, bool]] = []
+        for raw_line in content.splitlines():
+            text = raw_line.strip()
+            if len(current) >= MAX_LINES_PER_PAGE:
+                pages.append(current)
+                current = []
+            is_heading = (
+                bool(text) and not raw_line.startswith((" ", "-")) and len(text) < 50
+            )
+            size = (
+                14
+                if text == "INSURETECH RISK ADVISORY REPORT"
+                else 11
+                if is_heading
+                else 10
+            )
+            current.append((text, size, is_heading))
+        if current:
+            pages.append(current)
+        return self._build_pdf(
+            pages or [[("INSURETECH RISK ADVISORY REPORT", 18, True)]]
+        )

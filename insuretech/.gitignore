@@ -1,0 +1,51 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Environment files
+.env
+
+# Node
+node_modules/
+dist/
+
+# Build
+build/
+
+# OS and IDE files
+.DS_Store
+.idea/
+**/.idea/
+.ai/
+**/.ai/
+*.iml
+**/pdfs/
+
+# Dev artifacts
+.antigravitycli/
+cleanup_seed.py
+seed_meta.py
+master_seed_clean.json
+parsed_output/
+cleaned_output/
+section_output/
+metadata_output/
+chunk_output/
+data/
+data.zip
+backfill_cloudinary.py
+backend/question.json
+backend/seed.py
+backend/seed-question.py
+backend/seed-segments.py
+backend/seed_wizard.py
+backend/notebooks/
+backend/generated_reports/
+backend/app/ai/output/
+docs/
