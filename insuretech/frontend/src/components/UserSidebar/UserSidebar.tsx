@@ -121,6 +121,7 @@ interface UserSidebarProps {
   activeSection: Section
   onSectionChange: (section: Section) => void
   onAfterNavigate?: () => void
+  selectedBusinessId?: string
 }
 
 export function UserSidebar({
