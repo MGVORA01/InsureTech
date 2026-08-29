@@ -36,7 +36,7 @@ Create a `.env` file in `insuretech/backend/` with the required settings.
 
 ### Required environment variables
 
-- `DATABASE_URL` – PostgreSQL DSN, e.g. `postgresql+asyncpg://user:pass@localhost:5432/insuretech`
+- `DATABASE_URL` – PostgreSQL DSN, e.g. `postgresql+asyncpg://user:pass@localhost:5432/insuretech`. Plain Render-style URLs such as `postgresql://...` or `postgres://...` are normalized to use `asyncpg` at startup.
 - `SECRET_KEY` – signing key for JWT tokens
 - `ALGORITHM` – JWT algorithm, typically `HS256`
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
@@ -100,7 +100,7 @@ Swagger UI and API docs are available at `http://localhost:8000/docs`.
 
 ## Deployment notes
 
-- Configure `DATABASE_URL` for the target environment.
+- Configure `DATABASE_URL` for the target environment. The backend uses SQLAlchemy asyncio, so PostgreSQL URLs must resolve to the `asyncpg` driver.
 - Use secure secrets for `SECRET_KEY`, mail credentials, and Cloudinary.
 - Ensure CORS is set for the frontend host via `app/core/middleware.py`.
 - Monitor `LOG_LEVEL` for production readiness.
