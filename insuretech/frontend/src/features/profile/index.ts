@@ -5,6 +5,7 @@ export type {
   Industry,
   BusinessProfile,
   CreateBusinessRequest,
+  UpdateBusinessRequest,
 } from './profile.types'
 export { getProfileErrorMessage, profileApi } from './profileApi'
 export {

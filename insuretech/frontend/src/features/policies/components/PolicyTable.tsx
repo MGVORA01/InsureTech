@@ -1,3 +1,4 @@
+import { Loader } from '@/components/Loader'
 import type { PolicyListItem } from '../policies.types'
 
 interface PolicyTableProps {
@@ -11,12 +12,8 @@ interface PolicyTableProps {
 export function PolicyTable({ items, loading, onEdit, onDelete, onUpload }: PolicyTableProps) {
   if (loading) {
     return (
-      <div className="mt-6 space-y-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="animate-pulse rounded-xl border bg-white" style={{ borderColor: 'var(--color-border)' }}>
-            <div className="p-5" style={{ backgroundColor: 'var(--color-surface-alt)' }} />
-          </div>
-        ))}
+      <div className="mt-6 rounded-xl border bg-white p-6" style={{ borderColor: 'var(--color-border)' }}>
+        <Loader variant="skeleton" label="Loading policies..." size={40} />
       </div>
     )
   }

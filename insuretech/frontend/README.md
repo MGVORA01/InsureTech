@@ -1,77 +1,138 @@
-# InsureTech Frontend
+# InsureTech Frontend — User & Admin Web Application
 
-This frontend delivers the InsureTech user and admin experience.
-It is built with React, TypeScript, Vite, Redux Toolkit, React Query, and React Router.
+The **InsureTech Frontend** is a modern, responsive web application built with **React 18**, **TypeScript**, **Vite**, **Redux Toolkit**, and **React Query**. It provides business risk profiling, intelligent policy recommendations, side-by-side policy comparison, interactive RAG chat assistance, and enterprise administration dashboards.
 
-## Architecture
+---
 
-- Framework: React + Vite
-- Language: TypeScript
-- State: Redux Toolkit + React Query
-- Routing: React Router v7
-- HTTP: Axios
-- Styling: Tailwind-style utilities and custom CSS
+## 🛠️ Tech Stack & Architecture
 
-## Key responsibilities
+- **Core Framework**: React 18.2 + Vite 5
+- **Language**: TypeScript 5.2
+- **State Management**: Redux Toolkit (global state) + React Query / TanStack Query (server state & caching)
+- **Routing**: React Router v7 with Protected & Admin Route Guards
+- **HTTP Client**: Axios with request/response interceptors for JWT token handling
+- **UI & Icons**: Material UI Icons (`@mui/icons-material`), Lucide React, and Vanilla CSS Design System with CSS variables
+- **Form & Validation**: Controlled state & custom validation hooks
 
-- user authentication and onboarding
-- business risk profiling and insurer recommendations
-- policy comparison and detail pages
-- AI chat and assistance
-- admin dashboards for users, policies, and insurers
+---
 
-## Setup
+## 📁 Frontend Directory Architecture
 
-```bash
-cd insuretech/frontend
-npm install
-cp .env.example .env
+```text
+frontend/
+├── src/
+│   ├── assets/               # Branding assets, images, and SVG icons
+│   ├── components/           # Reusable UI components & layouts
+│   │   ├── Navbar/           # Navigation headers
+│   │   ├── ProtectedRoute/   # User role authentication route guards
+│   │   └── UserSidebar/      # User dashboard navigation sidebar
+│   ├── config/               # Base Axios API client configuration (`api.ts`)
+│   ├── features/             # Domain Feature Modules
+│   │   ├── auth/             # User login, register, password reset logic & state
+│   │   ├── chatbot/          # AI Chatbot drawer & conversation state
+│   │   ├── comparison/       # Policy comparison view, chat popup & localStorage storage
+│   │   ├── profiling/        # Risk profiling questionnaire engine
+│   │   └── recommendations/  # Recommendation list & risk score cards
+│   ├── pages/                # Top-level Page Components
+│   │   ├── DashboardPage.tsx
+│   │   ├── PolicyComparisonPage.tsx
+│   │   ├── RecommendationsPage.tsx
+│   │   ├── RiskAssessmentPage.tsx
+│   │   └── admin/            # Admin management pages (Users, Policies, Insurers)
+│   ├── routes/               # Router definitions & route guard mappings
+│   ├── store/                # Redux Toolkit store setup & slices
+│   ├── App.tsx               # Main application layout and routes
+│   └── main.tsx              # Application root entry point
+├── public/                   # Static public assets
+├── index.html                # HTML entry template
+├── package.json              # Dependencies and npm scripts
+├── vite.config.ts            # Vite build configuration
+└── README.md                 # Frontend developer documentation
 ```
 
-Update `insuretech/frontend/.env`:
+---
+
+## ⚙️ Environment Configuration
+
+Create a `.env` file in `insuretech/frontend/`:
 
 ```env
 VITE_API_URL=http://localhost:8000
 ```
 
-## Run locally
+---
 
+## 🚀 Setup & Local Execution
+
+### 1. Install Dependencies
+```bash
+cd insuretech/frontend
+npm install
+```
+
+### 2. Run Local Development Server
 ```bash
 npm run dev
 ```
+Open your browser at `http://localhost:5173`.
 
-Open the app in the browser at `http://localhost:5173`.
-
-## Important files
-
-- `src/App.tsx` — application routing and page layout
-- `src/config/api.ts` — Axios API client configuration
-- `src/pages` — page components for user and admin flows
-- `src/features` — feature modules for auth, profiling, chat, and policy workflows
-- `src/routes` — protected and admin route guards
-- `src/store` — Redux store setup
-
-## Frontend workflow
-
-- Run `npm run dev` during development to use Vite hot module replacement.
-- Keep the backend running at `VITE_API_URL` for API access.
-- Use `npm run build` to create a production bundle.
-
-## Build and production
-
+### 3. Build for Production
 ```bash
 npm run build
 ```
 
-Preview the production build locally:
-
+### 4. Preview Production Build
 ```bash
 npm run preview
 ```
 
-## Developer guidance
+---
 
-- Keep API endpoint paths in sync with backend route definitions.
-- Use feature modules to isolate domain behavior.
-- Keep UI state minimal and delegate data caching to React Query.
-- Document new page routes and auth requirements in `src/routes`.
+## 💡 Key Feature Modules & User Flows
+
+```mermaid
+flowchart LR
+    Auth["1. Auth & Login"] --> Profiling["2. Business Risk Profiling"]
+    Profiling --> Recommendations["3. Policy Recommendations"]
+    Recommendations --> Comparison["4. Policy Comparison"]
+    Comparison --> Chat["5. Comparison Chat Assistant"]
+```
+
+### 1. Onboarding & Authentication (`src/features/auth`)
+- User registration, login, and JWT access/refresh token storage.
+- Automated token refresh via Axios interceptor.
+
+### 2. Business Risk Profiling (`src/features/profiling`)
+- Multi-step questionnaire capturing industry sector, operational risks, asset coverage, and liabilities.
+- Real-time submission calculating business risk scores.
+
+### 3. Policy Recommendations (`src/features/recommendations`)
+- Displays recommended policies tailored to the business profile.
+- Shows risk score priorities, policy details, PDF downloads, and selection checkboxes for comparison.
+
+### 4. Policy Comparison View (`src/features/comparison`)
+- Side-by-side analysis across 5 categories: **What is Covered**, **Coverage Scope**, **Exclusions**, **Claims Process**, and **Conditions**.
+- Highlights Advantages, Limitations, Business Risk Alignment, and Overall Recommendation.
+- Persists comparison selections in `localStorage` (`insuretech:comparison:<session_id>:<business_id>`).
+
+### 5. Policy Comparison Chat (`ComparisonChatPopUp.tsx`)
+- Floating chat window allowing users to ask specific questions about the two compared policies.
+- Context-aware RAG responses referencing Policy A vs Policy B wording.
+
+---
+
+## 🛠️ Useful Developer Commands
+
+```bash
+# Start development server
+npm run dev
+
+# Type-check TypeScript code
+npx tsc --noEmit
+
+# Lint source code
+npm run lint
+
+# Build production bundle
+npm run build
+```

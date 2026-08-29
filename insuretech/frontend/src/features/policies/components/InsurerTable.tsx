@@ -1,3 +1,4 @@
+import { Loader } from '@/components/Loader'
 import type { Insurer } from '../policies.types'
 
 interface InsurerTableProps {
@@ -10,12 +11,8 @@ interface InsurerTableProps {
 export function InsurerTable({ items, loading, onEdit, onDelete }: InsurerTableProps) {
   if (loading) {
     return (
-      <div className="mt-6 space-y-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="animate-pulse rounded-xl border bg-white" style={{ borderColor: 'var(--color-border)' }}>
-            <div className="p-5" style={{ backgroundColor: 'var(--color-surface-alt)' }} />
-          </div>
-        ))}
+      <div className="mt-6 rounded-xl border bg-white p-6" style={{ borderColor: 'var(--color-border)' }}>
+        <Loader variant="skeleton" label="Loading insurers..." size={40} />
       </div>
     )
   }

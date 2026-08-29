@@ -15,3 +15,20 @@ export interface FeedbackResponse {
   created_at: string
   updated_at: string | null
 }
+
+export interface AdminFeedbackItem {
+  id: string
+  userName: string
+  userEmail: string
+  response: string
+  rating: number
+  recommendationsHelpful: string | null
+  submittedAt: string
+}
+
+export interface AdminFeedbackListResponse {
+  feedbacks: AdminFeedbackItem[]
+  total: number
+  page: number
+  limit: number
+}

@@ -15,6 +15,10 @@ logger = get_logger(__name__)
 class BadRequestException(Exception):
     """Raised when request data is invalid."""
 
+    def __init__(self, message: str, data: dict | None = None):
+        super().__init__(message)
+        self.data = data
+
 
 class UnauthorizedException(Exception):
     """Raised when authentication fails."""
@@ -98,7 +102,7 @@ async def bad_request_exception_handler(
 
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
-        content=APIResponse.error_response(message=str(exc)).model_dump(),
+        content=APIResponse.error_response(message=str(exc), data=getattr(exc, 'data', None)).model_dump(),
     )
 
 

@@ -2,13 +2,14 @@ import json
 from uuid import UUID
 
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.llm_providers import generate_response
-from app.ai.rag_pipeline import retrieve_chunks
+from app.ai.providers.llm_response_generator import generate_response
+from app.ai.retrieval.hybrid_policy_retriever import retrieve_chunks
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.logging import get_logger
-from app.models import User
+from app.models import DocumentChunk, User
 from app.modules.businesses.service import Service as BusinessService
 from app.modules.policy_comparison.constants import (
     ADVANTAGE_TERMS,
@@ -64,6 +65,23 @@ class ComparisonService:
                 text = text[:-3].strip()
         return text
 
+    def _extract_json_block(self, text: str) -> str | None:
+        if not text:
+            return None
+        for opener, closer in (("{", "}"), ("[", "]")):
+            start = text.find(opener)
+            if start == -1:
+                continue
+            depth = 0
+            for index, ch in enumerate(text[start:], start):
+                if ch == opener:
+                    depth += 1
+                elif ch == closer:
+                    depth -= 1
+                    if depth == 0:
+                        return text[start : index + 1]
+        return None
+
     async def _verify_business_ownership(
         self,
         db: AsyncSession,
@@ -115,8 +133,12 @@ class ComparisonService:
             )
             return
         selected = {request.policy_id_a, request.policy_id_b}
-        if not selected.issubset(recommended_policy_ids):
-            raise BadRequestException(SESSION_POLICY_MISMATCH_MESSAGE)
+        if recommended_policy_ids and not selected.issubset(recommended_policy_ids):
+            logger.info(
+                "Selected policies %s for comparison in session %s include non-recommended policies",
+                selected,
+                request.session_id,
+            )
 
     @staticmethod
     def _shorten_text(text: str, limit: int = 900) -> str:
@@ -136,10 +158,17 @@ class ComparisonService:
         if not cleaned:
             return []
 
+        # Split by periods, semicolons, or newlines
+        raw_parts = cleaned.replace(";", ". ").replace("\n", ". ").split(". ")
+        parts = []
+        for raw_part in raw_parts:
+            part = raw_part.strip(" .:-•\t|")
+            if part:
+                parts.append(part)
+
         candidates = []
-        for part in cleaned.replace(";", ". ").split(". "):
-            sentence = part.strip(" .:-•\t")
-            if len(sentence) < 24 or sentence.count("|") >= 3:
+        for sentence in parts:
+            if len(sentence) < 15:
                 continue
             lower = sentence.lower()
             if terms and not any(term in lower for term in terms):
@@ -147,8 +176,19 @@ class ComparisonService:
             candidates.append(self._shorten_text(sentence, max_length))
             if len(candidates) >= limit:
                 break
-        if not candidates and not terms:
+
+        # Fallback if term-filtering produced no candidates
+        if not candidates and terms:
+            for sentence in parts:
+                if len(sentence) >= 15:
+                    candidates.append(self._shorten_text(sentence, max_length))
+                    if len(candidates) >= limit:
+                        break
+
+        # Ultimate fallback if sentence splitting produced no candidates
+        if not candidates and cleaned:
             candidates.append(self._shorten_text(cleaned, max_length))
+
         return list(dict.fromkeys(candidates))[:limit]
 
     def _format_pointwise_value(self, chunks: list[dict]) -> str:
@@ -156,15 +196,27 @@ class ComparisonService:
             return INFO_NOT_AVAILABLE_MESSAGE
 
         points = []
-        for chunk in chunks[:2]:
+        for chunk in chunks[:3]:
+            chunk_text = chunk.get("text", "")
+            if not chunk_text:
+                continue
             meta = chunk.get("metadata", {})
-            section_name = meta.get("section_name") or "Retrieved section"
-            extracted = self._extract_points_from_text(chunk.get("text", ""), limit=2)
+            section_name = meta.get("section_name") or "Policy wording"
+            extracted = self._extract_points_from_text(chunk_text, limit=2)
             for item in extracted:
                 points.append(f"{section_name}: {item}")
                 if len(points) >= 3:
                     return "\n".join(points)
-        return "\n".join(points) if points else INFO_NOT_AVAILABLE_MESSAGE
+
+        if points:
+            return "\n".join(points)
+
+        # Fallback if chunks exist but points is empty
+        for chunk in chunks:
+            if chunk.get("text"):
+                return self._shorten_text(chunk["text"], 250)
+
+        return INFO_NOT_AVAILABLE_MESSAGE
 
     def _format_retrieved_value(self, chunks: list[dict]) -> str:
         if not chunks:
@@ -305,7 +357,7 @@ class ComparisonService:
             return INFO_NOT_AVAILABLE_MESSAGE
 
         entries = []
-        for chunk in chunks[:1]:
+        for chunk in chunks[:2]:
             meta = chunk.get("metadata", {})
             section_name = meta.get("section_name") or "Retrieved section"
             entries.append(
@@ -316,14 +368,17 @@ class ComparisonService:
     def _extract_policy_points(
         self,
         chunks: list[dict],
-        terms: tuple[str, ...],
+        terms: tuple[str, ...] | None = None,
         limit: int = 4,
     ) -> list[str]:
         points = []
         for chunk in chunks:
+            chunk_text = chunk.get("text", "")
+            if not chunk_text:
+                continue
             points.extend(
                 self._extract_points_from_text(
-                    chunk.get("text", ""),
+                    chunk_text,
                     terms=terms,
                     limit=2,
                     max_length=150,
@@ -331,6 +386,24 @@ class ComparisonService:
             )
             if len(points) >= limit:
                 break
+
+        # Fallback without terms if terms filtering yielded no points
+        if not points and terms and chunks:
+            for chunk in chunks:
+                chunk_text = chunk.get("text", "")
+                if not chunk_text:
+                    continue
+                points.extend(
+                    self._extract_points_from_text(
+                        chunk_text,
+                        terms=None,
+                        limit=2,
+                        max_length=150,
+                    )
+                )
+                if len(points) >= limit:
+                    break
+
         deduped = list(dict.fromkeys(points))[:limit]
         return deduped or [INFO_NOT_AVAILABLE_MESSAGE]
 
@@ -402,8 +475,9 @@ class ComparisonService:
         db: AsyncSession,
         policy_id: UUID,
         query: str,
+        section_name: str | None,
         section_type: str | None,
-        top_k: int = 2,
+        top_k: int = 5,
     ) -> list[dict]:
         try:
             chunks = await retrieve_chunks(
@@ -413,23 +487,105 @@ class ComparisonService:
                 section_type=section_type,
                 top_k=top_k,
             )
-            if chunks or section_type is None:
+            if chunks:
                 return chunks
 
-            return await retrieve_chunks(
+            # If strict section_type retrieval returned empty, attempt search without section_type filter
+            chunks = await retrieve_chunks(
                 db=db,
                 query=query,
                 policy_ids=[policy_id],
                 section_type=None,
                 top_k=top_k,
+                use_detected_section_type=False,
             )
+            if chunks:
+                return chunks
+
+            fallback_query = section_name or query
+            if fallback_query != query:
+                chunks = await retrieve_chunks(
+                    db=db,
+                    query=fallback_query,
+                    policy_ids=[policy_id],
+                    section_type=None,
+                    top_k=top_k,
+                    use_detected_section_type=False,
+                )
+                if chunks:
+                    return chunks
+
+            alternate_query = section_name or query
+            if alternate_query and alternate_query != fallback_query:
+                chunks = await retrieve_chunks(
+                    db=db,
+                    query=alternate_query,
+                    policy_ids=[policy_id],
+                    section_type=None,
+                    top_k=top_k,
+                    use_detected_section_type=False,
+                )
+                if chunks:
+                    return chunks
         except Exception as exc:
             logger.warning(
-                "Chunk retrieval failed for policy=%s section=%s: %s",
+                "Hybrid chunk retrieval failed for policy=%s section=%s: %s",
                 policy_id,
                 section_type,
                 exc,
             )
+
+        # Direct DB query fallback for policy chunks if hybrid retriever returns nothing
+        try:
+            res = await db.execute(
+                select(DocumentChunk)
+                .where(DocumentChunk.policy_id == policy_id)
+                .order_by(DocumentChunk.chunk_index)
+                .limit(20)
+            )
+            db_chunks = list(res.scalars().all())
+            if not db_chunks:
+                return []
+
+            matched = []
+            section_key = (section_type or section_name or "").lower()
+            keywords = [section_key] if section_key else []
+            if "cover" in section_key or "what" in section_key:
+                keywords.extend(["coverage", "covered", "cover", "benefit", "scope", "indemnify", "indemnity", "insured", "peril", "risk", "loss", "damage", "property", "fire", "liability", "section"])
+            elif "exclusion" in section_key:
+                keywords.extend(["exclusion", "excluded", "exception", "not covered", "not liable", "limitation", "deductible", "excess", "not extend", "restrict"])
+            elif "claim" in section_key:
+                keywords.extend(["claim", "notice", "procedure", "notification", "settlement", "documentation", "proof", "report", "loss", "incident"])
+            elif "condition" in section_key:
+                keywords.extend(["condition", "duties", "obligation", "warranty", "cancellation", "compliance", "duty", "terms", "general"])
+
+            for c in db_chunks:
+                meta = c.document_metadata or {}
+                stype = (meta.get("section_type") or "").lower()
+                sname = (meta.get("section_name") or "").lower()
+                text_lower = (c.chunk_text or "").lower()
+                if any(kw in stype or kw in sname or kw in text_lower for kw in keywords if kw):
+                    matched.append(c)
+
+            chosen = matched if matched else db_chunks
+            return [
+                {
+                    "chunk_id": str(c.id),
+                    "text": c.chunk_text,
+                    "policy_id": str(c.policy_id),
+                    "document_id": str(c.document_id),
+                    "similarity": 0.8,
+                    "page_number": c.page_number,
+                    "metadata": c.document_metadata or {},
+                }
+                for c in chosen[:top_k]
+            ]
+        except Exception as exc:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            logger.warning("Direct DB chunk fallback failed for policy=%s: %s", policy_id, exc)
             return []
 
     async def compare(
@@ -478,12 +634,14 @@ class ComparisonService:
                 db=db,
                 policy_id=request.policy_id_a,
                 query=query,
+                section_name=section_name,
                 section_type=section_type,
             )
             policy_b_chunks = await self._retrieve_section_for_policy(
                 db=db,
                 policy_id=request.policy_id_b,
                 query=query,
+                section_name=section_name,
                 section_type=section_type,
             )
             section_chunks[section_name] = {
@@ -514,14 +672,23 @@ class ComparisonService:
                 temperature=LLM_TEMPERATURE,
             )
             clean = self._strip_json_fences(llm_response)
-            parsed = CompareResponse.model_validate_json(clean)
-            result = self._normalize_compare_response(parsed, section_chunks)
-            return APIResponse.success_response(
-                message=COMPARISON_COMPLETED_MESSAGE,
-                data=result.model_dump(),
+            parsed = None
+            try:
+                parsed = CompareResponse.model_validate_json(clean)
+            except (ValidationError, ValueError):
+                fallback_json = self._extract_json_block(llm_response)
+                if fallback_json:
+                    parsed = CompareResponse.model_validate_json(fallback_json)
+            if parsed is not None:
+                result = self._normalize_compare_response(parsed, section_chunks)
+                return APIResponse.success_response(
+                    message=COMPARISON_COMPLETED_MESSAGE,
+                    data=result.model_dump(),
+                )
+            logger.warning(
+                "Comparison LLM response could not be parsed, using fallback comparison: %s",
+                llm_response,
             )
-        except (ValidationError, ValueError) as exc:
-            logger.warning("Comparison LLM response could not be parsed: %s", exc)
         except Exception as exc:
             logger.warning(
                 "Groq comparison generation failed, using retrieved chunks: %s", exc
@@ -582,14 +749,32 @@ class ComparisonService:
             )
         except Exception as exc:
             logger.warning("Comparison chat retrieval failed: %s", exc)
-            result = CompareChatResponse(
-                answer=INFO_NOT_AVAILABLE_MESSAGE,
-                sources=[],
-            )
-            return APIResponse.success_response(
-                message=CHAT_RESPONSE_GENERATED_MESSAGE,
-                data=result.model_dump(),
-            )
+            chunks = []
+
+        if not chunks:
+            try:
+                res = await db.execute(
+                    select(DocumentChunk)
+                    .where(DocumentChunk.policy_id.in_([request.policy_id_a, request.policy_id_b]))
+                    .order_by(DocumentChunk.policy_id, DocumentChunk.chunk_index)
+                    .limit(request.top_k * 2)
+                )
+                db_chunks = list(res.scalars().all())
+                chunks = [
+                    {
+                        "chunk_id": str(c.id),
+                        "text": c.chunk_text,
+                        "policy_id": str(c.policy_id),
+                        "document_id": str(c.document_id),
+                        "similarity": 0.8,
+                        "page_number": c.page_number,
+                        "metadata": c.document_metadata or {},
+                    }
+                    for c in db_chunks
+                ]
+            except Exception as exc:
+                logger.warning("Direct DB chat fallback failed: %s", exc)
+                chunks = []
 
         if not chunks:
             result = CompareChatResponse(

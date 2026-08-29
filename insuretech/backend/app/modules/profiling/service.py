@@ -38,6 +38,7 @@ from app.modules.profiling.constants import (
     SESSION_STARTED_MESSAGE,
     SESSION_STATE_FETCHED_MESSAGE,
     SESSION_STATUS_COMPLETED,
+    SESSION_STATUS_IN_PROGRESS,
     TIER2_QUESTIONS_FETCHED_MESSAGE,
     UNKNOWN_LABEL,
     UNKNOWN_LEVEL_LABEL,
@@ -147,26 +148,8 @@ class ProfilingService:
                 RESUMED_SESSION_MESSAGE, state.model_dump()
             )
 
-        latest_completed = await repository.get_latest_completed_session(
-            db, business.id
-        )
-        if latest_completed:
-            logger.info(
-                "Reopening completed session %s for business %s",
-                latest_completed.id,
-                business.id,
-            )
-            state = await self._build_section_state(
-                db,
-                latest_completed,
-                business,
-                SECTIONS_ORDER[0],
-                tier=tier,
-            )
-            return APIResponse.success_response(
-                LOADED_COMPLETED_SESSION_MESSAGE, state.model_dump()
-            )
-
+        # Always create a new session for "Start new assessment"
+        # Do not reopen completed sessions - use getSessionState with resumeSessionId for editing
         session = await repository.create_session(db, business.id)
         await repository.commit(db)
         logger.info(
@@ -191,11 +174,19 @@ class ProfilingService:
         """
         session, business = await self._resolve_session(session_id, user, db)
 
+        # If session is completed and a specific section is requested (for editing),
+        # reset the session status to allow editing
+        if session.status == SESSION_STATUS_COMPLETED and section:
+            session.status = SESSION_STATUS_IN_PROGRESS
+            await db.flush()
+            await db.refresh(session)
+
         target = section or session.current_section
 
         state = await self._build_section_state(
             db, session, business, target, tier=tier
         )
+        await repository.commit(db)
         return APIResponse.success_response(
             SESSION_STATE_FETCHED_MESSAGE, state.model_dump()
         )
@@ -214,8 +205,12 @@ class ProfilingService:
         """
         session, business = await self._resolve_session(session_id, user, db)
 
+        # Allow editing of completed sessions (user is revising their assessment)
         if session.status == SESSION_STATUS_COMPLETED:
-            raise BadRequestException("Session is already completed")
+            session.status = SESSION_STATUS_IN_PROGRESS
+            await db.flush()
+            await db.refresh(session)
+        
         await repository.save_answer(db, session.id, data.question_id, data.answer_value)
         logger.info(
             "Answer saved for session %s, question %s", session.id, data.question_id
@@ -247,8 +242,12 @@ class ProfilingService:
         """Save multiple answers in a batch."""
         session, business = await self._resolve_session(session_id, user, db)
 
+        # Allow editing of completed sessions (user is revising their assessment)
         if session.status == SESSION_STATUS_COMPLETED:
-            raise BadRequestException("Session is already completed")
+            session.status = SESSION_STATUS_IN_PROGRESS
+            await db.flush()
+            await db.refresh(session)
+        
         for ans_data in data.answers:
             await repository.save_answer(db, session.id, ans_data.question_id, ans_data.answer_value)
 

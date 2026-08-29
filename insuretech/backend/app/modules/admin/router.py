@@ -17,6 +17,7 @@ from app.modules.admin.constants import (
     ADMIN_TAG,
     DOCUMENT_DETAIL_ROUTE,
     DOCUMENTS_ROUTE,
+    FEEDBACK_ROUTE,
     STATS_ROUTE,
     UPLOAD_FILE_ROUTE,
     UPLOAD_ROUTE,
@@ -92,6 +93,26 @@ async def admin_update_user_status(
     """Update a user's active status."""
     _ = current_user
     return await Service.update_user_status_service(db, user_id, body.is_active)
+
+
+@router.get(FEEDBACK_ROUTE)
+async def admin_get_feedback_responses(
+    current_user: Annotated[User, Depends(role_required(ADMIN_ROLE))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    search: str | None = None,
+    sort_order: str = "desc",
+) -> APIResponse:
+    """Fetch feedback responses for admin review."""
+    _ = current_user
+    return await Service.get_feedback_responses_service(
+        db,
+        page,
+        limit,
+        search,
+        sort_order,
+    )
 
 
 @router.post(UPLOAD_ROUTE, status_code=status.HTTP_201_CREATED)

@@ -5,6 +5,7 @@ import type {
   CreateBusinessRequest,
   Industry,
   Segment,
+  UpdateBusinessRequest,
 } from './profile.types'
 import { PROFILE_ENDPOINTS, PROFILE_MESSAGES } from './profile.constants'
 
@@ -95,6 +96,14 @@ export const profileApi = {
   async getBusinessById(id: string): Promise<BusinessProfile> {
     const response = await baseApi.get<ApiEnvelope<BusinessProfile>>(
       PROFILE_ENDPOINTS.businessById(id),
+    )
+    return unwrapData<BusinessProfile>(response)
+  },
+
+  async updateBusiness(id: string, payload: UpdateBusinessRequest): Promise<BusinessProfile> {
+    const response = await baseApi.put<ApiEnvelope<BusinessProfile>>(
+      PROFILE_ENDPOINTS.updateBusiness(id),
+      payload,
     )
     return unwrapData<BusinessProfile>(response)
   },

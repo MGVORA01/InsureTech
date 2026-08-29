@@ -1,57 +1,60 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchPolicies } from '../policies/policiesApi'
-import { comparePolicies } from './comparisonApi'
-import type { PolicyListItem } from '../policies/policies.types'
-import type { CompareRequest, CompareResponse } from './comparison.types'
-import ComparisonChatPopUp from './ComparisonChatPopUp'
+import { useCallback, useEffect, useRef, useState } from "react";
+import { fetchPolicies } from "../policies/policiesApi";
+import { comparePolicies } from "./comparisonApi";
+import type { PolicyListItem } from "../policies/policies.types";
+import type { CompareRequest, CompareResponse } from "./comparison.types";
+import ComparisonChatPopUp from "./ComparisonChatPopUp";
+import { useNavigationLock } from "../../store/navigationLock";
+import { loadComparisonState, saveComparisonState } from "./comparisonStorage";
 
 interface ComparisonViewProps {
-  businessProfileId: string
-  sessionId?: string
-  recommendedPolicies?: PolicyListItem[]
-  initialPolicyA?: string
-  initialPolicyB?: string
-  autoCompare?: boolean
-  openChatSignal?: number
+  businessProfileId: string;
+  sessionId?: string;
+  recommendedPolicies?: PolicyListItem[];
+  initialPolicyA?: string;
+  initialPolicyB?: string;
+  autoCompare?: boolean;
+  openChatSignal?: number;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  'What is Covered': 'What is Covered',
-  Coverage: 'Coverage',
-  Exclusions: 'Exclusions',
-  'Claims Process': 'Claims Process',
-  Conditions: 'Conditions',
-  coverage: 'Coverage',
-  exclusions: 'Exclusions',
-  claims: 'Claims Process',
-  financial: 'Financials',
-  conditions: 'Terms & Conditions',
-}
+  "What is Covered": "What is Covered",
+  Coverage: "Coverage",
+  Exclusions: "Exclusions",
+  "Claims Process": "Claims Process",
+  Conditions: "Conditions",
+  coverage: "Coverage",
+  exclusions: "Exclusions",
+  claims: "Claims Process",
+  financial: "Financials",
+  conditions: "Terms & Conditions",
+};
 
-const UNAVAILABLE_TEXT = 'Information not available in the selected policies.'
+const UNAVAILABLE_TEXT = "Information not available in the selected policies.";
 
 function splitIntoPoints(value: string): string[] {
-  const cleaned = value.trim()
-  if (!cleaned) return [UNAVAILABLE_TEXT]
+  const cleaned = value.trim();
+  if (!cleaned) return [UNAVAILABLE_TEXT];
 
   const explicitPoints = cleaned
     .split(/\n+|(?:^|\s)[-*]\s+|(?:^|\s)\d+\.\s+/)
     .map((point) => point.trim())
-    .filter(Boolean)
+    .filter(Boolean);
 
-  if (explicitPoints.length > 1) return explicitPoints.slice(0, 5)
+  if (explicitPoints.length > 1) return explicitPoints.slice(0, 5);
 
   const sentencePoints = cleaned
     .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
     ?.map((point) => point.trim())
-    .filter(Boolean)
+    .filter(Boolean);
 
-  if (sentencePoints && sentencePoints.length > 1) return sentencePoints.slice(0, 4)
-  return [cleaned]
+  if (sentencePoints && sentencePoints.length > 1)
+    return sentencePoints.slice(0, 4);
+  return [cleaned];
 }
 
 function PointList({ value }: { value: string }) {
-  const points = splitIntoPoints(value)
+  const points = splitIntoPoints(value);
   return (
     <ul className="m-0 list-disc pl-[1.1rem]">
       {points.map((point, index) => (
@@ -60,103 +63,173 @@ function PointList({ value }: { value: string }) {
         </li>
       ))}
     </ul>
-  )
+  );
 }
 
 function renderListItems(items: string[]) {
-  const safeItems = items.length > 0
-    ? items.flatMap((item) => splitIntoPoints(item))
-    : [UNAVAILABLE_TEXT]
-  return safeItems.map((item, index) => <li key={`${item}-${index}`} className="mb-1 text-sm leading-6 text-text-primary">{item}</li>)
+  const safeItems =
+    items.length > 0
+      ? items.flatMap((item) => splitIntoPoints(item))
+      : [UNAVAILABLE_TEXT];
+  return safeItems.map((item, index) => (
+    <li
+      key={`${item}-${index}`}
+      className="mb-1 text-sm leading-6 text-text-primary"
+    >
+      {item}
+    </li>
+  ));
 }
 
 export default function ComparisonView({
   businessProfileId,
   sessionId,
   recommendedPolicies,
-  initialPolicyA = '',
-  initialPolicyB = '',
+  initialPolicyA = "",
+  initialPolicyB = "",
   autoCompare = false,
   openChatSignal = 0,
 }: ComparisonViewProps) {
-  const [policies, setPolicies] = useState<PolicyListItem[]>([])
-  const [loadingPolicies, setLoadingPolicies] = useState(!recommendedPolicies)
-  const [policyA, setPolicyA] = useState(initialPolicyA)
-  const [policyB, setPolicyB] = useState(initialPolicyB)
-  const [comparing, setComparing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<CompareResponse | null>(null)
-  const lastAutoCompareKey = useRef('')
+  const [policies, setPolicies] = useState<PolicyListItem[]>([]);
+  const [loadingPolicies, setLoadingPolicies] = useState(!recommendedPolicies);
+  const [policyA, setPolicyA] = useState(initialPolicyA);
+  const [policyB, setPolicyB] = useState(initialPolicyB);
+  const [comparing, setComparing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<CompareResponse | null>(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const lastAutoCompareKey = useRef("");
 
   const loadPolicies = useCallback(async () => {
     if (recommendedPolicies) {
-      setPolicies(recommendedPolicies)
-      setLoadingPolicies(false)
-      return
+      setPolicies(recommendedPolicies);
+      setLoadingPolicies(false);
+      return;
     }
-    setLoadingPolicies(true)
+    setLoadingPolicies(true);
     try {
-      const data = await fetchPolicies({ limit: 100 })
-      setPolicies(data.items)
+      const data = await fetchPolicies({ limit: 100 });
+      setPolicies(data.items);
     } catch {
-      setError('Failed to load policies. Please try again.')
+      setError("Failed to load policies. Please try again.");
     } finally {
-      setLoadingPolicies(false)
+      setLoadingPolicies(false);
     }
-  }, [recommendedPolicies])
+  }, [recommendedPolicies]);
 
   useEffect(() => {
-    loadPolicies()
-  }, [loadPolicies])
+    loadPolicies();
+  }, [loadPolicies]);
 
   useEffect(() => {
-    setPolicyA(initialPolicyA)
-    setPolicyB(initialPolicyB)
-    setResult(null)
-    lastAutoCompareKey.current = ''
-  }, [initialPolicyA, initialPolicyB])
+    const persistedState = loadComparisonState(sessionId, businessProfileId);
+    const hasIncomingSelection = Boolean(initialPolicyA || initialPolicyB);
+
+    if (hasIncomingSelection) {
+      setPolicyA(initialPolicyA);
+      setPolicyB(initialPolicyB);
+      setResult(null);
+      setError(null);
+      lastAutoCompareKey.current = "";
+    } else if (persistedState) {
+      setPolicyA(persistedState.policyA || initialPolicyA);
+      setPolicyB(persistedState.policyB || initialPolicyB);
+      setResult(persistedState.result);
+      setError(null);
+      lastAutoCompareKey.current = "";
+    } else {
+      setPolicyA(initialPolicyA);
+      setPolicyB(initialPolicyB);
+      setResult(null);
+      lastAutoCompareKey.current = "";
+    }
+
+    setHasHydrated(true);
+  }, [businessProfileId, initialPolicyA, initialPolicyB, sessionId]);
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+
+    saveComparisonState(sessionId, businessProfileId, {
+      policyA,
+      policyB,
+      result,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [businessProfileId, hasHydrated, policyA, policyB, result, sessionId]);
 
   const handleCompare = useCallback(() => {
-    if (!policyA || !policyB) return
+    if (!policyA || !policyB) return;
     if (policyA === policyB) {
-      setError('Please select two different policies to compare.')
-      return
+      setError("Please select two different policies to compare.");
+      return;
     }
 
-    setError(null)
-    setResult(null)
-    setComparing(true)
+    setError(null);
+    setResult(null);
+    setComparing(true);
 
     const payload: CompareRequest = {
       business_profile_id: businessProfileId,
       policy_id_a: policyA,
       policy_id_b: policyB,
       session_id: sessionId,
-    }
+    };
 
     comparePolicies(payload)
       .then(setResult)
       .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Comparison failed. Please try again.')
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Comparison failed. Please try again.",
+        );
       })
-      .finally(() => setComparing(false))
-  }, [businessProfileId, policyA, policyB, sessionId])
+      .finally(() => setComparing(false));
+  }, [businessProfileId, policyA, policyB, sessionId]);
 
   useEffect(() => {
-    if (!autoCompare || !policyA || !policyB || policyA === policyB) return
-    const key = `${businessProfileId}:${sessionId || ''}:${policyA}:${policyB}`
-    if (lastAutoCompareKey.current === key) return
-    lastAutoCompareKey.current = key
-    handleCompare()
-  }, [autoCompare, businessProfileId, handleCompare, policyA, policyB, sessionId])
+    if (!autoCompare || !policyA || !policyB || policyA === policyB) return;
+    const key = `${businessProfileId}:${sessionId || ""}:${policyA}:${policyB}`;
+    if (lastAutoCompareKey.current === key) return;
+    lastAutoCompareKey.current = key;
+    handleCompare();
+  }, [
+    autoCompare,
+    businessProfileId,
+    handleCompare,
+    policyA,
+    policyB,
+    sessionId,
+  ]);
 
-  const policyAMeta = policies.find((p) => p.id === policyA)
-  const policyBMeta = policies.find((p) => p.id === policyB)
+  const policyAMeta = policies.find((p) => p.id === policyA);
+  const policyBMeta = policies.find((p) => p.id === policyB);
+
+  const { unlockChatbot } = useNavigationLock();
+
+  useEffect(() => {
+    if (result) {
+      try {
+        unlockChatbot();
+      } catch {
+        // ignore
+      }
+    }
+  }, [result, unlockChatbot]);
 
   function renderPlaceholder() {
     return (
       <div className="flex flex-col items-center gap-3 px-8 py-12 text-center">
-        <svg className="h-12 w-12 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          className="h-12 w-12 text-text-muted"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M12 20V10" />
           <path d="M18 20V4" />
           <path d="M6 20v-4" />
@@ -164,16 +237,70 @@ export default function ComparisonView({
           <path d="M12 10l4-6" />
           <path d="M12 10l-4-6" />
         </svg>
-        <h3 className="text-base font-semibold text-text-primary">Policy Comparison</h3>
+        <h3 className="text-base font-semibold text-text-primary">
+          Policy Comparison
+        </h3>
         <p className="max-w-[28rem] text-sm text-text-tertiary">
-          Select two insurance policies above and click Compare to see a detailed side-by-side analysis across coverage, exclusions, claims, financials, and terms.
+          Select two insurance policies above and click Compare to see a
+          detailed side-by-side analysis across coverage, exclusions, claims,
+          financials, and terms.
         </p>
       </div>
-    )
+    );
+  }
+
+  function renderComparisonSkeleton() {
+    const line = (width: string) => (
+      <div className={`h-3 animate-pulse rounded-full bg-slate-200 ${width}`} />
+    );
+
+    return (
+      <div
+        className="relative overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <div className="relative border-b border-border bg-surface-alt px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-200 border-t-secondary" />
+            <div>
+              <p className="text-sm font-semibold text-text-primary">Building your policy comparison</p>
+              <p className="mt-0.5 text-xs text-text-tertiary">Reviewing coverage, exclusions, and policy terms…</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6 p-5">
+          <div className="rounded-[var(--radius-md)] border border-border p-4">
+            <div className="mb-4 h-4 w-36 animate-pulse rounded-full bg-slate-200" />
+            <div className="space-y-3">
+              {line('w-full')}
+              {line('w-11/12')}
+              {line('w-3/4')}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-[var(--radius-md)] border border-border">
+            <div className="grid grid-cols-[22%_39%_39%] gap-4 border-b border-border bg-surface-alt px-4 py-3">
+              <div className="h-3 w-16 animate-pulse rounded-full bg-slate-200" />
+              <div className="h-3 w-20 animate-pulse rounded-full bg-slate-200" />
+              <div className="h-3 w-20 animate-pulse rounded-full bg-slate-200" />
+            </div>
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="grid grid-cols-[22%_39%_39%] gap-4 border-b border-border px-4 py-4 last:border-b-0">
+                <div className="h-4 w-20 animate-pulse rounded-full bg-slate-200" />
+                <div className="space-y-2">{line('w-full')}{line('w-4/5')}</div>
+                <div className="space-y-2">{line('w-11/12')}{line('w-3/4')}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   function renderResults() {
-    if (!result) return null
+    if (!result) return null;
 
     return (
       <div className="flex flex-col gap-6">
@@ -189,21 +316,33 @@ export default function ComparisonView({
         )}
 
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">Executive Summary</div>
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">
+            Executive Summary
+          </div>
           <div className="px-5 py-4">
-            <p className="m-0 text-sm leading-7 text-text-primary">{result.executive_summary}</p>
+            <p className="m-0 text-sm leading-7 text-text-primary">
+              {result.executive_summary}
+            </p>
           </div>
         </div>
 
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">Section-by-Section Comparison</div>
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">
+            Section-by-Section Comparison
+          </div>
           <div className="p-0">
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="w-[20%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">Category</th>
-                  <th className="w-[40%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">Policy A</th>
-                  <th className="w-[40%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">Policy B</th>
+                  <th className="w-[20%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">
+                    Category
+                  </th>
+                  <th className="w-[40%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">
+                    Policy A
+                  </th>
+                  <th className="w-[40%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">
+                    Policy B
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -212,8 +351,12 @@ export default function ComparisonView({
                     <td className="w-[20%] border-b border-border px-4 py-4 text-sm font-semibold text-text-primary">
                       {CATEGORY_LABELS[item.category] || item.category}
                     </td>
-                    <td className="w-[40%] border-b border-border px-4 py-4 text-sm leading-6 text-text-primary"><PointList value={item.policy_a_value} /></td>
-                    <td className="w-[40%] border-b border-border px-4 py-4 text-sm leading-6 text-text-primary"><PointList value={item.policy_b_value} /></td>
+                    <td className="w-[40%] border-b border-border px-4 py-4 text-sm leading-6 text-text-primary">
+                      <PointList value={item.policy_a_value} />
+                    </td>
+                    <td className="w-[40%] border-b border-border px-4 py-4 text-sm leading-6 text-text-primary">
+                      <PointList value={item.policy_b_value} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -222,39 +365,53 @@ export default function ComparisonView({
         </div>
 
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">Business Risk Alignment</div>
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">
+            Business Risk Alignment
+          </div>
           <div className="px-5 py-4">
-            <p className="m-0 text-sm leading-7 text-text-primary">{result.business_risk_alignment}</p>
+            <p className="m-0 text-sm leading-7 text-text-primary">
+              {result.business_risk_alignment}
+            </p>
           </div>
         </div>
 
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">Advantages & Limitations</div>
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">
+            Advantages & Limitations
+          </div>
           <div className="px-5 py-4">
             <div className="grid gap-6 md:grid-cols-2">
               <div>
-                <div className="mb-3 text-[15px] font-bold text-primary">Policy A — Advantages</div>
+                <div className="mb-3 text-[15px] font-bold text-primary">
+                  Policy A — Advantages
+                </div>
                 <div className="flex flex-col gap-2">
                   <ul className="m-0 pl-5">
                     {renderListItems(result.advantages_a)}
                   </ul>
                 </div>
                 <div className="mt-4 flex flex-col gap-2">
-                  <div className="text-[13px] font-semibold uppercase tracking-[0.03em] text-text-secondary">Limitations</div>
+                  <div className="text-[13px] font-semibold uppercase tracking-[0.03em] text-text-secondary">
+                    Limitations
+                  </div>
                   <ul className="m-0 pl-5">
                     {renderListItems(result.limitations_a)}
                   </ul>
                 </div>
               </div>
               <div>
-                <div className="mb-3 text-[15px] font-bold text-primary">Policy B — Advantages</div>
+                <div className="mb-3 text-[15px] font-bold text-primary">
+                  Policy B — Advantages
+                </div>
                 <div className="flex flex-col gap-2">
                   <ul className="m-0 pl-5">
                     {renderListItems(result.advantages_b)}
                   </ul>
                 </div>
                 <div className="mt-4 flex flex-col gap-2">
-                  <div className="text-[13px] font-semibold uppercase tracking-[0.03em] text-text-secondary">Limitations</div>
+                  <div className="text-[13px] font-semibold uppercase tracking-[0.03em] text-text-secondary">
+                    Limitations
+                  </div>
                   <ul className="m-0 pl-5">
                     {renderListItems(result.limitations_b)}
                   </ul>
@@ -265,35 +422,46 @@ export default function ComparisonView({
         </div>
 
         <div className="rounded-[var(--radius-lg)] border border-risk-low bg-risk-low-bg p-5">
-          <div className="mb-2 text-[15px] font-bold text-risk-low">Overall Recommendation</div>
-          <p className="m-0 text-sm leading-7 text-text-primary">{result.overall_recommendation}</p>
+          <div className="mb-2 text-[15px] font-bold text-risk-low">
+            Overall Recommendation
+          </div>
+          <p className="m-0 text-sm leading-7 text-text-primary">
+            {result.overall_recommendation}
+          </p>
         </div>
 
         {result.missing_information.length > 0 && (
           <div className="rounded-[var(--radius-md)] bg-surface-alt px-4 py-3 text-[13px] text-text-tertiary">
-            <strong>Missing Information:</strong> Some details could not be retrieved from the policy documents.
+            <strong>Missing Information:</strong> Some details could not be
+            retrieved from the policy documents.
             <ul className="mt-1.5 pl-5">
-              {result.missing_information.map((m, i) => <li key={i} className="mb-0.5">{m}</li>)}
+              {result.missing_information.map((m, i) => (
+                <li key={i} className="mb-0.5">
+                  {m}
+                </li>
+              ))}
             </ul>
           </div>
         )}
       </div>
-    )
+    );
   }
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid items-end gap-4 md:grid-cols-[1fr_auto_1fr]">
         <div className="flex flex-col gap-1.5">
-          <label className="text-[13px] font-semibold text-text-secondary">Policy A</label>
+          <label className="text-[13px] font-semibold text-text-secondary">
+            Policy A
+          </label>
           <select
             className="w-full cursor-pointer rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-secondary disabled:cursor-not-allowed disabled:opacity-60"
             value={policyA}
             onChange={(e) => {
-              lastAutoCompareKey.current = ''
-              setPolicyA(e.target.value)
-              setResult(null)
-              setError(null)
+              lastAutoCompareKey.current = "";
+              setPolicyA(e.target.value);
+              setResult(null);
+              setError(null);
             }}
             disabled={loadingPolicies || comparing}
           >
@@ -306,18 +474,22 @@ export default function ComparisonView({
           </select>
         </div>
 
-        <div className="flex items-center justify-center pb-1 text-sm font-bold text-text-tertiary">VS</div>
+        <div className="flex items-center justify-center pb-1 text-sm font-bold text-text-tertiary">
+          VS
+        </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[13px] font-semibold text-text-secondary">Policy B</label>
+          <label className="text-[13px] font-semibold text-text-secondary">
+            Policy B
+          </label>
           <select
             className="w-full cursor-pointer rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-secondary disabled:cursor-not-allowed disabled:opacity-60"
             value={policyB}
             onChange={(e) => {
-              lastAutoCompareKey.current = ''
-              setPolicyB(e.target.value)
-              setResult(null)
-              setError(null)
+              lastAutoCompareKey.current = "";
+              setPolicyB(e.target.value);
+              setResult(null);
+              setError(null);
             }}
             disabled={loadingPolicies || comparing}
           >
@@ -336,20 +508,19 @@ export default function ComparisonView({
         onClick={handleCompare}
         disabled={!policyA || !policyB || policyA === policyB || comparing}
       >
-        {comparing ? 'Comparing...' : 'Compare'}
+        {comparing ? "Comparing..." : "Compare"}
       </button>
 
-      {comparing && (
-        <div className="flex flex-col items-center gap-3 rounded-[var(--radius-lg)] bg-surface-alt p-8 text-sm text-text-tertiary">
-          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-border border-t-secondary" />
-          <p>Analyzing policies... This may take a moment.</p>
-        </div>
-      )}
+      {comparing && renderComparisonSkeleton()}
 
       {error && (
         <div className="flex items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-risk-medium-bg)] bg-[var(--color-risk-medium-bg)] px-4 py-3 text-sm text-[var(--color-risk-medium)]">
           <span>{error}</span>
-          <button type="button" className="rounded-[var(--radius-md)] border-none bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-[var(--color-risk-medium)] shadow-sm" onClick={() => setError(null)}>
+          <button
+            type="button"
+            className="rounded-[var(--radius-md)] border-none bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-[var(--color-risk-medium)] shadow-sm"
+            onClick={() => setError(null)}
+          >
             Dismiss
           </button>
         </div>
@@ -359,6 +530,7 @@ export default function ComparisonView({
 
       <ComparisonChatPopUp
         openSignal={openChatSignal}
+        hasComparison={Boolean(result)}
         compareParams={{
           business_profile_id: businessProfileId,
           policy_id_a: policyA,
@@ -367,5 +539,5 @@ export default function ComparisonView({
         }}
       />
     </div>
-  )
+  );
 }

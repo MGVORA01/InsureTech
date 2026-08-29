@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Loader } from '@/components/Loader'
 import { profilingApi, getProfilingErrorMessage } from './profilingApi'
 import { PROFILING_MESSAGES, SECTION_LABELS } from './profiling.constants'
 import type { ProfilingStatus } from './profiling.types'
@@ -33,9 +34,8 @@ export default function ProfilingLauncher({ onStartWizard, businessId }: Profili
   if (loading) {
     return (
       <div className="flex flex-col items-center">
-        <div className="flex flex-col items-center gap-3 px-0 py-12 text-sm text-text-secondary">
-          <div className="h-6 w-6 animate-spin rounded-full border-[3px] border-border border-t-primary" />
-          <p>Checking profiling status...</p>
+        <div className="px-0 py-12">
+          <Loader variant="gauge-sweep" label="Checking profiling status..." size={54} />
         </div>
       </div>
     )

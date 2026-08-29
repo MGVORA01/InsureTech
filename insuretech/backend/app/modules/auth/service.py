@@ -1,15 +1,23 @@
 """Business logic for authentication."""
 
+from datetime import datetime, timezone
 from typing import Any
 
+import secrets
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import ConflictException, UnauthorizedException
+from app.core.exceptions import (
+    BadRequestException,
+    ConflictException,
+    TooManyRequestsException,
+    UnauthorizedException,
+)
 from app.models import User
 from app.modules.auth import repository as Repository
 from app.modules.auth.jwt_helper import (
     create_access_token,
+    create_email_verification_token,
     create_password_reset_token,
     create_refresh_token,
     decode_token,
@@ -18,12 +26,18 @@ from app.modules.auth.constants import (
     ACCOUNT_INACTIVE_MESSAGE,
     CURRENT_PASSWORD_INCORRECT_MESSAGE,
     EMAIL_KEY,
+    EMAIL_VERIFICATION_TOKEN_EXPIRED_MESSAGE,
+    EMAIL_VERIFICATION_TOKEN_TYPE,
+    EMAIL_VERIFIED_MESSAGE,
     FULL_NAME_KEY,
     INVALID_EMAIL_OR_PASSWORD_MESSAGE,
+    INVALID_OTP_MESSAGE,
     INVALID_REFRESH_TOKEN_MESSAGE,
     INVALID_TOKEN_MESSAGE,
     INVALID_TOKEN_TYPE_MESSAGE,
     LOGGED_OUT_MESSAGE,
+    OTP_EXPIRED_MESSAGE,
+    OTP_RESENT_MESSAGE,
     PASSWORD_CHANGED_MESSAGE,
     PASSWORD_RESET_EMAIL_SENT_MESSAGE,
     PASSWORD_RESET_TOKEN_TYPE,
@@ -37,6 +51,7 @@ from app.modules.auth.constants import (
     TOKEN_REFRESHED_MESSAGE,
     TOKEN_SUBJECT_CLAIM,
     TOKEN_TYPE_CLAIM,
+    TOO_MANY_ATTEMPTS_MESSAGE,
     USER_EXISTS_MESSAGE,
     USER_FETCHED_MESSAGE,
     USER_ID_KEY,
@@ -44,6 +59,7 @@ from app.modules.auth.constants import (
     USER_NOT_FOUND_MESSAGE,
     USER_REGISTERED_MESSAGE,
     USER_ROLE_NAME,
+    VERIFICATION_TOKEN_KEY,
 )
 from app.modules.auth.password_hashing import async_hash, async_verify_hash
 from app.modules.auth.schemas import (
@@ -52,6 +68,8 @@ from app.modules.auth.schemas import (
     LoginRequest,
     RegisterRequest,
     ResetPasswordRequest,
+    ResendOtpRequest,
+    VerifyEmailRequest,
 )
 from app.shared.response import APIResponse
 
@@ -63,30 +81,37 @@ class AuthService:
         self,
         data: RegisterRequest,
         db: AsyncSession,
-    ) -> APIResponse[dict[str, Any]]:
-        """Register a new user."""
+    ) -> tuple[APIResponse[dict[str, Any]], str]:
+        """Prepare an email verification token without creating a user row."""
         existing_user = await Repository.get_user_by_email(db, data.email)
         if existing_user:
             raise ConflictException(USER_EXISTS_MESSAGE)
 
-        role = await Repository.get_role(db, USER_ROLE_NAME)
-        user = await Repository.create_user(
-            db,
-            email=data.email,
-            full_name=data.full_name,
-            phone_no=data.phone_no,
-            password_hash=await async_hash(data.password),
-            role_id=role.id,
-        )
-        await Repository.commit(db)
+        otp = f"{secrets.randbelow(10000):04d}"
+        otp_hash = await async_hash(otp)
+        password_hash = await async_hash(data.password)
 
-        return APIResponse.success_response(
-            message=USER_REGISTERED_MESSAGE,
-            data={
-                FULL_NAME_KEY: user.full_name,
-                EMAIL_KEY: user.email,
-                PHONE_KEY: user.phone,
+        token = create_email_verification_token(
+            {
+                EMAIL_KEY: data.email,
+                FULL_NAME_KEY: data.full_name,
+                PHONE_KEY: data.phone_no,
+                "password_hash": password_hash,
+                "otp_hash": otp_hash,
+                "attempts": 0,
             },
+            settings.EMAIL_OTP_EXPIRE_MINUTES,
+        )
+
+        return (
+            APIResponse.success_response(
+                message=USER_REGISTERED_MESSAGE,
+                data={
+                    EMAIL_KEY: data.email,
+                    VERIFICATION_TOKEN_KEY: token,
+                },
+            ),
+            otp,
         )
 
     async def login_user_service(
@@ -176,6 +201,107 @@ class AuthService:
             ),
             user.email,
             reset_url,
+        )
+
+    async def verify_email_service(
+        self,
+        data: VerifyEmailRequest,
+        db: AsyncSession,
+    ) -> APIResponse[None]:
+        """Verify the OTP from the JWT and create the user once verified."""
+        payload = decode_token(data.token)
+        if not payload or payload.get(TOKEN_TYPE_CLAIM) != EMAIL_VERIFICATION_TOKEN_TYPE:
+            raise BadRequestException(OTP_EXPIRED_MESSAGE)
+
+        attempts = int(payload.get("attempts", 0))
+        if attempts >= 5:
+            raise TooManyRequestsException(TOO_MANY_ATTEMPTS_MESSAGE)
+
+        otp_hash = payload.get("otp_hash")
+        if not otp_hash or not await async_verify_hash(data.otp, otp_hash):
+            new_attempts = attempts + 1
+            if new_attempts >= 5:
+                raise TooManyRequestsException(TOO_MANY_ATTEMPTS_MESSAGE)
+
+            new_token_payload = {
+                key: payload[key]
+                for key in payload
+                if key not in {"exp", TOKEN_TYPE_CLAIM}
+            }
+            new_token_payload["attempts"] = new_attempts
+            expires_at = payload.get("exp")
+            if not expires_at:
+                raise BadRequestException(OTP_EXPIRED_MESSAGE)
+            now_ts = datetime.now(timezone.utc).timestamp()
+            expires_seconds = max(int(expires_at) - int(now_ts), 0)
+            if expires_seconds <= 0:
+                raise BadRequestException(OTP_EXPIRED_MESSAGE)
+
+            new_token = create_email_verification_token(
+                new_token_payload,
+                expires_seconds // 60 if expires_seconds >= 60 else 1,
+            )
+            raise BadRequestException(
+                INVALID_OTP_MESSAGE,
+                data={VERIFICATION_TOKEN_KEY: new_token},
+            )
+
+        existing_user = await Repository.get_user_by_email(db, payload[EMAIL_KEY])
+        if existing_user:
+            raise ConflictException(USER_EXISTS_MESSAGE)
+
+        role = await Repository.get_role(db, USER_ROLE_NAME)
+        await Repository.create_user(
+            db,
+            email=payload[EMAIL_KEY],
+            full_name=payload[FULL_NAME_KEY],
+            phone_no=payload.get(PHONE_KEY),
+            password_hash=payload["password_hash"],
+            role_id=role.id,
+        )
+        await Repository.commit(db)
+        return APIResponse.success_response(
+            message=EMAIL_VERIFIED_MESSAGE,
+            data=None,
+        )
+
+    async def resend_otp_service(
+        self,
+        data: ResendOtpRequest,
+        db: AsyncSession,
+    ) -> tuple[APIResponse[dict[str, Any]], str, str]:
+        """Issue a new verification token with a fresh OTP."""
+        payload = decode_token(data.token)
+        if not payload or payload.get(TOKEN_TYPE_CLAIM) != EMAIL_VERIFICATION_TOKEN_TYPE:
+            raise BadRequestException(EMAIL_VERIFICATION_TOKEN_EXPIRED_MESSAGE)
+
+        email = payload[EMAIL_KEY]
+        existing_user = await Repository.get_user_by_email(db, email)
+        if existing_user:
+            raise ConflictException(USER_EXISTS_MESSAGE)
+
+        otp = f"{secrets.randbelow(10000):04d}"
+        otp_hash = await async_hash(otp)
+        new_payload = {
+            EMAIL_KEY: email,
+            FULL_NAME_KEY: payload[FULL_NAME_KEY],
+            PHONE_KEY: payload.get(PHONE_KEY),
+            "password_hash": payload["password_hash"],
+            "otp_hash": otp_hash,
+            "attempts": 0,
+        }
+        new_token = create_email_verification_token(
+            new_payload,
+            settings.EMAIL_OTP_EXPIRE_MINUTES,
+        )
+
+        return (
+            APIResponse.success_response(
+                message=OTP_RESENT_MESSAGE,
+                data={VERIFICATION_TOKEN_KEY: new_token},
+            ),
+            otp,
+            email,
         )
 
     async def reset_password_service(
