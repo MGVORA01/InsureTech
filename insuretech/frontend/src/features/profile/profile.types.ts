@@ -43,3 +43,17 @@ export interface CreateBusinessRequest {
   employee_count?: number
   annual_turnover_range?: string
 }
+
+export interface UpdateBusinessRequest {
+  segment_id?: string
+  industry_id?: string
+  business_name?: string
+  business_description?: string
+  city?: string
+  state?: string
+  address?: string
+  pincode?: string
+  year_established?: number
+  employee_count?: number
+  annual_turnover_range?: string
+}

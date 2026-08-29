@@ -40,10 +40,14 @@ class RecommendationPresenter:
         ]
         business_id = rec_models[0].business_id if rec_models else None
         recommendations: list[RecommendationOut] = []
+        seen_policy_ids: set = set()
         for rec in rec_models:
             evidence = getattr(rec, "_evidence", None)
             if not evidence:
                 continue
+            if evidence.policy.id in seen_policy_ids:
+                continue
+            seen_policy_ids.add(evidence.policy.id)
             recommendations.append(
                 self.evidence_to_recommendation(
                     evidence=evidence,

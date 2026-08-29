@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.core.database import get_db
-from app.core.mail import send_reset_password_email
+from app.core.mail import send_reset_password_email, send_verification_email
 from app.models import User
 from app.modules.auth.cookie_helper import (
     delete_auth_cookies,
@@ -25,6 +25,8 @@ from app.modules.auth.constants import (
     REFRESH_ROUTE,
     REGISTER_ROUTE,
     RESET_PASSWORD_ROUTE,
+    RESEND_OTP_ROUTE,
+    VERIFY_EMAIL_ROUTE,
 )
 from app.modules.auth.schemas import (
     ChangePasswordRequest,
@@ -32,6 +34,8 @@ from app.modules.auth.schemas import (
     LoginRequest,
     RegisterRequest,
     ResetPasswordRequest,
+    ResendOtpRequest,
+    VerifyEmailRequest,
 )
 from app.modules.auth.service import Service
 from app.shared.dependency.get_current_user import get_current_user
@@ -47,9 +51,12 @@ router = APIRouter(
 async def register_user(
     data: RegisterRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ) -> APIResponse:
     """Register a user."""
-    return await Service.register_user_service(data, db)
+    service_response, otp = await Service.register_user_service(data, db)
+    background_tasks.add_task(send_verification_email, data.email, otp)
+    return service_response
 
 
 @router.post(LOGIN_ROUTE, status_code=status.HTTP_200_OK)
@@ -102,6 +109,27 @@ async def reset_password(
 ) -> APIResponse:
     """Reset a password."""
     return await Service.reset_password_service(data, db)
+
+
+@router.post(VERIFY_EMAIL_ROUTE, status_code=status.HTTP_200_OK)
+async def verify_email(
+    data: VerifyEmailRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> APIResponse:
+    """Verify an email address with OTP and JWT."""
+    return await Service.verify_email_service(data, db)
+
+
+@router.post(RESEND_OTP_ROUTE, status_code=status.HTTP_200_OK)
+async def resend_otp(
+    data: ResendOtpRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
+) -> APIResponse:
+    """Resend a new OTP for email verification."""
+    service_response, otp, email = await Service.resend_otp_service(data, db)
+    background_tasks.add_task(send_verification_email, email, otp)
+    return service_response
 
 
 @router.post(REFRESH_ROUTE, status_code=status.HTTP_200_OK)

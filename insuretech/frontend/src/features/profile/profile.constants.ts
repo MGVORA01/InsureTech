@@ -5,6 +5,7 @@ export const PROFILE_ENDPOINTS = {
   myBusiness: '/businesses/me',
   myBusinesses: '/businesses',
   businessById: (id: string) => `/businesses/${id}`,
+  updateBusiness: (id: string) => `/businesses/${id}`,
   deleteBusiness: (id: string) => `/businesses/${id}`,
 } as const
 
@@ -25,6 +26,7 @@ export const PROFILE_VALIDATION = {
 export const PROFILE_MESSAGES = {
   title: 'Business Profile',
   createSuccess: 'Business profile created successfully',
+  updateSuccess: 'Business profile updated successfully',
   deleteSuccess: 'Business profile deleted successfully',
   deleteConfirm: 'Are you sure you want to delete this business profile? This action cannot be undone.',
   fetchError: 'Failed to load business profile',

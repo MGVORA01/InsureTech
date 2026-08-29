@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 15
+    EMAIL_OTP_EXPIRE_MINUTES: int = 5
 
     MAIL_USERNAME: str = ""
     MAIL_PASSWORD: str = ""

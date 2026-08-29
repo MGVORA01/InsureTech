@@ -16,6 +16,7 @@ from app.modules.admin.constants import (
     DOCUMENT_DELETED_MESSAGE_TEMPLATE,
     DOCUMENT_NOT_FOUND_MESSAGE,
     DOCUMENTS_FETCHED_MESSAGE,
+    FEEDBACKS_FETCHED_MESSAGE,
     LIMIT_KEY,
     PAGE_KEY,
     PDFS_DIR,
@@ -26,7 +27,7 @@ from app.modules.admin.constants import (
     USERS_FETCHED_MESSAGE,
     USERS_KEY,
 )
-from app.modules.admin.schemas import KnowledgeDocumentItem, UserListItem
+from app.modules.admin.schemas import AdminFeedbackItem, KnowledgeDocumentItem, UserListItem
 from app.modules.chat.service import Service as ChatService
 from app.shared.response import APIResponse
 
@@ -60,6 +61,46 @@ class AdminService:
             message=USERS_FETCHED_MESSAGE,
             data={
                 USERS_KEY: users,
+                TOTAL_KEY: result[TOTAL_KEY],
+                PAGE_KEY: result[PAGE_KEY],
+                LIMIT_KEY: result[LIMIT_KEY],
+            },
+        )
+
+    async def get_feedback_responses_service(
+        self,
+        db: AsyncSession,
+        page: int,
+        limit: int,
+        search: str | None = None,
+        sort_order: str = "desc",
+    ) -> APIResponse[dict[str, object]]:
+        """Fetch feedback responses for the admin list view."""
+        result = await Repository.get_feedback_responses(
+            db,
+            page=page,
+            limit=limit,
+            search=search,
+            sort_order=sort_order,
+        )
+
+        feedbacks = [
+            AdminFeedbackItem(
+                id=item.id,
+                userName=item.user.full_name,
+                userEmail=item.user.email,
+                response=item.message,
+                rating=item.rating,
+                recommendationsHelpful=item.recommendations_helpful,
+                submittedAt=item.created_at.isoformat() if item.created_at else "",
+            ).model_dump()
+            for item in result["feedbacks"]
+        ]
+
+        return APIResponse.success_response(
+            message=FEEDBACKS_FETCHED_MESSAGE,
+            data={
+                "feedbacks": feedbacks,
                 TOTAL_KEY: result[TOTAL_KEY],
                 PAGE_KEY: result[PAGE_KEY],
                 LIMIT_KEY: result[LIMIT_KEY],

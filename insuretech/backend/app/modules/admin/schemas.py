@@ -46,3 +46,20 @@ class KnowledgeDocumentItem(BaseModel):
     created_at: str
 
 
+class AdminFeedbackItem(BaseModel):
+    id: UUID
+    userName: str
+    userEmail: str
+    response: str
+    rating: int
+    recommendationsHelpful: str | None = None
+    submittedAt: str
+
+
+class AdminFeedbackListResponse(BaseModel):
+    feedbacks: list[AdminFeedbackItem]
+    total: int
+    page: int
+    limit: int
+
+

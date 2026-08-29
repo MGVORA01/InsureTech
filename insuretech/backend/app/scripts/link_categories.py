@@ -45,7 +45,7 @@ async def link_categories():
             )
             risk_cat = result.scalar_one_or_none()
             if not risk_cat:
-                logger.warning("RiskCategory '%s' not found — run seed-question.py first", risk_cat_name)
+                logger.warning("RiskCategory '%s' not found — run seed/seed-question.py first", risk_cat_name)
                 not_found.append(risk_cat_name)
                 continue
 

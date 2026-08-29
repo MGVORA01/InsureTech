@@ -46,6 +46,66 @@ async def send_reset_password_email(
   await fm.send_message(message)
 
 
+async def send_verification_email(email: str, otp: str):
+  html = f"""
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{settings.PROJECT_NAME} Verification Code</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f3f6fb;font-family:Inter,-apple-system,system-ui,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f3f6fb;min-width:100%;">
+      <tr>
+        <td align="center" style="padding:24px 0;">
+          <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 24px 70px rgba(15, 23, 42, 0.08);">
+            <tr>
+              <td style="background:#0d7377;padding:32px 28px;">
+                <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;line-height:1.1;">Verify your email address</h1>
+                <p style="margin:12px 0 0;color:rgba(255,255,255,0.88);font-size:15px;line-height:1.6;">Thanks for choosing {settings.PROJECT_NAME}. Enter the code below to confirm your email and finish setting up your account.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px 28px;">
+                <p style="margin:0 0 16px;color:#102a45;font-size:15px;line-height:1.75;">Your verification code is:</p>
+                <div style="margin:0 auto 24px auto;max-width:240px;padding:24px 0;border-radius:18px;background:linear-gradient(135deg, #0d7377 0%, #1a3a5c 100%);text-align:center;">
+                  <p style="margin:0;color:#c5f1e6;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Verification code</p>
+                  <p style="margin:14px 0 0;color:#ffffff;font-size:42px;font-weight:800;letter-spacing:0.16em;">{otp}</p>
+                </div>
+                <p style="margin:0;color:#475569;font-size:14px;line-height:1.75;">This code expires in {settings.EMAIL_OTP_EXPIRE_MINUTES} minutes. If you did not request this, you can ignore this email.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 28px 28px;">
+                <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                  <tr>
+                    <td style="padding-top:20px;color:#94a3b8;font-size:13px;line-height:1.7;">Need help? Reply to this message or visit the {settings.PROJECT_NAME} dashboard.</td>
+                    <td align="right" style="padding-top:20px;color:#0d7377;font-size:18px;font-weight:700;">{settings.PROJECT_NAME}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  """
+
+  message = MessageSchema(
+    subject=f"{settings.PROJECT_NAME} Verification Code",
+    recipients=[email],
+    body=html,
+    subtype="html"
+  )
+
+  fm = FastMail(conf)
+
+  await fm.send_message(message)
+
+
 async def send_contact_email(name: str, email: str, message: str):
   html = f"""
     <h2>New Contact Form Submission</h2>

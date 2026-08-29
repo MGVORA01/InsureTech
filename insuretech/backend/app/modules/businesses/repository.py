@@ -1,5 +1,6 @@
 """Database access layer for the businesses module."""
 
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -170,6 +171,46 @@ async def get_business_by_id(
         db,
         BusinessProfile,
         business_id,
+        options=[
+            selectinload(BusinessProfile.industry),
+            selectinload(BusinessProfile.segment),
+        ],
+        active_only=True,
+    )
+
+
+async def update_business(
+    db: AsyncSession,
+    business_id: UUID,
+    **kwargs: Any,
+) -> BusinessProfile | None:
+    """Update fields on an existing business profile.
+
+    Only the provided keyword arguments are updated. Relationships are
+    eager-loaded after the update for serialization.
+
+    Args:
+        business_id: UUID of the business profile to update.
+
+    Returns:
+        The updated BusinessProfile instance or None if not found.
+    """
+    business = await get_business_by_id(db, business_id)
+    if not business:
+        return None
+
+    for key, value in kwargs.items():
+        if value is not None and hasattr(business, key):
+            setattr(business, key, value)
+
+    await db.flush()
+    await db.refresh(business)
+
+    # Eagerly load relationships for serialization
+    return await Base.get_by_id(
+        db,
+        BusinessProfile,
+        business.id,
         options=[
             selectinload(BusinessProfile.industry),
             selectinload(BusinessProfile.segment),

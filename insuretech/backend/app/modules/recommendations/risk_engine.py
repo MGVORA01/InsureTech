@@ -142,15 +142,34 @@ class RiskEngine:
             if chunk.document_metadata
             else ""
         )
+        section_name = RiskEngine.canonical_risk_name(
+            chunk.document_metadata.get("section_name", "")
+            if chunk.document_metadata
+            else ""
+        )
+        policy_name = RiskEngine.canonical_risk_name(
+            chunk.document_metadata.get("policy_name", "")
+            if chunk.document_metadata
+            else ""
+        )
 
         for risk in risks:
             strength = 0.0
-            if risk.name in {policy_category, insurance_category}:
+            if risk.name in {policy_category, insurance_category, section_name, policy_name}:
                 strength += 1.0
+
+            simplified_risk = risk.name.replace(" Risk", "").lower()
+            if simplified_risk and simplified_risk in text:
+                strength += 0.25
+
             keywords = RISK_KEYWORDS.get(risk.name, [])
-            keyword_hits = sum(1 for keyword in keywords if keyword.lower() in text)
+            keyword_hits = 0
+            for keyword in keywords:
+                if re.search(r"\b" + re.escape(keyword.lower()) + r"\b", text):
+                    keyword_hits += 1
             if keyword_hits:
-                strength += min(0.9, 0.25 + keyword_hits * 0.13)
+                strength += min(0.9, 0.25 + keyword_hits * 0.12)
+
             if strength > 0:
                 matches[risk.name] = min(strength, 1.4)
         return matches

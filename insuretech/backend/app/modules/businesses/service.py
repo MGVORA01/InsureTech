@@ -17,6 +17,8 @@ from app.modules.businesses.constants import (
     BUSINESS_DELETED_MESSAGE,
     BUSINESS_FETCHED_MESSAGE,
     BUSINESS_NOT_FOUND_MESSAGE,
+    BUSINESS_UPDATED_LOG_MESSAGE,
+    BUSINESS_UPDATED_MESSAGE,
     INDUSTRIES_FETCHED_MESSAGE,
     SEGMENTS_FETCHED_MESSAGE,
 )
@@ -25,6 +27,7 @@ from app.modules.businesses.schemas import (
     CreateBusinessRequest,
     IndustryOut,
     SegmentOut,
+    UpdateBusinessRequest,
 )
 from app.shared.response import APIResponse
 
@@ -167,6 +170,31 @@ class BusinessService:
         if not business:
             raise NotFoundException(BUSINESS_NOT_FOUND_MESSAGE)
         return business
+
+    async def update_business(
+        self,
+        business_id: UUID,
+        data: UpdateBusinessRequest,
+        user: User,
+        db: AsyncSession,
+    ) -> APIResponse[dict[str, Any]]:
+        """Update an existing business profile (ownership verified)."""
+        business = await repository.get_business_by_id(db, business_id)
+        if not business or business.user_id != user.id:
+            raise NotFoundException(BUSINESS_NOT_FOUND_MESSAGE)
+
+        kwargs = data.model_dump(exclude_none=True, exclude_unset=True)
+        updated = await repository.update_business(db, business_id, **kwargs)
+        if not updated:
+            raise NotFoundException(BUSINESS_NOT_FOUND_MESSAGE)
+
+        await repository.commit(db)
+        logger.info(BUSINESS_UPDATED_LOG_MESSAGE, business_id, user.id)
+
+        return APIResponse.success_response(
+            BUSINESS_UPDATED_MESSAGE,
+            BusinessResponse.model_validate(updated).model_dump(),
+        )
 
     async def delete_business(
         self,

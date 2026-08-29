@@ -40,8 +40,18 @@ function IconFlag(props: IconProps) {
   )
 }
 
+function IconPencil(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      <path d="M15 5l4 4" />
+    </svg>
+  )
+}
+
 interface ProfileCardProps {
   profile: BusinessProfile
+  onEdit?: () => void
 }
 
 function displayValue(value: string | number | null | undefined) {
@@ -49,7 +59,7 @@ function displayValue(value: string | number | null | undefined) {
   return value
 }
 
-export default function ProfileCard({ profile }: ProfileCardProps) {
+export default function ProfileCard({ profile, onEdit }: ProfileCardProps) {
   const fields = [
     { label: 'Industry', value: displayValue(profile.industry?.name ?? profile.industry_id), Icon: IconIndustry, accent: '#CF4500' },
     { label: 'Segment', value: displayValue(profile.segment?.name ?? profile.segment_id), Icon: IconBuilding, accent: '#3860BE' },
@@ -69,9 +79,21 @@ export default function ProfileCard({ profile }: ProfileCardProps) {
             <p className="mt-0.5 text-[13px] font-medium text-gray-500">Core profile details used across your account</p>
           </div>
         </div>
-        <span className="rounded-full bg-gray-100 px-3 py-1.5 text-[12px] font-bold text-gray-700">
-          {profile.is_active ? 'Active profile' : 'Inactive profile'}
-        </span>
+        <div className="flex items-center gap-2">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+              title="Edit business profile"
+            >
+              <IconPencil className="h-5 w-5" />
+            </button>
+          )}
+          <span className="rounded-full bg-gray-100 px-3 py-1.5 text-[12px] font-bold text-gray-700">
+            {profile.is_active ? 'Active profile' : 'Inactive profile'}
+          </span>
+        </div>
       </div>
 
       <div className="grid gap-px bg-black/[0.04] p-px sm:grid-cols-2 xl:grid-cols-4">

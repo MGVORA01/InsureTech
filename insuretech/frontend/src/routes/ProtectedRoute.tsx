@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Loader } from '@/components/Loader'
 import { useAuth } from '../hooks/useAuth.ts'
 
 function ProtectedRoute() {
@@ -15,10 +16,7 @@ function ProtectedRoute() {
   if (status === 'loading' || status === 'idle') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="mt-3 text-sm text-slate-500">Checking authentication…</p>
-        </div>
+        <Loader variant="badge-check" label="Checking authentication…" size={56} />
       </div>
     )
   }

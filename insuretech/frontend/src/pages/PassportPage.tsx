@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Loader } from '@/components/Loader';
 import baseApi from '../config/api';
 import { useAuth } from '../hooks/useAuth';
 // import { ProfilingWizard } from '../features/profiling';
@@ -25,7 +26,11 @@ function PassportPage() {
   }, [user]);
 
   if (loading) {
-    return <div className="p-8 text-center">Loading...</div>;
+    return (
+      <div className="flex min-h-[16rem] items-center justify-center p-8">
+        <Loader variant="skeleton" label="Loading business profile..." size={42} />
+      </div>
+    );
   }
 
   if (!business) {

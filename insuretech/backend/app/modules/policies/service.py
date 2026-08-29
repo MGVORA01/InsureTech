@@ -4,7 +4,7 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.single_pdf_ingestion import ingest_single_pdf
+from app.ai.ingestion.pipeline.policy_pdf_ingestion_service import ingest_single_pdf
 from app.core.cloudinary_helper import upload_pdf
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.logging import get_logger

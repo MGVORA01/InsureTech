@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Loader } from '@/components/Loader'
 import { sendChatMessage } from './chatApi'
 import type { ChatMessage } from './chat.types'
 
@@ -113,11 +114,7 @@ function ChatPopup({ onClose }: ChatPopupProps) {
           {loading && (
             <div className="flex justify-start">
               <div className="max-w-[85%] rounded-[var(--radius-md)] rounded-bl-[2px] border border-border bg-surface px-3.5 py-2.5 text-sm leading-6 text-text-primary">
-                <div className="flex gap-1 py-1">
-                  <span className="h-[7px] w-[7px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary" />
-                  <span className="h-[7px] w-[7px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary [animation-delay:0.15s]" />
-                  <span className="h-[7px] w-[7px] animate-[bounce_1.2s_infinite] rounded-full bg-text-tertiary [animation-delay:0.3s]" />
-                </div>
+                <Loader variant="dots" label="Assistant is typing..." size={18} />
               </div>
             </div>
           )}

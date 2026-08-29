@@ -72,6 +72,15 @@ class RecommendationService:
         commit: bool = True,
     ) -> APIResponse:
         session, business = await self._resolve_session(session_id, user, db)
+        # If recommendations already exist for this session, return them instead
+        # of regenerating. This makes the endpoint idempotent and avoids
+        # accidentally deactivating stored recommendations when multiple
+        # navigation events or concurrent requests occur from the client.
+        existing = await repository.get_existing_recommendations(db, session_id)
+        if existing:
+            scores = await repository.get_business_risk_scores(db, session_id)
+            out = await self._presenter.build_existing_response(db, session_id, scores, existing)
+            return APIResponse.success_response(RECOMMENDATIONS_FETCHED_MESSAGE, out.model_dump())
         scores = await repository.get_business_risk_scores(db, session_id)
         await repository.deactivate_recommendations_for_session(db, session_id)
 
