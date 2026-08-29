@@ -41,7 +41,6 @@ data/
 data.zip
 backfill_cloudinary.py
 backend/question.json
-backend/seed.py
 backend/seed-question.py
 backend/seed-segments.py
 backend/seed_wizard.py
