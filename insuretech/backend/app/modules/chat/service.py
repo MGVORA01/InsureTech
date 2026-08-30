@@ -8,7 +8,6 @@ from uuid import uuid4
 from groq import Groq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from PyPDF2 import PdfReader
-from sentence_transformers import SentenceTransformer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -46,10 +45,12 @@ client = Groq(api_key=settings.GROQ_API_KEY)
 _embed_model = None
 
 
-def _get_embed_model() -> SentenceTransformer:
+def _get_embed_model() -> Any:
     """Return the lazily loaded embedding model."""
     global _embed_model
     if _embed_model is None:
+        from sentence_transformers import SentenceTransformer
+
         _embed_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
     return _embed_model
 
