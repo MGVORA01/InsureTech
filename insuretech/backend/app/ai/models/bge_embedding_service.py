@@ -1,10 +1,5 @@
 import os
-import torch
-from sentence_transformers import SentenceTransformer
 
-# Optimize CPU parallelism for PyTorch
-if "OMP_NUM_THREADS" not in os.environ:
-    torch.set_num_threads(min(8, os.cpu_count() or 4))
 
 MODEL_NAME = "BAAI/bge-base-en-v1.5"
 _model = None
@@ -13,6 +8,12 @@ _model = None
 def get_model():
     global _model
     if _model is None:
+        import torch
+        from sentence_transformers import SentenceTransformer
+
+        # Optimize CPU parallelism for PyTorch only when the model is needed.
+        if "OMP_NUM_THREADS" not in os.environ:
+            torch.set_num_threads(min(2, os.cpu_count() or 2))
         _model = SentenceTransformer(MODEL_NAME)
     return _model
 
