@@ -1,6 +1,8 @@
 from fastapi import Request, Response
 from app.core.config import settings
 
+COOKIE_SAMESITE = "none" if settings.COOKIE_SECURE else "lax"
+
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str, remember_me: bool = True):
 
@@ -9,7 +11,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str, 
         value=access_token,
         httponly=True,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 if remember_me else None
     )
 
@@ -18,7 +20,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str, 
         value=refresh_token,
         httponly=True,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS
                  * 24 * 60 * 60 if remember_me else None
     )
@@ -30,14 +32,14 @@ def delete_auth_cookies(response: Response):
         key="access_token",
         httponly=True,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
     )
 
     response.delete_cookie(
         key="refresh_token",
         httponly=True,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
     )
 
 

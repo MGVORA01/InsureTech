@@ -11,6 +11,18 @@ from app.modules.auth.cookie_helper import (
 )
 
 
+def _get_bearer_token(request: Request) -> str | None:
+  authorization = request.headers.get("Authorization")
+  if not authorization:
+    return None
+
+  scheme, _, token = authorization.partition(" ")
+  if scheme.lower() != "bearer" or not token:
+    return None
+
+  return token
+
+
 async def get_current_user(
   request: Request,
   db: AsyncSession = Depends(get_db),
@@ -19,6 +31,7 @@ async def get_current_user(
     get_access_token_from_cookie(
       request
     )
+    or _get_bearer_token(request)
   )
 
   if not access_token:
