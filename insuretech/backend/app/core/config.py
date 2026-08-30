@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     MAIL_USERNAME: str = ""
     MAIL_PASSWORD: str = ""
     MAIL_FROM: str = ""
+    MAIL_FROM_NAME: str = "Insuretech"
+    MAIL_PROVIDER: str = "resend"
+    RESEND_API_KEY: str = ""
     MAIL_SERVER: str = "smtp.gmail.com"
     MAIL_PORT: int = 587
     MAIL_STARTTLS: bool = True

@@ -1,50 +1,75 @@
 import asyncio
+from html import escape
 
-from fastapi_mail import ConnectionConfig, FastMail, MessageSchema
+import httpx
 
 from app.core.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-conf = ConnectionConfig(
-    MAIL_USERNAME=settings.MAIL_USERNAME,
-    MAIL_PASSWORD=settings.MAIL_PASSWORD,
-    MAIL_FROM=settings.MAIL_FROM,
-    MAIL_PORT=settings.MAIL_PORT,
-    MAIL_SERVER=settings.MAIL_SERVER,
-    MAIL_STARTTLS=settings.MAIL_STARTTLS,
-    MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
-    USE_CREDENTIALS=True,
-)
 
+async def _send_email(subject: str, recipients: list[str], html: str) -> None:
+  if settings.MAIL_PROVIDER.lower() != "resend":
+    raise RuntimeError(f"Unsupported MAIL_PROVIDER: {settings.MAIL_PROVIDER}")
 
-async def _send_message(message: MessageSchema) -> None:
+  if not settings.RESEND_API_KEY:
+    raise RuntimeError("RESEND_API_KEY is required for Resend email delivery")
+
+  if not settings.MAIL_FROM:
+    raise RuntimeError("MAIL_FROM is required for email delivery")
+
+  payload = {
+    "from": f"{settings.MAIL_FROM_NAME} <{settings.MAIL_FROM}>",
+    "to": recipients,
+    "subject": subject,
+    "html": html,
+  }
+
   logger.info(
-    "Sending email via %s:%s starttls=%s ssl_tls=%s from=%s recipients=%s",
-    settings.MAIL_SERVER,
-    settings.MAIL_PORT,
-    settings.MAIL_STARTTLS,
-    settings.MAIL_SSL_TLS,
+    "Sending email via %s HTTPS API from=%s recipients=%s",
+    settings.MAIL_PROVIDER,
     settings.MAIL_FROM,
-    message.recipients,
+    recipients,
   )
+
   try:
     await asyncio.wait_for(
-      FastMail(conf).send_message(message),
+      _post_resend_email(payload),
       timeout=settings.MAIL_TIMEOUT_SECONDS,
     )
-    logger.info("Email sent successfully to %s", message.recipients)
+    logger.info("Email sent successfully to %s", recipients)
   except asyncio.TimeoutError:
     logger.exception(
       "Email sending timed out after %s seconds to %s",
       settings.MAIL_TIMEOUT_SECONDS,
-      message.recipients,
+      recipients,
     )
     raise
   except Exception:
-    logger.exception("Email sending failed to %s", message.recipients)
+    logger.exception("Email sending failed to %s", recipients)
     raise
+
+
+async def _post_resend_email(payload: dict) -> None:
+  async with httpx.AsyncClient(timeout=settings.MAIL_TIMEOUT_SECONDS) as client:
+    response = await client.post(
+      "https://api.resend.com/emails",
+      headers={
+        "accept": "application/json",
+        "authorization": f"Bearer {settings.RESEND_API_KEY}",
+        "content-type": "application/json",
+      },
+      json=payload,
+    )
+
+  if response.status_code >= 400:
+    logger.error(
+      "Resend email API rejected request: status=%s body=%s",
+      response.status_code,
+      response.text,
+    )
+    response.raise_for_status()
 
 
 async def send_reset_password_email(
@@ -67,14 +92,7 @@ async def send_reset_password_email(
     </p>
     """
 
-  message = MessageSchema(
-    subject="Reset Password",
-    recipients=[email],
-    body=html,
-    subtype="html"
-  )
-
-  await _send_message(message)
+  await _send_email("Reset Password", [email], html)
 
 
 async def send_verification_email(email: str, otp: str):
@@ -125,31 +143,21 @@ async def send_verification_email(email: str, otp: str):
   </html>
   """
 
-  message = MessageSchema(
-    subject=f"{settings.PROJECT_NAME} Verification Code",
-    recipients=[email],
-    body=html,
-    subtype="html"
-  )
-
-  await _send_message(message)
+  await _send_email(f"{settings.PROJECT_NAME} Verification Code", [email], html)
 
 
 async def send_contact_email(name: str, email: str, message: str):
+  safe_name = escape(name)
+  safe_email = escape(email)
+  safe_message = escape(message)
+
   html = f"""
     <h2>New Contact Form Submission</h2>
     <table style="border-collapse:collapse;width:100%;max-width:600px;">
-      <tr><td style="padding:8px;font-weight:bold;">Name:</td><td style="padding:8px;">{name}</td></tr>
-      <tr><td style="padding:8px;font-weight:bold;">Email:</td><td style="padding:8px;">{email}</td></tr>
-      <tr><td style="padding:8px;font-weight:bold;">Message:</td><td style="padding:8px;">{message}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;">Name:</td><td style="padding:8px;">{safe_name}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;">Email:</td><td style="padding:8px;">{safe_email}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;">Message:</td><td style="padding:8px;">{safe_message}</td></tr>
     </table>
     """
 
-  msg = MessageSchema(
-    subject=f"Contact Form: {name}",
-    recipients=[settings.MAIL_FROM],
-    body=html,
-    subtype="html",
-  )
-
-  await _send_message(msg)
+  await _send_email(f"Contact Form: {safe_name}", [settings.MAIL_FROM], html)
