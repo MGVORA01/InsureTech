@@ -1,28 +1,34 @@
-import os
+import hashlib
+import math
+import re
 
 
-MODEL_NAME = "BAAI/bge-base-en-v1.5"
-_model = None
+EMBEDDING_DIMENSION = 768
+TOKEN_PATTERN = re.compile(r"[a-zA-Z0-9]+")
 
 
-def get_model():
-    global _model
-    if _model is None:
-        import torch
-        from sentence_transformers import SentenceTransformer
-
-        # Optimize CPU parallelism for PyTorch only when the model is needed.
-        if "OMP_NUM_THREADS" not in os.environ:
-            torch.set_num_threads(min(2, os.cpu_count() or 2))
-        _model = SentenceTransformer(MODEL_NAME)
-    return _model
+def _hash_token(token: str) -> int:
+    digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
+    return int.from_bytes(digest, byteorder="big", signed=False)
 
 
 def generate_embedding(text: str) -> list[float]:
-    model = get_model()
-    return model.encode(text).tolist()
+    vector = [0.0] * EMBEDDING_DIMENSION
+    tokens = TOKEN_PATTERN.findall((text or "").lower())
+    if not tokens:
+        return vector
+
+    for token in tokens:
+        hashed = _hash_token(token)
+        index = hashed % EMBEDDING_DIMENSION
+        sign = 1.0 if (hashed >> 1) & 1 else -1.0
+        vector[index] += sign
+
+    norm = math.sqrt(sum(value * value for value in vector))
+    if norm == 0:
+        return vector
+    return [value / norm for value in vector]
 
 
 def generate_embeddings_batch(texts: list[str]) -> list[list[float]]:
-    model = get_model()
-    return model.encode(texts, show_progress_bar=True, batch_size=64).tolist()
+    return [generate_embedding(text) for text in texts]

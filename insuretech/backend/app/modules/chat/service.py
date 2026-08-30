@@ -22,7 +22,6 @@ from app.modules.chat.constants import (
     CONTEXT_SEPARATOR,
     DEFAULT_CHUNK_LIMIT,
     EMBEDDING_KEY,
-    EMBEDDING_MODEL_NAME,
     FILE_NOT_FOUND_MESSAGE_TEMPLATE,
     NO_ANSWER_FALLBACK_MESSAGE,
     NO_TEXT_EXTRACTED_MESSAGE,
@@ -39,20 +38,13 @@ from app.modules.chat.constants import (
 )
 from app.modules.chat.schemas import ChatRequest, ChatResponse, UploadResponse
 from app.modules.chat.system_prompt import SYSTEM_PROMPT
+from app.ai.models.bge_embedding_service import (
+    generate_embedding,
+    generate_embeddings_batch,
+)
 from app.shared.response import APIResponse
 
 client = Groq(api_key=settings.GROQ_API_KEY)
-_embed_model = None
-
-
-def _get_embed_model() -> Any:
-    """Return the lazily loaded embedding model."""
-    global _embed_model
-    if _embed_model is None:
-        from sentence_transformers import SentenceTransformer
-
-        _embed_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
-    return _embed_model
 
 
 class ChatService:
@@ -142,11 +134,10 @@ class ChatService:
         if not chunks:
             raise BadRequestException(NO_TEXT_EXTRACTED_MESSAGE)
 
-        model = await asyncio.to_thread(_get_embed_model)
         texts = [chunk[CHUNK_TEXT_KEY] for chunk in chunks]
-        embeddings = await asyncio.to_thread(model.encode, texts)
+        embeddings = await asyncio.to_thread(generate_embeddings_batch, texts)
         for index, embedding in enumerate(embeddings):
-            chunks[index][EMBEDDING_KEY] = embedding.tolist()
+            chunks[index][EMBEDDING_KEY] = embedding
             chunks[index][CHUNK_INDEX_KEY] = index
 
         policy_id, document_id = await Repo.get_or_create_knowledge_document(
@@ -168,10 +159,7 @@ class ChatService:
     @staticmethod
     async def _embed_text(text: str) -> list[float]:
         """Embed text into a vector (runs in thread to avoid blocking)."""
-        embedding = await asyncio.to_thread(
-            _get_embed_model().encode, text
-        )
-        return embedding.tolist()
+        return await asyncio.to_thread(generate_embedding, text)
 
     @staticmethod
     async def _call_groq(messages: list[dict[str, Any]]) -> str:
