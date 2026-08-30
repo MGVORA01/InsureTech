@@ -1,6 +1,9 @@
-from fastapi_mail import (FastMail,MessageSchema,ConnectionConfig)
+from fastapi_mail import ConnectionConfig, FastMail, MessageSchema
 
 from app.core.config import settings
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USERNAME,
@@ -8,10 +11,28 @@ conf = ConnectionConfig(
     MAIL_FROM=settings.MAIL_FROM,
     MAIL_PORT=settings.MAIL_PORT,
     MAIL_SERVER=settings.MAIL_SERVER,
-    MAIL_STARTTLS=True,
-    MAIL_SSL_TLS=False,
+    MAIL_STARTTLS=settings.MAIL_STARTTLS,
+    MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
     USE_CREDENTIALS=True,
 )
+
+
+async def _send_message(message: MessageSchema) -> None:
+  logger.info(
+    "Sending email via %s:%s starttls=%s ssl_tls=%s from=%s recipients=%s",
+    settings.MAIL_SERVER,
+    settings.MAIL_PORT,
+    settings.MAIL_STARTTLS,
+    settings.MAIL_SSL_TLS,
+    settings.MAIL_FROM,
+    message.recipients,
+  )
+  try:
+    await FastMail(conf).send_message(message)
+    logger.info("Email sent successfully to %s", message.recipients)
+  except Exception:
+    logger.exception("Email sending failed to %s", message.recipients)
+    raise
 
 
 async def send_reset_password_email(
@@ -41,9 +62,7 @@ async def send_reset_password_email(
     subtype="html"
   )
 
-  fm = FastMail(conf)
-
-  await fm.send_message(message)
+  await _send_message(message)
 
 
 async def send_verification_email(email: str, otp: str):
@@ -101,9 +120,7 @@ async def send_verification_email(email: str, otp: str):
     subtype="html"
   )
 
-  fm = FastMail(conf)
-
-  await fm.send_message(message)
+  await _send_message(message)
 
 
 async def send_contact_email(name: str, email: str, message: str):
@@ -123,5 +140,4 @@ async def send_contact_email(name: str, email: str, message: str):
     subtype="html",
   )
 
-  fm = FastMail(conf)
-  await fm.send_message(msg)
+  await _send_message(msg)
