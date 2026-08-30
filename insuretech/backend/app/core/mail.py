@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema
 
 from app.core.config import settings
@@ -28,8 +30,18 @@ async def _send_message(message: MessageSchema) -> None:
     message.recipients,
   )
   try:
-    await FastMail(conf).send_message(message)
+    await asyncio.wait_for(
+      FastMail(conf).send_message(message),
+      timeout=settings.MAIL_TIMEOUT_SECONDS,
+    )
     logger.info("Email sent successfully to %s", message.recipients)
+  except asyncio.TimeoutError:
+    logger.exception(
+      "Email sending timed out after %s seconds to %s",
+      settings.MAIL_TIMEOUT_SECONDS,
+      message.recipients,
+    )
+    raise
   except Exception:
     logger.exception("Email sending failed to %s", message.recipients)
     raise

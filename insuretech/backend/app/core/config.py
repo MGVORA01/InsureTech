@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     MAIL_PORT: int = 587
     MAIL_STARTTLS: bool = True
     MAIL_SSL_TLS: bool = False
+    MAIL_TIMEOUT_SECONDS: int = 20
 
     FRONTEND_URL: str = "http://localhost:5173"
 
