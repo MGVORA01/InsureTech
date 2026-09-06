@@ -10,7 +10,7 @@ AI/RAG support, email delivery, and integration with PostgreSQL and Cloudinary.
 - Database: PostgreSQL (`asyncpg` + SQLAlchemy)
 - Migrations: Alembic
 - Authentication: JWT access and refresh tokens
-- Email: FastAPI-Mail
+- Email: Brevo HTTPS API
 - File storage: Cloudinary
 - AI provider: GROQ for embeddings, chat, and RAG flows
 
@@ -42,11 +42,11 @@ Create a `.env` file in `insuretech/backend/` with the required settings.
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
 - `REFRESH_TOKEN_EXPIRE_DAYS`
 - `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`
-- `MAIL_USERNAME`
-- `MAIL_PASSWORD`
+- `MAIL_PROVIDER`
 - `MAIL_FROM`
-- `MAIL_SERVER`
-- `MAIL_PORT`
+- `MAIL_FROM_NAME`
+- `BREVO_API_KEY`
+- `MAIL_TIMEOUT_SECONDS`
 - `FRONTEND_URL`
 - `PROJECT_NAME`
 - `ENVIRONMENT`
@@ -63,6 +63,26 @@ Create a `.env` file in `insuretech/backend/` with the required settings.
 - `COOKIE_SECURE`
 
 > Note: Keep `.env` local and do not commit secrets into source control.
+
+### Email delivery
+
+Transactional email is sent through Brevo from the centralized service in
+`app/core/mail.py`.
+
+For Render, configure:
+
+```bash
+MAIL_PROVIDER=brevo
+BREVO_API_KEY=your_brevo_api_key
+MAIL_FROM=aiinsuretech@gmail.com
+MAIL_FROM_NAME=AI InsureTech
+FRONTEND_URL=https://your-frontend-url
+MAIL_TIMEOUT_SECONDS=20
+```
+
+`MAIL_FROM` must be a sender that is allowed in your Brevo account. Password
+reset links are generated from `FRONTEND_URL`, for example
+`https://your-frontend-url/reset-password?token=...`.
 
 ## Database
 
@@ -101,7 +121,9 @@ Swagger UI and API docs are available at `http://localhost:8000/docs`.
 ## Deployment notes
 
 - Configure `DATABASE_URL` for the target environment. The backend uses SQLAlchemy asyncio, so PostgreSQL URLs must resolve to the `asyncpg` driver.
-- Use secure secrets for `SECRET_KEY`, mail credentials, and Cloudinary.
+- Use secure secrets for `SECRET_KEY`, Brevo, and Cloudinary.
+- Render should use Brevo over HTTPS for email delivery; do not rely on SMTP
+  ports in production.
 - Ensure CORS is set for the frontend host via `app/core/middleware.py`.
 - Monitor `LOG_LEVEL` for production readiness.
 

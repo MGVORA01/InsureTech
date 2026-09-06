@@ -12,16 +12,10 @@ class Settings(BaseSettings):
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 15
     EMAIL_OTP_EXPIRE_MINUTES: int = 5
 
-    MAIL_USERNAME: str = ""
-    MAIL_PASSWORD: str = ""
     MAIL_FROM: str = ""
     MAIL_FROM_NAME: str = "Insuretech"
-    MAIL_PROVIDER: str = "resend"
-    RESEND_API_KEY: str = ""
-    MAIL_SERVER: str = "smtp.gmail.com"
-    MAIL_PORT: int = 587
-    MAIL_STARTTLS: bool = True
-    MAIL_SSL_TLS: bool = False
+    MAIL_PROVIDER: str = "brevo"
+    BREVO_API_KEY: str = ""
     MAIL_TIMEOUT_SECONDS: int = 20
 
     FRONTEND_URL: str = "http://localhost:5173"

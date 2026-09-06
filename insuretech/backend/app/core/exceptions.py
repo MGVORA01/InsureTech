@@ -40,6 +40,10 @@ class TooManyRequestsException(Exception):
     """Raised when a request exceeds an allowed rate limit."""
 
 
+class ServiceUnavailableException(Exception):
+    """Raised when an external dependency is temporarily unavailable."""
+
+
 # Global Exception Handlers
 
 
@@ -176,6 +180,20 @@ async def too_many_requests_exception_handler(
     )
 
 
+async def service_unavailable_exception_handler(
+    request: Request,
+    exc: ServiceUnavailableException,
+) -> JSONResponse:
+    """Handle external dependency failures."""
+
+    logger.error(str(exc))
+
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content=APIResponse.error_response(message=str(exc)).model_dump(),
+    )
+
+
 async def generic_exception_handler(
     request: Request,
     exc: Exception,
@@ -236,6 +254,11 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         TooManyRequestsException,
         too_many_requests_exception_handler,
+    )
+
+    app.add_exception_handler(
+        ServiceUnavailableException,
+        service_unavailable_exception_handler,
     )
 
     app.add_exception_handler(

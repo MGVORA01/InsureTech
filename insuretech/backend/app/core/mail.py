@@ -9,73 +9,142 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
-async def _send_email(subject: str, recipients: list[str], html: str) -> None:
-  if settings.MAIL_PROVIDER.lower() != "resend":
-    raise RuntimeError(f"Unsupported MAIL_PROVIDER: {settings.MAIL_PROVIDER}")
+class EmailDeliveryError(RuntimeError):
+  """Raised when the email provider cannot send a message."""
 
-  if not settings.RESEND_API_KEY:
-    raise RuntimeError("RESEND_API_KEY is required for Resend email delivery")
+  def __init__(self, message: str, status_code: int | None = None):
+    super().__init__(message)
+    self.status_code = status_code
 
-  if not settings.MAIL_FROM:
-    raise RuntimeError("MAIL_FROM is required for email delivery")
 
-  payload = {
-    "from": f"{settings.MAIL_FROM_NAME} <{settings.MAIL_FROM}>",
-    "to": recipients,
-    "subject": subject,
-    "html": html,
-  }
+class BrevoEmailService:
+  """Centralized Brevo HTTPS API email delivery service."""
 
-  logger.info(
-    "Sending email via %s HTTPS API from=%s recipients=%s",
-    settings.MAIL_PROVIDER,
-    settings.MAIL_FROM,
-    recipients,
-  )
+  _endpoint = "https://api.brevo.com/v3/smtp/email"
 
-  try:
+  async def send_email(
+    self,
+    subject: str,
+    recipients: list[str],
+    html: str,
+    reply_to: list[str] | None = None,
+  ) -> None:
+    self._validate_settings()
+    payload = {
+      "sender": {
+        "name": settings.MAIL_FROM_NAME,
+        "email": settings.MAIL_FROM,
+      },
+      "to": [{"email": recipient} for recipient in recipients],
+      "subject": subject,
+      "htmlContent": html,
+    }
+    if reply_to:
+      payload["replyTo"] = {"email": reply_to[0]}
+
+    logger.info(
+      "Sending transactional email provider=brevo from=%s recipients=%s",
+      settings.MAIL_FROM,
+      recipients,
+    )
+
     await asyncio.wait_for(
-      _post_resend_email(payload),
+      self._post(payload),
       timeout=settings.MAIL_TIMEOUT_SECONDS,
     )
-    logger.info("Email sent successfully to %s", recipients)
+    logger.info("Transactional email sent provider=brevo recipients=%s", recipients)
+
+  @staticmethod
+  def _validate_settings() -> None:
+    if settings.MAIL_PROVIDER.lower() != "brevo":
+      raise EmailDeliveryError("MAIL_PROVIDER must be set to brevo")
+
+    if not settings.BREVO_API_KEY:
+      raise EmailDeliveryError("BREVO_API_KEY is required for Brevo email delivery")
+
+    if not settings.MAIL_FROM:
+      raise EmailDeliveryError("MAIL_FROM is required for email delivery")
+
+  async def _post(self, payload: dict) -> None:
+    async with httpx.AsyncClient(timeout=settings.MAIL_TIMEOUT_SECONDS) as client:
+      response = await client.post(
+        self._endpoint,
+        headers={
+          "accept": "application/json",
+          "api-key": settings.BREVO_API_KEY,
+          "content-type": "application/json",
+        },
+        json=payload,
+      )
+
+    if response.status_code >= 400:
+      provider_message = self._provider_message(response)
+      logger.error(
+        "Brevo email API rejected request status=%s error=%s",
+        response.status_code,
+        provider_message,
+      )
+      raise EmailDeliveryError(
+        f"Brevo rejected request ({response.status_code}): {provider_message}",
+        status_code=response.status_code,
+      )
+
+  @staticmethod
+  def _provider_message(response: httpx.Response) -> str:
+    try:
+      data = response.json()
+    except ValueError:
+      return "Brevo returned a non-JSON error response"
+
+    message = data.get("message") or data.get("error") or data.get("code")
+    if not message:
+      return "Brevo returned an unrecognized error response"
+    return str(message)[:500]
+
+
+email_service = BrevoEmailService()
+
+
+async def _send_email(
+  subject: str,
+  recipients: list[str],
+  html: str,
+  reply_to: list[str] | None = None,
+) -> bool:
+  """Send a transactional email and convert provider errors to a boolean result."""
+
+  try:
+    await email_service.send_email(subject, recipients, html, reply_to=reply_to)
+    return True
   except asyncio.TimeoutError:
-    logger.exception(
-      "Email sending timed out after %s seconds to %s",
+    logger.error(
+      "Brevo email sending timed out after %s seconds recipients=%s",
       settings.MAIL_TIMEOUT_SECONDS,
       recipients,
     )
-    raise
-  except Exception:
-    logger.exception("Email sending failed to %s", recipients)
-    raise
-
-
-async def _post_resend_email(payload: dict) -> None:
-  async with httpx.AsyncClient(timeout=settings.MAIL_TIMEOUT_SECONDS) as client:
-    response = await client.post(
-      "https://api.resend.com/emails",
-      headers={
-        "accept": "application/json",
-        "authorization": f"Bearer {settings.RESEND_API_KEY}",
-        "content-type": "application/json",
-      },
-      json=payload,
-    )
-
-  if response.status_code >= 400:
+    return False
+  except EmailDeliveryError as exc:
     logger.error(
-      "Resend email API rejected request: status=%s body=%s",
-      response.status_code,
-      response.text,
+      "Brevo email sending failed status=%s recipients=%s error=%s",
+      exc.status_code,
+      recipients,
+      exc,
     )
-    response.raise_for_status()
+    return False
+  except httpx.HTTPError as exc:
+    logger.error(
+      "Brevo email HTTP request failed recipients=%s error=%s",
+      recipients,
+      exc.__class__.__name__,
+    )
+    return False
 
 
 async def send_reset_password_email(
   email: str,
   reset_url: str
-):
+) -> bool:
+  safe_reset_url = escape(reset_url, quote=True)
   html = f"""
     <h2>Reset Password</h2>
 
@@ -83,7 +152,7 @@ async def send_reset_password_email(
         Click the button below to reset your password.
     </p>
 
-    <a href="{reset_url}">
+    <a href="{safe_reset_url}">
         Reset Password
     </a>
 
@@ -92,10 +161,10 @@ async def send_reset_password_email(
     </p>
     """
 
-  await _send_email("Reset Password", [email], html)
+  return await _send_email("Reset Password", [email], html)
 
 
-async def send_verification_email(email: str, otp: str):
+async def send_verification_email(email: str, otp: str) -> bool:
   html = f"""
   <!DOCTYPE html>
   <html lang="en">
@@ -143,10 +212,10 @@ async def send_verification_email(email: str, otp: str):
   </html>
   """
 
-  await _send_email(f"{settings.PROJECT_NAME} Verification Code", [email], html)
+  return await _send_email(f"{settings.PROJECT_NAME} Verification Code", [email], html)
 
 
-async def send_contact_email(name: str, email: str, message: str):
+async def send_contact_email(name: str, email: str, message: str) -> bool:
   safe_name = escape(name)
   safe_email = escape(email)
   safe_message = escape(message)
@@ -160,4 +229,9 @@ async def send_contact_email(name: str, email: str, message: str):
     </table>
     """
 
-  await _send_email(f"Contact Form: {safe_name}", [settings.MAIL_FROM], html)
+  return await _send_email(
+    f"Contact Form: {safe_name}",
+    [settings.MAIL_FROM],
+    html,
+    reply_to=[email],
+  )
