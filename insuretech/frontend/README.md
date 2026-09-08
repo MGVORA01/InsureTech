@@ -2,6 +2,8 @@
 
 The **InsureTech Frontend** is a modern, responsive web application built with **React 18**, **TypeScript**, **Vite**, **Redux Toolkit**, and **React Query**. It provides business risk profiling, intelligent policy recommendations, side-by-side policy comparison, interactive RAG chat assistance, and enterprise administration dashboards.
 
+For the full project index (frontend + backend), see [`../README.md`](../README.md).
+
 ---
 
 ## 🛠️ Tech Stack & Architecture

@@ -4,6 +4,8 @@ This backend is the API and business logic layer for the InsureTech application.
 It provides insurance risk profiling, policy management, authentication, admin workflows,
 AI/RAG support, email delivery, and integration with PostgreSQL and Cloudinary.
 
+For the full project index (backend + frontend), see [`../README.md`](../README.md).
+
 ## Architecture
 
 - Framework: FastAPI
