@@ -1949,13 +1949,24 @@ function HomePage() {
                     });
                     setContactSent(true);
                   } catch (err: unknown) {
-                    const msg =
+                    const detail =
                       err && typeof err === "object" && "response" in err
-                        ? (err as { response: { data: { detail?: string } } })
+                        ? (err as { response?: { status?: number; data?: { detail?: string } } })
                             .response?.data?.detail
-                        : "Something went wrong. Please try again.";
+                        : "";
+                    const status =
+                      err && typeof err === "object" && "response" in err
+                        ? (err as { response?: { status?: number } }).response?.status
+                        : undefined;
+
+                    const isRateLimitError =
+                      status === 429 ||
+                      /limit|too many|rate/i.test(detail || "");
+
                     setContactError(
-                      msg ?? "Something went wrong. Please try again.",
+                      isRateLimitError
+                        ? "Request limit reached. Please try again in a few hours."
+                        : detail || "Something went wrong. Please try again.",
                     );
                   } finally {
                     setContactSending(false);

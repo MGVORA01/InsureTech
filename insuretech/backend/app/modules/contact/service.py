@@ -1,9 +1,10 @@
 from collections import defaultdict
 from datetime import datetime
 
+from app.core.exceptions import ServiceUnavailableException, TooManyRequestsException
 from app.core.mail import send_contact_email
-from app.core.exceptions import TooManyRequestsException
 from app.modules.contact.constants import (
+    CONTACT_EMAIL_UNAVAILABLE_MESSAGE,
     CONTACT_SUBMITTED_MESSAGE,
     RATE_LIMIT_MAX,
     RATE_LIMIT_WINDOW,
@@ -29,11 +30,13 @@ class ContactService:
 
         self._record_hit(client_ip)
 
-        await send_contact_email(
+        sent = await send_contact_email(
             name=data.name,
             email=data.email,
             message=data.message,
         )
+        if not sent:
+            raise ServiceUnavailableException(CONTACT_EMAIL_UNAVAILABLE_MESSAGE)
 
         return APIResponse.success_response(
             message=CONTACT_SUBMITTED_MESSAGE,
