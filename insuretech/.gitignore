@@ -32,6 +32,12 @@ build/
 cleanup_seed.py
 seed_meta.py
 master_seed_clean.json
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+htmlcov/
 parsed_output/
 cleaned_output/
 section_output/

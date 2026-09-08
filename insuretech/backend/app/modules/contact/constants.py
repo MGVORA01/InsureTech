@@ -12,3 +12,6 @@ UNKNOWN_CLIENT_IP = "unknown"
 
 TOO_MANY_REQUESTS_MESSAGE = "Too many requests. Please try again in 15 minutes."
 CONTACT_SUBMITTED_MESSAGE = "Message sent successfully."
+CONTACT_EMAIL_UNAVAILABLE_MESSAGE = (
+    "Email service is unavailable. Please try again later."
+)
