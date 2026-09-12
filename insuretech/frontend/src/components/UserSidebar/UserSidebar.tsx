@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
 function LogoIcon() {
@@ -130,10 +131,12 @@ export function UserSidebar({
   onAfterNavigate,
 }: UserSidebarProps) {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
 
   const handleLogout = async () => {
     try {
       await logout()
+      navigate('/', { replace: true })
     } catch {
       // handled by slice
     }
