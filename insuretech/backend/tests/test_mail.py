@@ -1,6 +1,23 @@
+from unittest.mock import AsyncMock
+
 import pytest
 
 from app.core import mail
+from app.core.exceptions import BadRequestException
+import app.modules.auth.repository as auth_repo
+from app.modules.auth.schemas import ForgotPasswordRequest
+from app.modules.auth.service import Service
+
+
+@pytest.mark.asyncio
+async def test_forgot_password_raises_error_for_unknown_email(monkeypatch):
+    monkeypatch.setattr(auth_repo, "get_user_by_email", AsyncMock(return_value=None))
+
+    with pytest.raises(BadRequestException, match="User with this email does not exist"):
+        await Service.forgot_password_service(
+            ForgotPasswordRequest(email="unknown@example.com"),
+            AsyncMock(),
+        )
 
 
 @pytest.mark.asyncio

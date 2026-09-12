@@ -53,6 +53,7 @@ from app.modules.auth.constants import (
     TOKEN_TYPE_CLAIM,
     TOO_MANY_ATTEMPTS_MESSAGE,
     USER_EXISTS_MESSAGE,
+    USER_EMAIL_NOT_FOUND_MESSAGE,
     USER_FETCHED_MESSAGE,
     USER_ID_KEY,
     USER_LOGGED_IN_MESSAGE,
@@ -166,17 +167,12 @@ class AuthService:
         data: ForgotPasswordRequest,
         db: AsyncSession,
     ) -> tuple[APIResponse[None], str | None, str | None]:
-        """Create password reset email details without leaking account existence."""
+        """Create password reset email details."""
         user = await Repository.get_user_by_email(db, data.email)
-        if not user or not user.is_active:
-            return (
-                APIResponse.success_response(
-                    message=PASSWORD_RESET_EMAIL_SENT_MESSAGE,
-                    data=None,
-                ),
-                None,
-                None,
-            )
+        if not user:
+            raise BadRequestException(USER_EMAIL_NOT_FOUND_MESSAGE)
+        if not user.is_active:
+            raise UnauthorizedException(ACCOUNT_INACTIVE_MESSAGE)
 
         active_token = await Repository.get_active_password_reset_token(db, user.id)
         if active_token:
