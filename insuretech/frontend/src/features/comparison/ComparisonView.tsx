@@ -30,55 +30,93 @@ const CATEGORY_LABELS: Record<string, string> = {
   conditions: "Terms & Conditions",
 };
 
+const CATEGORY_ICONS: Record<string, { icon: string; color: string }> = {
+  "What is Covered": { icon: "🛡️", color: "text-emerald-600" },
+  Coverage: { icon: "✅", color: "text-emerald-600" },
+  Exclusions: { icon: "🚫", color: "text-red-500" },
+  "Claims Process": { icon: "📋", color: "text-blue-500" },
+  Conditions: { icon: "📜", color: "text-amber-600" },
+};
+
 const UNAVAILABLE_TEXT = "Information not available in the selected policies.";
 
-function splitIntoPoints(value: string): string[] {
-  const cleaned = value.trim();
-  if (!cleaned) return [UNAVAILABLE_TEXT];
-
-  const explicitPoints = cleaned
-    .split(/\n+|(?:^|\s)[-*]\s+|(?:^|\s)\d+\.\s+/)
-    .map((point) => point.trim())
-    .filter(Boolean);
-
-  if (explicitPoints.length > 1) return explicitPoints.slice(0, 5);
-
-  const sentencePoints = cleaned
-    .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
-    ?.map((point) => point.trim())
-    .filter(Boolean);
-
-  if (sentencePoints && sentencePoints.length > 1)
-    return sentencePoints.slice(0, 4);
-  return [cleaned];
+function normalizeLegacyPoint(value: string): string {
+  let cleaned = value.trim();
+  cleaned = cleaned.replace(/^[\s•\-*▪▸►]+/g, "");
+  cleaned = cleaned.replace(/^\s*(?:\(?\d+[.)]\s*)+(?:\(?[a-zA-Z]{1,3}[.)]\s*)*/i, "");
+  cleaned = cleaned.replace(/^\s*\(?[a-zA-Z]{1,3}[.)]\s*/i, "");
+  cleaned = cleaned.replace(/^\s*\(?[ivxIVX]+[.)]\s*/, "");
+  cleaned = cleaned.replace(/[\s.]*(?:\.\.\.|…)+$/g, "").trim();
+  return cleaned;
 }
 
-function PointList({ value }: { value: string }) {
-  const points = splitIntoPoints(value);
-  return (
-    <ul className="m-0 list-disc pl-[1.1rem]">
+function toPointArray(value: string[] | string | null | undefined): string[] {
+  if (Array.isArray(value)) {
+    const items = value
+      .map((item) => normalizeLegacyPoint(String(item || "")))
+      .filter(Boolean);
+    return items.length > 0 ? items : [UNAVAILABLE_TEXT];
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parts = value
+      .split(/\n+/)
+      .map((part) => normalizeLegacyPoint(part))
+      .filter(Boolean);
+    return parts.length > 0 ? parts : [UNAVAILABLE_TEXT];
+  }
+  return [UNAVAILABLE_TEXT];
+}
+
+function PointList({ items }: { items: string[] | string | null | undefined }) {
+  const points = toPointArray(items);
+  const isUnavailable = points.length === 1 && points[0] === UNAVAILABLE_TEXT;
+  return isUnavailable ? (
+    <p className="m-0 text-sm italic text-text-tertiary">{UNAVAILABLE_TEXT}</p>
+  ) : (
+    <ul className="m-0 list-none pl-0 flex flex-col gap-2">
       {points.map((point, index) => (
-        <li key={`${point}-${index}`} className="mb-1.5 last:mb-0">
-          {point}
+        <li
+          key={`${point.slice(0, 25)}-${index}`}
+          className="flex items-start gap-2 text-sm leading-relaxed text-text-primary"
+        >
+          <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-secondary/80" />
+          <span>{point}</span>
         </li>
       ))}
     </ul>
   );
 }
 
-function renderListItems(items: string[]) {
-  const safeItems =
-    items.length > 0
-      ? items.flatMap((item) => splitIntoPoints(item))
-      : [UNAVAILABLE_TEXT];
-  return safeItems.map((item, index) => (
-    <li
-      key={`${item}-${index}`}
-      className="mb-1 text-sm leading-6 text-text-primary"
-    >
-      {item}
-    </li>
-  ));
+function toRiskRows(value: unknown): Array<{
+  risk_category: string;
+  risk_level: string;
+  policy_a: string;
+  policy_b: string;
+}> {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const row = item as Record<string, unknown>;
+        return {
+          risk_category: String(row.risk_category || "").trim() || "Business Risk",
+          risk_level: String(row.risk_level || "").trim() || "Not specified",
+          policy_a: toPointArray(row.policy_a as string | string[])[0],
+          policy_b: toPointArray(row.policy_b as string | string[])[0],
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    return toPointArray(value).map((point) => ({
+      risk_category: "Business Risk",
+      risk_level: "Not specified",
+      policy_a: point,
+      policy_b: point,
+    }));
+  }
+  return [];
 }
 
 export default function ComparisonView({
@@ -243,7 +281,7 @@ export default function ComparisonView({
         <p className="max-w-[28rem] text-sm text-text-tertiary">
           Select two insurance policies above and click Compare to see a
           detailed side-by-side analysis across coverage, exclusions, claims,
-          financials, and terms.
+          conditions, and business risk alignment.
         </p>
       </div>
     );
@@ -302,6 +340,12 @@ export default function ComparisonView({
   function renderResults() {
     if (!result) return null;
 
+    const riskAlignmentPoints = toRiskRows(
+      (result as unknown as Record<string, unknown>).business_risk_alignment
+    );
+    const isRiskUnavailable =
+      riskAlignmentPoints.length === 0;
+
     return (
       <div className="flex flex-col gap-6">
         {policyAMeta && policyBMeta && (
@@ -315,20 +359,26 @@ export default function ComparisonView({
           </div>
         )}
 
+        {/* Executive Summary */}
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">
-            Executive Summary
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 flex items-center gap-2">
+            <span className="text-lg">📊</span>
+            <span className="text-[15px] font-bold text-text-primary">
+              Executive Summary
+            </span>
           </div>
           <div className="px-5 py-4">
-            <p className="m-0 text-sm leading-7 text-text-primary">
-              {result.executive_summary}
-            </p>
+            <PointList items={result.executive_summary} />
           </div>
         </div>
 
+        {/* Section-by-Section Comparison */}
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">
-            Section-by-Section Comparison
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 flex items-center gap-2">
+            <span className="text-lg">⚖️</span>
+            <span className="text-[15px] font-bold text-text-primary">
+              Section-by-Section Comparison
+            </span>
           </div>
           <div className="p-0">
             <table className="w-full border-collapse">
@@ -337,97 +387,260 @@ export default function ComparisonView({
                   <th className="w-[20%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">
                     Category
                   </th>
-                  <th className="w-[40%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">
-                    Policy A
+                  <th className="w-[40%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-primary">
+                    Policy A{policyAMeta ? ` — ${policyAMeta.policy_name}` : ""}
                   </th>
-                  <th className="w-[40%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary">
-                    Policy B
+                  <th className="w-[40%] border-b-2 border-border bg-surface-alt px-4 py-3 text-left text-[13px] font-bold uppercase tracking-[0.04em] text-risk-medium">
+                    Policy B{policyBMeta ? ` — ${policyBMeta.policy_name}` : ""}
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {result.comparisons.map((item) => (
-                  <tr key={item.category}>
-                    <td className="w-[20%] border-b border-border px-4 py-4 text-sm font-semibold text-text-primary">
-                      {CATEGORY_LABELS[item.category] || item.category}
-                    </td>
-                    <td className="w-[40%] border-b border-border px-4 py-4 text-sm leading-6 text-text-primary">
-                      <PointList value={item.policy_a_value} />
-                    </td>
-                    <td className="w-[40%] border-b border-border px-4 py-4 text-sm leading-6 text-text-primary">
-                      <PointList value={item.policy_b_value} />
-                    </td>
-                  </tr>
-                ))}
+                {result.comparisons.map((item) => {
+                  const catIcon = CATEGORY_ICONS[item.category] ||
+                    CATEGORY_ICONS[
+                      CATEGORY_LABELS[item.category] || ""
+                    ] || { icon: "📄", color: "text-slate-500" };
+                  return (
+                    <tr key={item.category}>
+                      <td className="w-[20%] border-b border-border px-4 py-4 align-top">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{catIcon.icon}</span>
+                          <span className="text-sm font-semibold text-text-primary">
+                            {CATEGORY_LABELS[item.category] || item.category}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="w-[40%] border-b border-border px-4 py-4 align-top text-sm leading-6 text-text-primary">
+                        <PointList items={item.policy_a_value} />
+                      </td>
+                      <td className="w-[40%] border-b border-border px-4 py-4 align-top text-sm leading-6 text-text-primary">
+                        <PointList items={item.policy_b_value} />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
 
+        {/* Business Risk Alignment */}
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">
-            Business Risk Alignment
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 flex items-center gap-2">
+            <span className="text-lg">🎯</span>
+            <span className="text-[15px] font-bold text-text-primary">
+              Business Risk Alignment
+            </span>
           </div>
           <div className="px-5 py-4">
-            <p className="m-0 text-sm leading-7 text-text-primary">
-              {result.business_risk_alignment}
-            </p>
+            {isRiskUnavailable ? (
+              <p className="m-0 text-sm italic text-text-tertiary">
+                {UNAVAILABLE_TEXT}
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {riskAlignmentPoints.map((risk, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-[var(--radius-md)] border border-border bg-surface-alt px-4 py-3"
+                  >
+                    <div className="mb-1 text-[13px] font-bold text-secondary">
+                      {risk.risk_category} ({risk.risk_level})
+                    </div>
+                    <p className="m-0 text-sm leading-6 text-text-primary">
+                      <strong>Policy A:</strong> {risk.policy_a}
+                    </p>
+                    <p className="m-0 text-sm leading-6 text-text-primary">
+                      <strong>Policy B:</strong> {risk.policy_b}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Coverage Gap Analysis */}
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="border-b border-border bg-surface-alt px-5 py-3.5 text-[15px] font-bold text-text-primary">
-            Advantages & Limitations
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 flex items-center gap-2">
+            <span className="text-lg">🧩</span>
+            <span className="text-[15px] font-bold text-text-primary">
+              Coverage Gap Analysis
+            </span>
+          </div>
+          <div className="grid gap-4 px-5 py-4 md:grid-cols-2">
+            <div>
+              <div className="mb-2 text-sm font-semibold text-text-secondary">Covered by both</div>
+              <PointList items={result.coverage_gap_analysis?.covered_by_both} />
+            </div>
+            <div>
+              <div className="mb-2 text-sm font-semibold text-text-secondary">Covered only by Policy A</div>
+              <PointList items={result.coverage_gap_analysis?.covered_only_by_a} />
+            </div>
+            <div>
+              <div className="mb-2 text-sm font-semibold text-text-secondary">Covered only by Policy B</div>
+              <PointList items={result.coverage_gap_analysis?.covered_only_by_b} />
+            </div>
+            <div>
+              <div className="mb-2 text-sm font-semibold text-text-secondary">Covered by neither</div>
+              <PointList items={result.coverage_gap_analysis?.covered_by_neither} />
+            </div>
+          </div>
+        </div>
+
+        {/* Advantages & Limitations */}
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
+          <div className="border-b border-border bg-surface-alt px-5 py-3.5 flex items-center gap-2">
+            <span className="text-lg">📋</span>
+            <span className="text-[15px] font-bold text-text-primary">
+              Advantages & Limitations
+            </span>
           </div>
           <div className="px-5 py-4">
             <div className="grid gap-6 md:grid-cols-2">
+              {/* Policy A */}
               <div>
                 <div className="mb-3 text-[15px] font-bold text-primary">
                   Policy A — Advantages
                 </div>
                 <div className="flex flex-col gap-2">
-                  <ul className="m-0 pl-5">
-                    {renderListItems(result.advantages_a)}
-                  </ul>
+                  {(result.advantages_a.length > 0
+                    ? result.advantages_a
+                    : [UNAVAILABLE_TEXT]
+                  ).map((adv, i) => {
+                    const isNA = adv === UNAVAILABLE_TEXT;
+                    return (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-2.5 rounded-[var(--radius-md)] px-3 py-2 ${
+                          isNA
+                            ? "text-text-tertiary italic"
+                            : "bg-[#E8F5E9] border border-[#4CAF50]/20"
+                        }`}
+                      >
+                        {!isNA && (
+                          <span className="mt-0.5 text-[#4CAF50] text-sm font-bold shrink-0">
+                            ✓
+                          </span>
+                        )}
+                        <span className="text-sm leading-6 text-text-primary">
+                          {adv}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="mt-4 flex flex-col gap-2">
-                  <div className="text-[13px] font-semibold uppercase tracking-[0.03em] text-text-secondary">
-                    Limitations
-                  </div>
-                  <ul className="m-0 pl-5">
-                    {renderListItems(result.limitations_a)}
-                  </ul>
+                <div className="mt-4 mb-3 text-[13px] font-semibold uppercase tracking-[0.03em] text-text-secondary">
+                  Limitations
+                </div>
+                <div className="flex flex-col gap-2">
+                  {(result.limitations_a.length > 0
+                    ? result.limitations_a
+                    : [UNAVAILABLE_TEXT]
+                  ).map((lim, i) => {
+                    const isNA = lim === UNAVAILABLE_TEXT;
+                    return (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-2.5 rounded-[var(--radius-md)] px-3 py-2 ${
+                          isNA
+                            ? "text-text-tertiary italic"
+                            : "bg-[#FFEBEE] border border-[#EF5350]/20"
+                        }`}
+                      >
+                        {!isNA && (
+                          <span className="mt-0.5 text-[#EF5350] text-sm font-bold shrink-0">
+                            ✗
+                          </span>
+                        )}
+                        <span className="text-sm leading-6 text-text-primary">
+                          {lim}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* Policy B */}
               <div>
                 <div className="mb-3 text-[15px] font-bold text-primary">
                   Policy B — Advantages
                 </div>
                 <div className="flex flex-col gap-2">
-                  <ul className="m-0 pl-5">
-                    {renderListItems(result.advantages_b)}
-                  </ul>
+                  {(result.advantages_b.length > 0
+                    ? result.advantages_b
+                    : [UNAVAILABLE_TEXT]
+                  ).map((adv, i) => {
+                    const isNA = adv === UNAVAILABLE_TEXT;
+                    return (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-2.5 rounded-[var(--radius-md)] px-3 py-2 ${
+                          isNA
+                            ? "text-text-tertiary italic"
+                            : "bg-[#E8F5E9] border border-[#4CAF50]/20"
+                        }`}
+                      >
+                        {!isNA && (
+                          <span className="mt-0.5 text-[#4CAF50] text-sm font-bold shrink-0">
+                            ✓
+                          </span>
+                        )}
+                        <span className="text-sm leading-6 text-text-primary">
+                          {adv}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="mt-4 flex flex-col gap-2">
-                  <div className="text-[13px] font-semibold uppercase tracking-[0.03em] text-text-secondary">
-                    Limitations
-                  </div>
-                  <ul className="m-0 pl-5">
-                    {renderListItems(result.limitations_b)}
-                  </ul>
+                <div className="mt-4 mb-3 text-[13px] font-semibold uppercase tracking-[0.03em] text-text-secondary">
+                  Limitations
+                </div>
+                <div className="flex flex-col gap-2">
+                  {(result.limitations_b.length > 0
+                    ? result.limitations_b
+                    : [UNAVAILABLE_TEXT]
+                  ).map((lim, i) => {
+                    const isNA = lim === UNAVAILABLE_TEXT;
+                    return (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-2.5 rounded-[var(--radius-md)] px-3 py-2 ${
+                          isNA
+                            ? "text-text-tertiary italic"
+                            : "bg-[#FFEBEE] border border-[#EF5350]/20"
+                        }`}
+                      >
+                        {!isNA && (
+                          <span className="mt-0.5 text-[#EF5350] text-sm font-bold shrink-0">
+                            ✗
+                          </span>
+                        )}
+                        <span className="text-sm leading-6 text-text-primary">
+                          {lim}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-risk-low bg-risk-low-bg p-5">
-          <div className="mb-2 text-[15px] font-bold text-risk-low">
-            Overall Recommendation
+        {/* Overall Recommendation */}
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-risk-low bg-risk-low-bg">
+          <div className="px-5 py-3.5 flex items-center gap-2.5 border-b border-risk-low/30">
+            <span className="text-xl">💡</span>
+            <span className="text-[15px] font-bold text-risk-low">
+              Overall Recommendation
+            </span>
           </div>
-          <p className="m-0 text-sm leading-7 text-text-primary">
-            {result.overall_recommendation}
-          </p>
+          <div className="px-5 py-4">
+            <PointList items={result.overall_recommendation} />
+          </div>
         </div>
 
         {result.missing_information.length > 0 && (

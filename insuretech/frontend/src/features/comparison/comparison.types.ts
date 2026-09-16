@@ -7,23 +7,37 @@ export interface CompareRequest {
 
 export interface ComparisonItem {
   category: string
-  policy_a_value: string
-  policy_b_value: string
+  policy_a_value: string[]
+  policy_b_value: string[]
   stronger: 'a' | 'b' | 'equal' | 'insufficient_evidence'
   evidence: string
   confidence: 'high' | 'medium' | 'low'
 }
 
+export interface CoverageGapAnalysis {
+  covered_by_both: string[]
+  covered_only_by_a: string[]
+  covered_only_by_b: string[]
+  covered_by_neither: string[]
+}
+
+export interface BusinessRiskAlignmentItem {
+  risk_category: string
+  risk_level: string
+  policy_a: string
+  policy_b: string
+}
+
 export interface CompareResponse {
-  executive_summary: string
+  executive_summary: string[]
   comparisons: ComparisonItem[]
-  coverage_gap_analysis: string
-  business_risk_alignment: string
+  coverage_gap_analysis: CoverageGapAnalysis
+  business_risk_alignment: BusinessRiskAlignmentItem[]
   advantages_a: string[]
   advantages_b: string[]
   limitations_a: string[]
   limitations_b: string[]
-  overall_recommendation: string
+  overall_recommendation: string[]
   missing_information: string[]
   overall_confidence: 'high' | 'medium' | 'low'
 }
