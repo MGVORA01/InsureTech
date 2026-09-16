@@ -37,6 +37,7 @@ from app.modules.chat.constants import (
     USER_ROLE,
 )
 from app.modules.chat.schemas import ChatRequest, ChatResponse, UploadResponse
+from app.core.logging import get_logger
 from app.modules.chat.system_prompt import SYSTEM_PROMPT
 from app.ai.models.bge_embedding_service import (
     generate_embedding,
@@ -44,7 +45,44 @@ from app.ai.models.bge_embedding_service import (
 )
 from app.shared.response import APIResponse
 
-client = Groq(api_key=settings.GROQ_API_KEY)
+logger = get_logger(__name__)
+
+_groq_client: Groq | None = None
+
+_GREETING_WORDS: set[str] = {
+    "hi", "hello", "hey", "hii", "helo", "heyy", "heya",
+    "good morning", "good afternoon", "good evening", "good night",
+    "goodmorning", "goodafternoon", "goodevening", "goodnight",
+    "how are you", "how r u", "what's up", "whats up", "sup",
+    "greetings", "howdy", "hi there", "hello there",
+    "thank you", "thanks", "thank u", "ty", "thx",
+    "bye", "goodbye", "see you", "see ya", "later",
+    "ok", "okay", "great", "nice", "cool",
+    "who are you", "what are you", "what can you do",
+    "help", "help me",
+}
+
+
+def _is_greeting(text: str) -> bool:
+    """Return True if the message is a greeting or small talk."""
+    cleaned = text.strip().lower().rstrip("!?.,")
+    if cleaned in _GREETING_WORDS:
+        return True
+    # Single word or very short non-question message
+    words = cleaned.split()
+    if len(words) <= 3:
+        return any(w in _GREETING_WORDS for w in words)
+    return False
+
+
+def get_groq_client() -> Groq | None:
+    global _groq_client
+    api_key = (settings.GROQ_API_KEY or "").strip()
+    if not api_key:
+        return None
+    if _groq_client is None:
+        _groq_client = Groq(api_key=api_key, timeout=30.0)
+    return _groq_client
 
 
 class ChatService:
@@ -56,6 +94,33 @@ class ChatService:
     ) -> APIResponse[dict[str, Any]]:
         """Answer a chat question using similar knowledge-base chunks."""
         session_id = data.session_id or str(uuid4())
+
+        # --- Greeting / small talk: respond via Groq without needing PDF chunks ---
+        if _is_greeting(data.question):
+            greeting_context = (
+                "The user is sending a greeting or casual message. "
+                "Respond warmly and naturally as the InsureTech Assistant. "
+                "Invite them to ask anything about insurance policies, coverage, or the platform."
+            )
+            system_content = SYSTEM_PROMPT.replace("{context}", greeting_context)
+            messages = [
+                {ROLE_KEY: SYSTEM_ROLE, CONTENT_KEY: system_content},
+                {ROLE_KEY: USER_ROLE, CONTENT_KEY: data.question},
+            ]
+            try:
+                answer = await self._call_groq(messages)
+            except Exception as exc:
+                logger.error("Groq greeting response failed: %s", exc)
+                answer = "Hi there! 👋 Welcome to InsureTech. How can I help you today?"
+            return APIResponse.success_response(
+                message=ANSWER_GENERATED_MESSAGE,
+                data=ChatResponse(
+                    answer=answer,
+                    session_id=session_id,
+                    sources=[],
+                ).model_dump(),
+            )
+
         query_vec = await self._embed_text(data.question)
         chunks = await Repo.search_similar_chunks(
             db, query_vec, limit=DEFAULT_CHUNK_LIMIT
@@ -72,22 +137,55 @@ class ChatService:
             )
 
         context = CONTEXT_SEPARATOR.join(chunk[0] for chunk in chunks)
+        system_content = SYSTEM_PROMPT.replace("{context}", context)
         system_msg = {
             ROLE_KEY: SYSTEM_ROLE,
-            CONTENT_KEY: SYSTEM_PROMPT.format(context=context),
+            CONTENT_KEY: system_content,
         }
+
+        sanitized_history = []
+        for m in (data.history or []):
+            if isinstance(m, dict) and m.get(ROLE_KEY) and m.get(CONTENT_KEY):
+                sanitized_history.append({
+                    ROLE_KEY: str(m[ROLE_KEY]),
+                    CONTENT_KEY: str(m[CONTENT_KEY]),
+                })
+
         messages = [
             system_msg,
-            *data.history,
+            *sanitized_history,
             {ROLE_KEY: USER_ROLE, CONTENT_KEY: data.question},
         ]
-        answer = await self._call_groq(messages)
+
         sources = [
             SOURCE_TEMPLATE.format(
-                page=page, text=text[:SOURCE_TEXT_LIMIT]
+                page=page if page is not None else 1,
+                text=(text or "")[:SOURCE_TEXT_LIMIT],
             )
             for text, page, _ in chunks
         ]
+
+        try:
+            answer = await self._call_groq(messages)
+        except Exception as exc:
+            logger.error("Chat Groq completion failed: %s", exc)
+            if not settings.GROQ_API_KEY or not settings.GROQ_API_KEY.strip():
+                answer = (
+                    "I found relevant policy documentation, but the AI language model (Groq) "
+                    "is not configured with a GROQ_API_KEY in the server environment. "
+                    "Please set GROQ_API_KEY in your Render dashboard environment variables."
+                )
+            else:
+                top_chunks_summary = "\n\n".join(
+                    f"• (Page {page or 1}): {text[:200]}..."
+                    for text, page, _ in chunks[:2]
+                )
+                answer = (
+                    "I found relevant information in our policy documents, but the AI service "
+                    "is currently busy or rate-limited. Here are the key details:\n\n"
+                    f"{top_chunks_summary}\n\n"
+                    "Please contact our support team if you need further assistance."
+                )
 
         return APIResponse.success_response(
             message=ANSWER_GENERATED_SUCCESS_MESSAGE,
@@ -164,9 +262,13 @@ class ChatService:
     @staticmethod
     async def _call_groq(messages: list[dict[str, Any]]) -> str:
         """Generate a chat completion using Groq (runs in thread)."""
+        groq_client = get_groq_client()
+        if groq_client is None:
+            raise ValueError("GROQ_API_KEY is not set or empty in environment.")
+
         response = await asyncio.to_thread(
-            client.chat.completions.create,
-            model=settings.GROQ_MODEL,
+            groq_client.chat.completions.create,
+            model=settings.GROQ_MODEL or "llama-3.1-8b-instant",
             messages=messages,
             temperature=settings.GROQ_TEMPERATURE,
         )
