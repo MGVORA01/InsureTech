@@ -8,6 +8,7 @@ import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
+import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import {
   generateRecommendations,
   getRecommendationPolicyDownload,
@@ -58,20 +59,43 @@ function getApiErrorMessage(err: unknown, fallback: string) {
 function LoadingView() {
   return (
     <div className="flex min-h-screen items-center justify-center" style={{ background: 'var(--color-background)' }}>
-      <div className="flex items-center gap-3 rounded-lg border px-5 py-4 shadow-sm" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Preparing advisor recommendations</span>
+      <div className="flex flex-col items-center gap-4 rounded-2xl border px-8 py-7 shadow-lg" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+        <div className="relative flex h-11 w-11 items-center justify-center">
+          <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-t-transparent" style={{ borderColor: 'var(--color-primary-dark)', borderTopColor: 'transparent' }} />
+          <ShieldOutlinedIcon style={{ color: 'var(--color-primary-dark)' }} fontSize="small" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Preparing your recommendations</p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>Matching your risk profile against available policies</p>
+        </div>
       </div>
     </div>
   )
 }
 
 function ScoreRing({ matched, total }: { matched: number; total: number }) {
+  const pct = total > 0 ? clampPercent((matched / total) * 100) : 0
+  const circumference = 2 * Math.PI * 30
+  const offset = circumference - (pct / 100) * circumference
   return (
-    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-[7px] text-center shadow-sm" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-risk-low-bg)' }}>
-      <div>
-        <div className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{matched}/{total}</div>
-        <div className="text-[10px] font-bold uppercase" style={{ color: 'var(--color-text-secondary)' }}>Risks</div>
+    <div className="relative flex h-[76px] w-[76px] shrink-0 items-center justify-center">
+      <svg viewBox="0 0 68 68" className="h-full w-full -rotate-90">
+        <circle cx="34" cy="34" r="30" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="6" />
+        <circle
+          cx="34"
+          cy="34"
+          r="30"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center">
+        <span className="text-base font-bold leading-none text-white">{matched}/{total}</span>
+        <span className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-slate-300">Risks</span>
       </div>
     </div>
   )
@@ -96,7 +120,7 @@ function RecommendationCard({
   const policyId = recommendation.policy_id ?? policy?.id ?? null
   const match = scorePercent(recommendation)
   const riskPercent = riskScorePercent(recommendation.risk_score)
-  const badge = rank === 1 ? 'Best Match' : match >= 85 ? 'High Coverage' : 'Recommended for You'
+  const badge = rank === 1 ? 'Best match' : match >= 85 ? 'High coverage' : 'Recommended for you'
   const coverageCount = recommendation.coverage_match_count
   const coverageTotal = recommendation.coverage_match_total
   const [downloadError, setDownloadError] = useState('')
@@ -128,60 +152,69 @@ function RecommendationCard({
 
   return (
     <article
-      className={`overflow-hidden rounded-2xl border bg-surface shadow-card transition ${
-        selected ? 'border-primary ring-2 ring-primary/20' : 'border-border'
-      } ${selectionDisabled ? 'opacity-70' : 'cursor-pointer hover:border-primary/60'}`}
+      className={`overflow-hidden rounded-2xl border bg-surface transition-all duration-200 ${
+        selected ? 'border-primary shadow-[0_0_0_3px_rgba(37,99,235,0.15)]' : 'border-border shadow-sm hover:shadow-md'
+      } ${selectionDisabled ? 'opacity-60' : 'cursor-pointer'}`}
       onClick={() => {
         if (!selectionDisabled || selected) onToggleSelect()
       }}
     >
-      <div className="border-b px-5 py-4 text-white sm:px-6" style={{ background: 'var(--color-primary-dark)', borderColor: 'var(--color-border)' }}>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div
+        className="relative px-5 py-5 text-white sm:px-7 sm:py-6"
+        style={{ background: rank === 1 ? 'var(--color-primary-dark)' : 'var(--color-secondary)' }}
+      >
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white text-lg font-bold text-slate-950">
-              #{rank}
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 text-base font-bold ring-1 ring-white/25">
+              {rank}
             </div>
             <div className="min-w-0">
-              <div className="flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold" style={{ background: 'var(--color-risk-medium-bg)', color: 'var(--color-risk-medium)' }}>
-                  <WorkspacePremiumRoundedIcon className="h-4 w-4" />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold" style={{ color: 'var(--color-primary-dark)' }}>
+                  <WorkspacePremiumRoundedIcon sx={{ fontSize: 15 }} />
                   {badge}
                 </span>
-                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
-                  selected ? 'bg-emerald-100 text-emerald-800' : 'bg-white/10 text-white'
-                }`}>
-                  {selected ? 'Selected' : 'Select to compare'}
-                </span>
+                {selected && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/20 px-3 py-1 text-xs font-semibold text-emerald-50 ring-1 ring-emerald-300/40">
+                    <CheckCircleOutlineRoundedIcon sx={{ fontSize: 14 }} />
+                    Selected to compare
+                  </span>
+                )}
               </div>
-              <h3 className="mt-3 text-xl font-bold leading-7">{recommendation.policy_name || policy?.policy_name}</h3>
-              <p className="mt-1 text-sm font-medium text-slate-300">{recommendation.company_name || policy?.insurer_name}</p>
-              <p className="mt-2 text-xs font-bold uppercase text-slate-300">
-                Risk score: {riskPercent}%
-              </p>
+              <h3 className="mt-3 text-xl font-bold leading-tight sm:text-2xl">{recommendation.policy_name || policy?.policy_name}</h3>
+              <p className="mt-1.5 text-sm font-medium text-white/70">{recommendation.company_name || policy?.insurer_name}</p>
+              <div className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-white/70">
+                <TrendingUpRoundedIcon sx={{ fontSize: 15 }} />
+                Underlying risk exposure: {riskPercent}%
+              </div>
             </div>
           </div>
-          <div>
+          <div className="flex flex-col items-center gap-2 self-center">
             <ScoreRing matched={coverageCount} total={coverageTotal} />
-            <p className="mt-2 text-center text-xs font-bold text-slate-300">
-              Covered: {coverageCount} / {coverageTotal} Risks
+            <p className="text-center text-xs font-medium text-white/70">
+              Risks covered
             </p>
           </div>
         </div>
+        {!selected && !selectionDisabled && (
+          <p className="mt-4 text-xs font-medium text-white/60">Click this card to select it for comparison</p>
+        )}
       </div>
 
-      <div className="grid gap-6 p-5 sm:p-6">
+      <div className="grid gap-6 p-5 sm:p-7">
         <div>
-          <h4 className="text-xs font-bold uppercase" style={{ color: 'var(--color-text-secondary)' }}>Why this policy is recommended</h4>
-          <p className="mt-2 text-sm leading-6" style={{ color: 'var(--color-text-primary)' }}>
+          <h4 className="text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Why this policy fits your business</h4>
+          <p className="mt-2 text-sm leading-6" style={{ color: 'var(--color-text-secondary)' }}>
             {recommendation.why_recommended || 'This policy is ranked from your risk profile and supporting policy wording.'}
           </p>
         </div>
 
         <div>
-          <h4 className="text-xs font-bold uppercase" style={{ color: 'var(--color-text-secondary)' }}>Risk categories covered</h4>
+          <h4 className="text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Risk categories covered</h4>
           <div className="mt-3 flex flex-wrap gap-2">
             {recommendation.matched_risk_categories.length > 0 ? recommendation.matched_risk_categories.map((risk) => (
-              <span key={risk} className="rounded-full px-3 py-1.5 text-xs font-bold" style={{ background: 'var(--color-selected)', color: 'var(--color-secondary)' }}>
+              <span key={risk} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold" style={{ background: 'var(--color-selected)', color: 'var(--color-secondary)' }}>
+                <CheckCircleOutlineRoundedIcon sx={{ fontSize: 14 }} />
                 {risk}
               </span>
             )) : (
@@ -192,10 +225,10 @@ function RecommendationCard({
 
         {recommendation.additional_inclusions.length > 0 && (
           <div>
-            <h4 className="text-xs font-bold uppercase" style={{ color: 'var(--color-text-secondary)' }}>Additional Inclusions</h4>
+            <h4 className="text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Also included</h4>
             <div className="mt-3 flex flex-wrap gap-2">
               {recommendation.additional_inclusions.map((item) => (
-                <span key={item} className="rounded-full px-3 py-1.5 text-xs font-bold" style={{ background: 'var(--color-surface-alt)', color: 'var(--color-text-primary)' }}>
+                <span key={item} className="rounded-full border px-3 py-1.5 text-xs font-medium" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
                   {item}
                 </span>
               ))}
@@ -203,25 +236,26 @@ function RecommendationCard({
           </div>
         )}
 
-        <div className="flex justify-end border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="flex flex-col items-end gap-2 border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
           <button
             onClick={(event) => {
               event.stopPropagation()
               handleDownload()
             }}
-            className="inline-flex h-10 shrink-0 items-center justify-center rounded-md px-5 text-sm font-bold text-white transition hover:opacity-90"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             style={{ background: 'var(--color-primary-dark)' }}
             type="button"
             disabled={downloading}
           >
-            {downloading ? 'Preparing...' : 'Download'}
+            <PictureAsPdfRoundedIcon sx={{ fontSize: 17 }} />
+            {downloading ? 'Preparing document...' : 'Download policy PDF'}
           </button>
+          {downloadError && (
+            <p className="text-sm font-medium text-red-600">
+              {downloadError}
+            </p>
+          )}
         </div>
-        {downloadError && (
-          <p className="text-right text-sm font-medium text-red-600">
-            {downloadError}
-          </p>
-        )}
       </div>
     </article>
   )
@@ -351,19 +385,19 @@ export default function RecommendationsPage() {
     return (
       <UserLayout activeSection="recommendation" onSectionChange={handleSectionChange} contentClassName="w-full">
         <div className="flex min-h-screen items-center justify-center p-6" style={{ background: 'var(--color-background)' }}>
-          <div className="w-full max-w-md rounded-lg border p-8 text-center shadow-sm" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-risk-high-bg)' }}>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg" style={{ background: 'var(--color-risk-high-bg)', color: 'var(--color-risk-high)' }}>
+          <div className="w-full max-w-md rounded-2xl border p-8 text-center shadow-sm" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-risk-high-bg)' }}>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full" style={{ background: 'var(--color-risk-high-bg)', color: 'var(--color-risk-high)' }}>
               <ErrorOutlineRoundedIcon />
             </div>
             <h2 className="mt-4 text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Recommendations unavailable</h2>
             <p className="mt-2 text-sm leading-6" style={{ color: 'var(--color-text-secondary)' }}>{errorMsg}</p>
             <button
               onClick={loadRecommendations}
-              className="mt-6 inline-flex h-10 items-center gap-2 rounded-md px-4 text-sm font-bold text-white"
+              className="mt-6 inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-semibold text-white transition hover:opacity-90"
               style={{ background: 'var(--color-primary-dark)' }}
             >
               <RefreshRoundedIcon className="h-4 w-4" />
-              Retry
+              Try again
             </button>
           </div>
         </div>
@@ -374,64 +408,54 @@ export default function RecommendationsPage() {
   return (
     <UserLayout activeSection="recommendation" onSectionChange={handleSectionChange} contentClassName="w-full">
       <main className="min-h-screen" style={{ background: 'var(--color-background)' }}>
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-lg border p-5 shadow-sm sm:p-6" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg text-white" style={{ background: 'var(--color-primary-dark)' }}>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <section className="rounded-2xl border p-6 shadow-sm sm:p-8" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: 'var(--color-primary-dark)' }}>
                 <ShieldOutlinedIcon />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-normal sm:text-3xl" style={{ color: 'var(--color-text-primary)' }}>AI Policy Recommendations</h1>
-                <p className="mt-1 text-sm leading-6" style={{ color: 'var(--color-text-secondary)' }}>
-                  Top 5 advisor-ranked policies based on your risk assessment and policy wording evidence.
+                <h1 className="text-2xl font-bold leading-tight sm:text-[28px]" style={{ color: 'var(--color-text-primary)' }}>Your policy recommendations</h1>
+                <p className="mt-1.5 max-w-xl text-sm leading-6" style={{ color: 'var(--color-text-secondary)' }}>
+                  The five best-matching policies for your business, ranked from your risk assessment and supporting policy wording.
                 </p>
               </div>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <button
-                onClick={() => {
-                  if (selectedPolicyIds.length !== 2) return
-                  navigate(`/recommendations/${sessionId}/compare`, {
-                    state: {
-                      selectedPolicyIds,
-                      recommendations: topRecommendations,
-                      businessProfileId: data?.business_profile_id ?? null,
-                    },
-                  })
-                }}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-bold text-white transition hover:opacity-90"
-                style={{ background: 'var(--color-secondary)' }}
-                disabled={selectedPolicyIds.length !== 2}
-              >
-                <BalanceRoundedIcon className="h-4 w-4" />
-                {selectedPolicyIds.length === 2 ? 'Compare Selected Policies' : `Select 2 Policies (${selectedCount}/2)`}
-              </button>
-              <button
-                onClick={loadRecommendations}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-bold text-white transition hover:opacity-90"
-                style={{ background: 'var(--color-primary-dark)' }}
-              >
-                <RefreshRoundedIcon className="h-4 w-4" />
-                Refresh
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                if (selectedPolicyIds.length !== 2) return
+                navigate(`/recommendations/${sessionId}/compare`, {
+                  state: {
+                    selectedPolicyIds,
+                    recommendations: topRecommendations,
+                    businessProfileId: data?.business_profile_id ?? null,
+                  },
+                })
+              }}
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ background: 'var(--color-secondary)' }}
+              disabled={selectedPolicyIds.length !== 2}
+            >
+              <BalanceRoundedIcon className="h-4 w-4" />
+              {selectedPolicyIds.length === 2 ? 'Compare selected policies' : `Select 2 policies to compare (${selectedCount}/2)`}
+            </button>
           </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-3">
+          <div className="mt-7 grid gap-3 sm:grid-cols-3">
             {topRisks.map((risk, index) => {
               const style = levelStyle(risk.risk_level)
               return (
                 <div
                   key={risk.risk_category_name}
-                  className="rounded-lg border p-4"
-                  style={{ background: style.background, borderColor: style.color }}
+                  className="rounded-xl border p-4"
+                  style={{ background: style.background, borderColor: style.color + '33' }}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs font-bold uppercase" style={{ color: 'var(--color-text-secondary)' }}>Priority risk #{index + 1}</span>
-                    <span className="text-sm font-bold" style={{ color: style.color }}>{riskScorePercent(risk.score)}%</span>
+                    <span className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>Priority risk {index + 1}</span>
+                    <span className="rounded-md px-2 py-0.5 text-xs font-bold" style={{ color: style.color, background: 'rgba(255,255,255,0.6)' }}>{riskScorePercent(risk.score)}%</span>
                   </div>
-                  <p className="mt-2 text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>{risk.risk_category_name}</p>
+                  <p className="mt-2 text-[15px] font-semibold leading-snug" style={{ color: 'var(--color-text-primary)' }}>{risk.risk_category_name}</p>
                 </div>
               )
             })}
@@ -439,53 +463,53 @@ export default function RecommendationsPage() {
         </section>
 
         {status === 'empty' ? (
-          <section className="mt-6 rounded-lg border p-8 text-center shadow-sm" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-risk-low-bg)' }}>
-            <CheckCircleOutlineRoundedIcon className="mx-auto h-10 w-10" style={{ color: 'var(--color-risk-low)' }} />
+          <section className="mt-6 rounded-2xl border p-10 text-center shadow-sm" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-risk-low-bg)' }}>
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full" style={{ background: 'var(--color-risk-low-bg)' }}>
+              <CheckCircleOutlineRoundedIcon style={{ color: 'var(--color-risk-low)' }} />
+            </div>
             <h2 className="mt-4 text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>No urgent policy match required</h2>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-6" style={{ color: 'var(--color-text-secondary)' }}>
               Your latest assessment did not produce enough high-priority risk evidence for policy recommendations.
             </p>
           </section>
         ) : (
-          <>
-            <section className="mt-8">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                  <InsightsOutlinedIcon className="h-5 w-5" style={{ color: 'var(--color-text-primary)' }} />
-                  <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Top Recommended Insurance Policies</h2>
-                </div>
-                <button
-                  onClick={handleDownloadReport}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                  style={{ background: 'var(--color-primary-dark)' }}
-                  type="button"
-                  disabled={pdfBusy}
-                >
-                  <PictureAsPdfRoundedIcon className="h-4 w-4" />
-                  {pdfBusy ? 'Preparing PDF...' : 'Download PDF Report'}
-                </button>
+          <section className="mt-8">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <InsightsOutlinedIcon className="h-5 w-5" style={{ color: 'var(--color-primary-dark)' }} />
+                <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Top recommended policies</h2>
               </div>
-              {pdfError && (
-                <p className="mb-4 text-right text-sm font-medium text-red-600">{pdfError}</p>
-              )}
-              <div className="space-y-6">
-                {topRecommendations.map((recommendation, index) => (
-                  <RecommendationCard
-                    key={recommendation.policy_id || `${recommendation.policy_name}-${index}`}
-                    recommendation={recommendation}
-                    rank={index + 1}
-                    sessionId={sessionId ?? ''}
-                    selected={Boolean(recommendation.policy_id && selectedPolicyIds.includes(recommendation.policy_id))}
-                    selectionDisabled={
-                      selectedPolicyIds.length >= 2 &&
-                      !(recommendation.policy_id && selectedPolicyIds.includes(recommendation.policy_id))
-                    }
-                    onToggleSelect={() => handleTogglePolicy(recommendation.policy_id)}
-                  />
-                ))}
-              </div>
-            </section>
-          </>
+              <button
+                onClick={handleDownloadReport}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderColor: 'var(--color-primary-dark)', color: 'var(--color-primary-dark)' }}
+                type="button"
+                disabled={pdfBusy}
+              >
+                <PictureAsPdfRoundedIcon className="h-4 w-4" />
+                {pdfBusy ? 'Preparing PDF...' : 'Download full report'}
+              </button>
+            </div>
+            {pdfError && (
+              <p className="mb-4 text-right text-sm font-medium text-red-600">{pdfError}</p>
+            )}
+            <div className="space-y-6">
+              {topRecommendations.map((recommendation, index) => (
+                <RecommendationCard
+                  key={recommendation.policy_id || `${recommendation.policy_name}-${index}`}
+                  recommendation={recommendation}
+                  rank={index + 1}
+                  sessionId={sessionId ?? ''}
+                  selected={Boolean(recommendation.policy_id && selectedPolicyIds.includes(recommendation.policy_id))}
+                  selectionDisabled={
+                    selectedPolicyIds.length >= 2 &&
+                    !(recommendation.policy_id && selectedPolicyIds.includes(recommendation.policy_id))
+                  }
+                  onToggleSelect={() => handleTogglePolicy(recommendation.policy_id)}
+                />
+              ))}
+            </div>
+          </section>
         )}
       </div>
       </main>

@@ -13,6 +13,13 @@ COMPARISON_SECTIONS = [
     ("Claims Process", "claims process notice settlement documents", "claims"),
     ("Conditions", "policy conditions duties obligations", "conditions"),
 ]
+REQUIRED_COMPARISON_CATEGORIES = (
+    "What is Covered",
+    "Coverage",
+    "Exclusions",
+    "Claims Process",
+    "Conditions",
+)
 
 ADVANTAGE_TERMS = (
     "cover",
@@ -38,6 +45,24 @@ LIMITATION_TERMS = (
     "waiting period",
 )
 
+ADVANTAGE_NEGATION_TERMS = (
+    "not cover",
+    "does not cover",
+    "not covered",
+    "excluded",
+    "exclusion",
+    "except",
+    "no liability",
+    "not liable",
+    "limitation",
+    "warranty",
+    "deductible",
+    "waiting period",
+    "shall not",
+    "will not pay",
+    "inadmissible",
+)
+
 LLM_MODEL = "llama-3.3-70b-versatile"
 LLM_TEMPERATURE = 0.05
 
@@ -51,6 +76,8 @@ CONFIDENCE_LOW = "low"
 STRONGER_INSUFFICIENT_EVIDENCE = "insufficient_evidence"
 
 INFO_NOT_AVAILABLE_MESSAGE = "Information not available in the selected policies."
+NO_WINNER_MESSAGE = "An overall winner cannot be determined from the retrieved evidence."
+NOT_SPECIFICALLY_ADDRESSED_MESSAGE = "not specifically addressed"
 
 BUSINESS_PROFILE_NOT_FOUND_MESSAGE = "Business profile not found"
 SESSION_BUSINESS_MISMATCH_MESSAGE = "Selected session does not match this business"

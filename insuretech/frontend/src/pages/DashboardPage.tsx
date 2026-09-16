@@ -858,15 +858,7 @@ export default function DashboardPage() {
 
     if (profilingView === "results" && profilingResults) {
       return (
-        <div
-          className="p-8"
-          style={{
-            borderRadius: "var(--radius-xl)",
-            border: "none",
-            backgroundColor: "var(--color-surface)",
-            boxShadow: "var(--shadow-lg)",
-          }}
-        >
+        <div className="w-full">
           <ProfilingResults
             data={profilingResults}
             onRestart={() => {
