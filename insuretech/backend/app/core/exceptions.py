@@ -47,6 +47,16 @@ class ServiceUnavailableException(Exception):
 # Global Exception Handlers
 
 
+def _with_cors(request: Request, response: JSONResponse) -> JSONResponse:
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
+
 async def http_exception_handler(
     request: Request,
     exc: HTTPException,
@@ -58,9 +68,12 @@ async def http_exception_handler(
         exc.detail,
     )
 
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=APIResponse.error_response(message=str(exc.detail)).model_dump(),
+    return _with_cors(
+        request,
+        JSONResponse(
+            status_code=exc.status_code,
+            content=APIResponse.error_response(message=str(exc.detail)).model_dump(),
+        ),
     )
 
 
@@ -188,9 +201,12 @@ async def service_unavailable_exception_handler(
 
     logger.error(str(exc))
 
-    return JSONResponse(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        content=APIResponse.error_response(message=str(exc)).model_dump(),
+    return _with_cors(
+        request,
+        JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=APIResponse.error_response(message=str(exc)).model_dump(),
+        ),
     )
 
 
@@ -200,13 +216,16 @@ async def generic_exception_handler(
 ) -> JSONResponse:
     """Handle unexpected exceptions."""
 
-    logger.exception("Unhandled exception occurred")
+    logger.exception("Unhandled exception occurred: %s", exc)
 
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=APIResponse.error_response(
-            message="An unexpected error occurred",
-        ).model_dump(),
+    return _with_cors(
+        request,
+        JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=APIResponse.error_response(
+                message=str(exc) if str(exc) else "An unexpected error occurred",
+            ).model_dump(),
+        ),
     )
 
 
