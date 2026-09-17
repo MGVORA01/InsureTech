@@ -79,11 +79,11 @@ _GREETING_WORDS: set[str] = {
 
 # Varied static greeting fallbacks (used only if Groq is completely unavailable)
 _GREETING_FALLBACKS = [
-    "Hi there! 👋 Welcome to InsureTech. Ask me anything about insurance policies, coverage, or claims!",
-    "Hello! 😊 I'm your InsureTech Assistant. How can I help you today?",
-    "Hey! Great to see you here. Feel free to ask me anything about our insurance platform.",
-    "Hi! I'm here to help with all your insurance questions. What would you like to know?",
-    "Hello! 👋 Welcome! I can help you understand your insurance options. What's on your mind?",
+    "Hi there! 👋 Welcome to InsureTech. How can I help you today? Ask me anything about how our platform works or how to get started!",
+    "Hello! 😊 I'm your InsureTech Assistant. Feel free to ask me anything about navigating the platform or our business risk assessment.",
+    "Hey! Great to see you here. I can help you understand how InsureTech works and how to explore your options on the platform. What's on your mind?",
+    "Hi! Welcome to InsureTech. I'm here to answer your questions about our platform features, risk scoring, and how to get started. How can I assist you?",
+    "Hello! 👋 Welcome! Need help navigating the platform or learning how InsureTech works? Feel free to ask!",
 ]
 
 # Static "service unavailable" fallback for PDF answers
@@ -133,7 +133,10 @@ class ChatService:
                 greeting_context = (
                     "The user is sending a greeting or casual message. "
                     "Respond warmly and naturally as the InsureTech Assistant. "
-                    "Invite them to ask anything about insurance policies, coverage, or the platform."
+                    "Invite them to ask about how the InsureTech platform works, "
+                    "getting started with business risk assessment, or navigating our features. "
+                    "Do NOT ask them for policy coverage questions, since policy recommendations "
+                    "and comparisons are handled directly inside the platform."
                 )
                 system_content = SYSTEM_PROMPT.replace("{context}", greeting_context)
                 messages = [
