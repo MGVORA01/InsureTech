@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     BREVO_API_KEY: str = ""
     MAIL_TIMEOUT_SECONDS: int = 20
 
+    # Comma-separated list of allowed frontend origins.
+    # e.g. on Render: "https://your-app.vercel.app,https://your-custom-domain.com"
     FRONTEND_URL: str = "http://localhost:5173"
 
     PROJECT_NAME: str = "Insuretech"
