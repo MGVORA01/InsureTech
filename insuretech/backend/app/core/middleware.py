@@ -1,4 +1,7 @@
 # app/core/middleware.py
+# CORS origins are read from FRONTEND_URL env var.
+# On Render dashboard, set FRONTEND_URL to a comma-separated list of allowed origins.
+# Example: https://your-app.vercel.app,https://your-custom-domain.com
 
 from app.core.config import settings
 from fastapi import FastAPI
@@ -6,7 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 def _allowed_origins() -> list[str]:
-    configured = [settings.FRONTEND_URL.rstrip("/")]
+    # Support comma-separated list of origins in FRONTEND_URL for Render deployment.
+    # e.g. FRONTEND_URL=https://your-app.vercel.app,https://your-custom-domain.com
+    raw = settings.FRONTEND_URL or ""
+    configured = [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
+
     local_dev = [
         "http://localhost:5173",
         "http://localhost:5174",

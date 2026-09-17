@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import random
 from typing import Any
 from uuid import uuid4
 
@@ -47,8 +48,21 @@ from app.shared.response import APIResponse
 
 logger = get_logger(__name__)
 
+# ---------------------------------------------------------------------------
+# Groq client — lazy singleton, reset on key change
+# ---------------------------------------------------------------------------
 _groq_client: Groq | None = None
 
+# Ordered list of models to try (primary → fallbacks)
+_GROQ_MODELS = [
+    "llama-3.1-8b-instant",
+    "gemma2-9b-it",
+    "llama3-8b-8192",
+]
+
+# ---------------------------------------------------------------------------
+# Greeting detection
+# ---------------------------------------------------------------------------
 _GREETING_WORDS: set[str] = {
     "hi", "hello", "hey", "hii", "helo", "heyy", "heya",
     "good morning", "good afternoon", "good evening", "good night",
@@ -62,13 +76,27 @@ _GREETING_WORDS: set[str] = {
     "help", "help me",
 }
 
+# Varied static greeting fallbacks (used only if Groq is completely unavailable)
+_GREETING_FALLBACKS = [
+    "Hi there! 👋 Welcome to InsureTech. Ask me anything about insurance policies, coverage, or claims!",
+    "Hello! 😊 I'm your InsureTech Assistant. How can I help you today?",
+    "Hey! Great to see you here. Feel free to ask me anything about our insurance platform.",
+    "Hi! I'm here to help with all your insurance questions. What would you like to know?",
+    "Hello! 👋 Welcome! I can help you understand your insurance options. What's on your mind?",
+]
+
+# Static "service unavailable" fallback for PDF answers
+_SERVICE_UNAVAILABLE_FALLBACK = (
+    "I'm sorry, I'm having trouble connecting to the AI service right now. "
+    "Please try again in a moment, or contact our support team through the website for immediate help."
+)
+
 
 def _is_greeting(text: str) -> bool:
     """Return True if the message is a greeting or small talk."""
     cleaned = text.strip().lower().rstrip("!?.,")
     if cleaned in _GREETING_WORDS:
         return True
-    # Single word or very short non-question message
     words = cleaned.split()
     if len(words) <= 3:
         return any(w in _GREETING_WORDS for w in words)
@@ -79,9 +107,12 @@ def get_groq_client() -> Groq | None:
     global _groq_client
     api_key = (settings.GROQ_API_KEY or "").strip()
     if not api_key:
+        logger.error(
+            "GROQ_API_KEY is not set. Set it in Render dashboard → Environment."
+        )
         return None
     if _groq_client is None:
-        _groq_client = Groq(api_key=api_key, timeout=30.0)
+        _groq_client = Groq(api_key=api_key, timeout=45.0)
     return _groq_client
 
 
@@ -95,23 +126,25 @@ class ChatService:
         """Answer a chat question using similar knowledge-base chunks."""
         session_id = data.session_id or str(uuid4())
 
-        # --- Greeting / small talk: respond via Groq without needing PDF chunks ---
+        # --- Greeting / small talk: respond directly without PDF lookup ---
         if _is_greeting(data.question):
-            greeting_context = (
-                "The user is sending a greeting or casual message. "
-                "Respond warmly and naturally as the InsureTech Assistant. "
-                "Invite them to ask anything about insurance policies, coverage, or the platform."
-            )
-            system_content = SYSTEM_PROMPT.replace("{context}", greeting_context)
-            messages = [
-                {ROLE_KEY: SYSTEM_ROLE, CONTENT_KEY: system_content},
-                {ROLE_KEY: USER_ROLE, CONTENT_KEY: data.question},
-            ]
             try:
+                greeting_context = (
+                    "The user is sending a greeting or casual message. "
+                    "Respond warmly and naturally as the InsureTech Assistant. "
+                    "Invite them to ask anything about insurance policies, coverage, or the platform."
+                )
+                system_content = SYSTEM_PROMPT.replace("{context}", greeting_context)
+                messages = [
+                    {ROLE_KEY: SYSTEM_ROLE, CONTENT_KEY: system_content},
+                    {ROLE_KEY: USER_ROLE, CONTENT_KEY: data.question},
+                ]
                 answer = await self._call_groq(messages)
             except Exception as exc:
                 logger.error("Groq greeting response failed: %s", exc)
-                answer = "Hi there! 👋 Welcome to InsureTech. How can I help you today?"
+                # Pick a varied static response so it doesn't feel robotic
+                answer = random.choice(_GREETING_FALLBACKS)
+
             return APIResponse.success_response(
                 message=ANSWER_GENERATED_MESSAGE,
                 data=ChatResponse(
@@ -121,6 +154,7 @@ class ChatService:
                 ).model_dump(),
             )
 
+        # --- Policy / knowledge-base questions ---
         query_vec = await self._embed_text(data.question)
         chunks = await Repo.search_similar_chunks(
             db, query_vec, limit=DEFAULT_CHUNK_LIMIT
@@ -169,23 +203,7 @@ class ChatService:
             answer = await self._call_groq(messages)
         except Exception as exc:
             logger.error("Chat Groq completion failed: %s", exc)
-            if not settings.GROQ_API_KEY or not settings.GROQ_API_KEY.strip():
-                answer = (
-                    "I found relevant policy documentation, but the AI language model (Groq) "
-                    "is not configured with a GROQ_API_KEY in the server environment. "
-                    "Please set GROQ_API_KEY in your Render dashboard environment variables."
-                )
-            else:
-                top_chunks_summary = "\n\n".join(
-                    f"• (Page {page or 1}): {text[:200]}..."
-                    for text, page, _ in chunks[:2]
-                )
-                answer = (
-                    "I found relevant information in our policy documents, but the AI service "
-                    "is currently busy or rate-limited. Here are the key details:\n\n"
-                    f"{top_chunks_summary}\n\n"
-                    "Please contact our support team if you need further assistance."
-                )
+            answer = _SERVICE_UNAVAILABLE_FALLBACK
 
         return APIResponse.success_response(
             message=ANSWER_GENERATED_SUCCESS_MESSAGE,
@@ -221,7 +239,7 @@ class ChatService:
         )
         chunks = []
         for page_num, text in pages:
-            if not text.strip():
+            if not text or not text.strip():
                 continue
             page_chunks = await asyncio.to_thread(splitter.split_text, text)
             for chunk_text in page_chunks:
@@ -261,18 +279,60 @@ class ChatService:
 
     @staticmethod
     async def _call_groq(messages: list[dict[str, Any]]) -> str:
-        """Generate a chat completion using Groq (runs in thread)."""
+        """Generate a chat completion using Groq with model fallback and retry."""
         groq_client = get_groq_client()
         if groq_client is None:
-            raise ValueError("GROQ_API_KEY is not set or empty in environment.")
+            raise ValueError("GROQ_API_KEY is not set in environment.")
 
-        response = await asyncio.to_thread(
-            groq_client.chat.completions.create,
-            model=settings.GROQ_MODEL or "llama-3.1-8b-instant",
-            messages=messages,
-            temperature=settings.GROQ_TEMPERATURE,
+        primary_model = (settings.GROQ_MODEL or "").strip() or _GROQ_MODELS[0]
+
+        # Build ordered model list: configured model first, then fallbacks
+        models_to_try = [primary_model] + [
+            m for m in _GROQ_MODELS if m != primary_model
+        ]
+
+        last_exc: Exception | None = None
+
+        for model in models_to_try:
+            for attempt in range(2):  # 2 attempts per model
+                try:
+                    logger.debug(
+                        "Groq request: model=%s attempt=%d", model, attempt + 1
+                    )
+                    response = await asyncio.to_thread(
+                        groq_client.chat.completions.create,
+                        model=model,
+                        messages=messages,
+                        temperature=settings.GROQ_TEMPERATURE,
+                        max_tokens=1024,
+                    )
+                    content = response.choices[0].message.content
+                    logger.debug("Groq responded successfully with model=%s", model)
+                    return content
+
+                except Exception as exc:
+                    last_exc = exc
+                    err_str = str(exc).lower()
+                    logger.warning(
+                        "Groq attempt failed (model=%s attempt=%d): %s",
+                        model, attempt + 1, exc,
+                    )
+                    # Don't retry on auth errors — fail fast
+                    if "401" in err_str or "invalid_api_key" in err_str or "authentication" in err_str:
+                        logger.error("Groq auth error — check GROQ_API_KEY on Render.")
+                        raise
+
+                    # Short backoff between retries
+                    if attempt == 0:
+                        await asyncio.sleep(1.5)
+
+            # If both attempts failed for this model, try next model
+            logger.warning("Switching to next fallback model after: %s", model)
+
+        # All models exhausted
+        raise RuntimeError(
+            f"All Groq models failed. Last error: {last_exc}"
         )
-        return response.choices[0].message.content
 
 
 Service = ChatService()
