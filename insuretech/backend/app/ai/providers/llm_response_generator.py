@@ -18,7 +18,7 @@ def get_client() -> Groq:
 async def generate_response(
     system_prompt: str,
     user_prompt: str,
-    model: str = "llama-3.1-8b-instant",
+    model: str = "openai/gpt-oss-120b",
     temperature: float = 0.1,
     messages: list[dict] | None = None,
 ) -> str:

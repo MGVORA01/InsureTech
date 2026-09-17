@@ -55,13 +55,11 @@ async def debug_groq() -> dict:
         except Exception as e:
             result["error"] = f"Could not list models: {e}"
 
-        # Test a few models to find a working one
+        # Test the active models to verify responses
         test_models = [
-            "gemma2-9b-it",
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
-            "llama3-8b-8192",
-            "mixtral-8x7b-32768",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3.8-27b",
         ]
         for model in test_models:
             try:

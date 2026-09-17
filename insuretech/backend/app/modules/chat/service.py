@@ -54,11 +54,11 @@ logger = get_logger(__name__)
 _groq_client: Groq | None = None
 
 # Ordered list of models to try (primary → fallbacks)
-# Last verified working: September 2026
+# Verified active on Groq
 _GROQ_MODELS = [
-    "llama-3.3-70b-versatile",  # primary — latest, widely available
-    "gemma2-9b-it",              # fallback 1 — fast Google model
-    "llama-3.1-8b-instant",     # fallback 2
+    "openai/gpt-oss-120b",  # primary — verified available
+    "openai/gpt-oss-20b",   # fallback 1 — fast
+    "qwen/qwen3.8-27b",     # fallback 2 — alternative
 ]
 
 # ---------------------------------------------------------------------------
