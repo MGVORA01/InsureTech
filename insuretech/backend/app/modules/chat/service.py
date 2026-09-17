@@ -54,10 +54,11 @@ logger = get_logger(__name__)
 _groq_client: Groq | None = None
 
 # Ordered list of models to try (primary → fallbacks)
+# Updated: llama-3.1-8b-instant was deprecated by Groq
 _GROQ_MODELS = [
-    "llama-3.1-8b-instant",
-    "gemma2-9b-it",
-    "llama3-8b-8192",
+    "llama3-8b-8192",       # primary — fast, widely available
+    "gemma2-9b-it",          # fallback 1
+    "llama3-70b-8192",       # fallback 2 — slower but very capable
 ]
 
 # ---------------------------------------------------------------------------
