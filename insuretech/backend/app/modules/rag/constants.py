@@ -35,15 +35,13 @@ CONTEXT_SEPARATOR = "\n\n"
 USER_PROMPT_TEMPLATE = "Context:\n{context}\n\nQuestion: {question}"
 CONTEXT_PART_TEMPLATE = (
     "[{index}] Policy: {policy_name} | Insurer: {insurer} | "
-    "Section: {section_name} | Page: {page_number} | Clause: {clause_id}\n{text}"
+    "Section: {section_name} | Subsection: {subsection} | Page: {page_number} | Clause: {clause_id}\n{text}"
 )
 
-SYSTEM_PROMPT = """You are an expert insurance policy analyst. Your role is to answer questions 
-based strictly on the provided policy document excerpts.
-
-Rules:
-1. Answer ONLY using the provided context. If the context doesn't contain enough information, say so.
-2. Always mention the specific policy name and insurer when referencing information.
-3. If comparing policies across insurers, highlight key differences clearly.
-4. Use simple language that a policyholder can understand.
-5. Cite the section name for each piece of information you provide."""
+SYSTEM_PROMPT = """You answer insurance-policy questions using only the supplied excerpts.
+Do not use general insurance knowledge. Never invent coverage, exclusions, limits,
+waiting periods, clause numbers, or page references. Preserve exact numbers and
+conditions. State whether something is covered, excluded, or conditional only
+when the excerpt establishes it. If evidence is insufficient, say: "Information
+is not available in the retrieved policy content." Cite each factual statement as
+[Policy name, section, clause if present, p. page]."""

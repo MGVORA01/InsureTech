@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.providers.llm_response_generator import generate_response
-from app.ai.retrieval.hybrid_policy_retriever import retrieve_chunks
+from app.ai.retrieval.hybrid_policy_retriever import add_neighbor_context, retrieve_chunks
 from app.core.config import settings
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.logging import get_logger
@@ -56,35 +56,43 @@ class RAGService:
         if not request.query.strip():
             raise BadRequestException(QUERY_EMPTY_MESSAGE)
 
-        if request.policy_ids:
-            from app.modules.businesses.service import Service as BusinessService
-            from app.models import Recommendation
-            import json as _json
+        # Policy ownership is represented by the user's active recommendations.
+        # Scope every query to this allow-list, including queries that omit a
+        # policy id; otherwise an unfiltered query could cross tenant boundaries.
+        from app.modules.businesses.service import Service as BusinessService
+        from app.models import Recommendation
+        import json as _json
 
-            try:
-                business = await BusinessService().get_business_by_user(user, db)
-            except NotFoundException:
-                raise BadRequestException("No business profile found")
+        try:
+            business = await BusinessService().get_business_by_user(user, db)
+        except NotFoundException:
+            raise BadRequestException("No business profile found")
 
-            result = await db.execute(
-                select(Recommendation).where(
-                    Recommendation.business_id == business.id,
-                    Recommendation.is_active.is_(True),
-                )
+        result = await db.execute(
+            select(Recommendation).where(
+                Recommendation.business_id == business.id,
+                Recommendation.is_active.is_(True),
             )
-            owned_ids: set[str] = set()
-            for rec in result.scalars().all():
-                try:
-                    payload = _json.loads(rec.reason_text)
-                    if isinstance(payload, dict) and payload.get("policy_id"):
-                        owned_ids.add(str(payload["policy_id"]))
-                except (TypeError, ValueError):
-                    continue
-            requested = {str(pid) for pid in request.policy_ids}
-            if not requested.issubset(owned_ids):
-                raise BadRequestException(
-                    "Access denied to one or more requested policies"
-                )
+        )
+        owned_ids: set[str] = set()
+        for rec in result.scalars().all():
+            try:
+                payload = _json.loads(rec.reason_text)
+                if isinstance(payload, dict) and payload.get("policy_id"):
+                    owned_ids.add(str(payload["policy_id"]))
+            except (TypeError, ValueError):
+                continue
+        requested = {str(pid) for pid in request.policy_ids or []}
+        if requested and not requested.issubset(owned_ids):
+            raise BadRequestException("Access denied to one or more requested policies")
+        if not owned_ids:
+            result = RagQueryResponse(
+                answer=NO_RELEVANT_DOCUMENTS_MESSAGE,
+                chunks=[], provider=PROVIDER_NONE,
+            )
+            return APIResponse.success_response(
+                message=RAG_COMPLETED_MESSAGE, data=result.model_dump()
+            )
 
         logger.info(
             RAG_LOG_MESSAGE,
@@ -99,7 +107,7 @@ class RAGService:
             insurance_categories=request.insurance_categories,
             top_k=request.top_k,
             section_type=request.section_type,
-            policy_ids=request.policy_ids,
+            policy_ids=list(requested or owned_ids),
         )
 
         if not chunks:
@@ -113,6 +121,9 @@ class RAGService:
                 data=result.model_dump(),
             )
 
+        # Focused child chunks establish relevance; adjacent clauses give the
+        # LLM the parent/condition context without sending an entire policy.
+        chunks = await add_neighbor_context(db, chunks)
         chunk_results = self._build_chunk_results(chunks)
 
         if settings.GROQ_API_KEY:
@@ -167,10 +178,12 @@ class RAGService:
                     ),
                     section_name=metadata.get(SECTION_NAME_KEY, EMPTY_VALUE),
                     section_type=metadata.get(SECTION_TYPE_KEY, EMPTY_VALUE),
+                    subsection=metadata.get("subsection"),
                     similarity=chunk[SIMILARITY_KEY],
                     page_number=chunk.get("page_number"),
                     clause_id=metadata.get("clause_id"),
                     source_file=metadata.get("source_file", ""),
+                    source_pdf_name=metadata.get("source_pdf_name", ""),
                 )
             )
         return chunk_results
@@ -187,6 +200,7 @@ class RAGService:
                     policy_name=metadata.get(POLICY_NAME_KEY, NOT_AVAILABLE_VALUE),
                     insurer=metadata.get(INSURER_KEY, NOT_AVAILABLE_VALUE),
                     section_name=metadata.get(SECTION_NAME_KEY, NOT_AVAILABLE_VALUE),
+                    subsection=metadata.get("subsection", NOT_AVAILABLE_VALUE),
                     page_number=chunk.get("page_number") or NOT_AVAILABLE_VALUE,
                     clause_id=metadata.get("clause_id") or NOT_AVAILABLE_VALUE,
                     text=chunk[TEXT_KEY],

@@ -6,6 +6,7 @@ from sqlalchemy import bindparam, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import DocumentChunk
 from app.ai.models.bge_embedding_service import generate_embedding
+from app.core.logging import get_logger
 
 _reranker = None
 
@@ -26,6 +27,18 @@ SECTION_KEYWORDS = {
     "arbitration": "legal",
     "cancellation": "legal",
     "renewal": "administrative",
+    "waiting period": "conditions",
+    "co-payment": "financial",
+    "copayment": "financial",
+    "eligibility": "conditions",
+}
+
+QUERY_EXPANSIONS = {
+    "co-payment": "copayment co payment",
+    "deductible": "excess",
+    "waiting period": "waiting exclusion",
+    "sum insured": "limit indemnity",
+    "room rent": "room accommodation limit",
 }
 
 RISK_TO_CATEGORIES = {
@@ -69,6 +82,25 @@ def _normalize_query_text(query: str) -> str:
     return f"%{'%'.join(cleaned.split())}%"
 
 
+def classify_query_intent(query: str) -> str | None:
+    """Classify only to improve ranking; it never excludes policy evidence."""
+    lower = query.lower()
+    intents = {
+        "waiting_period": ("waiting period",), "co_payment": ("co-pay", "copay", "co payment"),
+        "deductible": ("deductible", "excess"), "claim_procedure": ("claim", "intimate", "notification"),
+        "renewal": ("renew",), "cancellation": ("cancel", "terminate"),
+        "exclusion": ("exclude", "not covered", "exclusion"), "definition": ("define", "meaning", "what is"),
+        "coverage": ("cover", "covered", "benefit"), "limits": ("limit", "sum insured", "maximum"),
+    }
+    return next((name for name, words in intents.items() if any(word in lower for word in words)), None)
+
+
+def expand_query(query: str) -> str:
+    lower = query.lower()
+    additions = [value for term, value in QUERY_EXPANSIONS.items() if term in lower]
+    return f"{query} {' '.join(additions)}".strip()
+
+
 async def retrieve_chunks(
     db: AsyncSession,
     query: str,
@@ -93,7 +125,8 @@ async def retrieve_chunks(
         get_logger(__name__).warning("Embedding generation failed in retrieve_chunks: %s", exc)
 
     conditions = []
-    candidate_limit = min(max(top_k * 4, 12), 80)
+    # Keep retriever recall separate from the small final context sent to the LLM.
+    candidate_limit = min(max(top_k * 4, 20), 30)
     params = {"limit": candidate_limit, "query": query}
     if query_embedding:
         params["query_vector"] = _format_vector(query_embedding)
@@ -104,7 +137,9 @@ async def retrieve_chunks(
         )
         params["categories"] = insurance_categories
 
-    if final_section_type:
+    # An explicit caller filter is authoritative. Inferred intent is a ranking
+    # hint only: a hard filter silently misses policies with imperfect metadata.
+    if section_type:
         conditions.append(
             f"LOWER(document_metadata->>'section_type') = LOWER(:section_type)"
         )
@@ -184,31 +219,6 @@ async def retrieve_chunks(
             from app.core.logging import get_logger
             get_logger(__name__).warning("Plain keyword search query failed: %s", exc)
 
-    # Fallback to simple text matching or chunk query if both vector and keyword queries returned no results
-    if not vector_rows and not keyword_rows:
-        # Relax section_type constraint for fallback query if policy filter is present
-        fallback_conditions = [c for c in conditions if "section_type" not in c]
-        fallback_where = " AND ".join(f"({c})" for c in fallback_conditions) if fallback_conditions else "TRUE"
-        fallback_sql = text(f"""
-            SELECT
-                id, chunk_text, policy_id, document_id,
-                chunk_index, page_number, document_metadata,
-                0.5 AS similarity
-            FROM document_chunks
-            WHERE {fallback_where}
-            ORDER BY chunk_index ASC
-            LIMIT :limit
-        """)
-        try:
-            vector_rows = (await db.execute(fallback_sql, params)).fetchall()
-        except Exception as exc:
-            try:
-                await db.rollback()
-            except Exception:
-                pass
-            from app.core.logging import get_logger
-            get_logger(__name__).warning("Fallback chunk retrieval failed: %s", exc)
-
     # Reciprocal-rank fusion combines semantic and exact-keyword evidence.
     fused: dict[str, dict] = {}
     for rank, row in enumerate(vector_rows, 1):
@@ -217,6 +227,18 @@ async def retrieve_chunks(
         item = fused.setdefault(str(row.id), {"row": row, "score": 0.0})
         item["score"] += 1 / (60 + rank)
     ranked = sorted(fused.values(), key=lambda item: item["score"], reverse=True)
+    # Weak lexical retrieval gets a second, broader hybrid pass using domain
+    # aliases. It cannot return arbitrary document chunks.
+    if len(ranked) < 3 and expand_query(query) != query:
+        try:
+            expansion_params = {**params, "query": expand_query(query)}
+            expanded_rows = (await db.execute(keyword_sql, expansion_params)).fetchall()
+            known = {str(item["row"].id) for item in ranked}
+            for rank, row in enumerate(expanded_rows, 1):
+                if str(row.id) not in known:
+                    ranked.append({"row": row, "score": 1 / (80 + rank)})
+        except Exception as exc:
+            get_logger(__name__).warning("Expanded keyword search failed: %s", exc)
     ranked = await asyncio.to_thread(_rerank, query, ranked[:candidate_limit])
     rows = [item["row"] for item in ranked[:top_k]]
 
@@ -228,10 +250,58 @@ async def retrieve_chunks(
             "document_id": str(row.document_id),
             "similarity": float(getattr(row, "similarity", 0.5)),
             "page_number": row.page_number,
-            "metadata": row.document_metadata,
+            "metadata": row.document_metadata or {},
+            "intent": classify_query_intent(query),
         }
         for row in rows
     ]
+
+
+async def add_neighbor_context(
+    db: AsyncSession, chunks: list[dict], max_extra: int = 3
+) -> list[dict]:
+    """Add adjacent chunks from the same retrieved section, never whole PDFs."""
+    if not chunks or max_extra <= 0:
+        return chunks
+    result = list(chunks)
+    seen = {chunk["chunk_id"] for chunk in result}
+    for chunk in chunks:
+        if len(result) >= len(chunks) + max_extra:
+            break
+        metadata = chunk.get("metadata") or {}
+        section_name = metadata.get("section_name")
+        if not section_name:
+            continue
+        sql = text("""
+            SELECT id, chunk_text, policy_id, document_id, chunk_index, page_number, document_metadata
+            FROM document_chunks
+            WHERE document_id::text = :document_id
+              AND document_metadata->>'section_name' = :section_name
+              AND chunk_index BETWEEN :start_index AND :end_index
+            ORDER BY chunk_index
+        """)
+        try:
+            rows = (await db.execute(sql, {
+                "document_id": chunk["document_id"], "section_name": section_name,
+                "start_index": max(1, int(metadata.get("chunk_index", 1)) - 1),
+                "end_index": int(metadata.get("chunk_index", 1)) + 1,
+            })).fetchall()
+        except Exception as exc:
+            get_logger(__name__).warning("Neighbor context lookup failed: %s", exc)
+            continue
+        for row in rows:
+            if str(row.id) in seen:
+                continue
+            seen.add(str(row.id))
+            result.append({
+                "chunk_id": str(row.id), "text": row.chunk_text,
+                "policy_id": str(row.policy_id), "document_id": str(row.document_id),
+                "similarity": 0.0, "page_number": row.page_number,
+                "metadata": row.document_metadata or {}, "is_neighbor": True,
+            })
+            if len(result) >= len(chunks) + max_extra:
+                break
+    return result
 
 
 def _rerank(query: str, candidates: list[dict]) -> list[dict]:

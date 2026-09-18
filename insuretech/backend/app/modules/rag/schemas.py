@@ -24,10 +24,12 @@ class ChunkResult(BaseModel):
     insurance_category: str
     section_name: str
     section_type: str
+    subsection: str | None = None
     similarity: float
     page_number: int | None = None
     clause_id: str | None = None
     source_file: str = ""
+    source_pdf_name: str = ""
 
 
 class RagQueryResponse(BaseModel):
