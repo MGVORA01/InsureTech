@@ -87,7 +87,7 @@
     const navigate = useNavigate()
     const [data, setData] = useState<UserListResponse | null>(null)
     const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(false)
+    const [error, setError] = useState<string | null>(null)
     const [page, setPage] = useState(1)
     const [filterActive, setFilterActive] = useState<string>('')
     const [drawerOpen, setDrawerOpen] = useState(false)
@@ -99,7 +99,7 @@
 
     const fetchUsers = useCallback(async () => {
       setLoading(true)
-      setError(false)
+      setError(null)
       try {
         const params: Record<string, string | number | boolean> = { page, limit }
         if (filterActive === 'true') params.is_active = true
@@ -107,9 +107,10 @@
         const res = await baseApi.get('/admin/users', { params })
         const body = res.data
         setData(body?.data ?? body)
-      } catch {
+      } catch (err: any) {
         setData(null)
-        setError(true)
+        const msg = err?.response?.data?.message || err?.message || "Couldn't load users. Please try again."
+        setError(msg)
       } finally {
         setLoading(false)
       }
@@ -123,8 +124,9 @@
       try {
         await baseApi.patch(`/admin/users/${userId}/status`, { is_active: !currentActive })
         fetchUsers()
-      } catch {
-        // handled by interceptor
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || err?.message || 'Failed to update user status.'
+        setError(msg)
       }
     }
 
@@ -185,7 +187,7 @@
             {error && !loading && (
               <Banner tone="warning" icon={IconAlertTriangle}>
                 <div className="flex items-center justify-between gap-3">
-                  <span>Couldn't load users. Please try again.</span>
+                  <span>{error}</span>
                   <button
                     type="button"
                     onClick={fetchUsers}
@@ -295,9 +297,9 @@
             {totalPages > 1 && (
               <div className="mt-6 flex items-center justify-center gap-2">
                 <button
-                  className="rounded-md border px-3 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-40"
+                  className="rounded-md border px-3 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
-                  disabled={page <= 1}
+                  disabled={loading || page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
                   Previous
@@ -305,21 +307,22 @@
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                   <button
                     key={p}
-                    className="rounded-md px-3 py-1.5 text-sm font-medium transition"
+                    className="rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-50"
                     style={
                       p === page
                         ? { backgroundColor: 'var(--color-primary)', color: '#fff' }
                         : { border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }
                     }
+                    disabled={loading}
                     onClick={() => setPage(p)}
                   >
                     {p}
                   </button>
                 ))}
                 <button
-                  className="rounded-md border px-3 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-40"
+                  className="rounded-md border px-3 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
-                  disabled={page >= totalPages}
+                  disabled={loading || page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 >
                   Next

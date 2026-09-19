@@ -42,7 +42,7 @@ function AdminPoliciesPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<PolicyListItem | null>(null)
   const [uploadTarget, setUploadTarget] = useState<PolicyListItem | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -66,7 +66,7 @@ function AdminPoliciesPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError(false)
+    setError(null)
     try {
       const [res, ins, cats] = await Promise.all([
         fetchPolicies({ page, limit: PAGE_SIZE }),
@@ -80,7 +80,7 @@ function AdminPoliciesPage() {
     } catch {
       setItems([])
       setTotal(0)
-      setError(true)
+      setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -125,8 +125,9 @@ function AdminPoliciesPage() {
       setShowForm(false)
       setEditing(null)
       load()
-    } catch {
-      setError(true)
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to save policy.'
+      setError(msg)
     } finally {
       setSubmitting(false)
     }
@@ -143,9 +144,10 @@ function AdminPoliciesPage() {
       await deletePolicy(deleteTarget.id)
       setDeleteTarget(null)
       load()
-    } catch {
+    } catch (err: any) {
       setDeleteTarget(null)
-      setError(true)
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete policy.'
+      setError(msg)
     } finally {
       setDeleting(false)
     }
@@ -158,8 +160,9 @@ function AdminPoliciesPage() {
       await uploadPolicyPdf(uploadTarget.id, file)
       setUploadTarget(null)
       load()
-    } catch {
-      setError(true)
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to upload PDF.'
+      setError(msg)
     } finally {
       setSubmitting(false)
     }
@@ -185,7 +188,7 @@ function AdminPoliciesPage() {
       </AdminDesktopSidebar>
 
       <main className="min-w-0 flex-1 pt-14 lg:pt-0">
-        <div className="mx-auto max-w-6xl px-6 py-8 lg:py-10">
+        <div className="mx-auto max-w-5xl px-6 py-8 lg:py-10">
           <p className="mb-4 hidden text-xs font-semibold uppercase tracking-widest lg:block" style={{ color: 'var(--color-text-tertiary)' }}>
             Manage Policies
           </p>
@@ -212,7 +215,7 @@ function AdminPoliciesPage() {
           {error && !loading && (
             <Banner tone="warning" icon={IconAlertTriangle}>
               <div className="flex items-center justify-between gap-3">
-                <span>Something went wrong. Please try again.</span>
+                <span>{error}</span>
                 <button
                   type="button"
                   onClick={load}
@@ -237,9 +240,9 @@ function AdminPoliciesPage() {
           {totalPages > 1 && (
             <div className="mt-6 flex items-center justify-center gap-2">
               <button
-                className="rounded-md border px-3 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-40"
+                className="rounded-md border px-3 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
-                disabled={page <= 1}
+                disabled={loading || page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
                 Previous
@@ -247,21 +250,22 @@ function AdminPoliciesPage() {
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                 <button
                   key={p}
-                  className="rounded-md px-3 py-1.5 text-sm font-medium transition"
+                  className="rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-50"
                   style={
                     p === page
                       ? { backgroundColor: 'var(--color-primary)', color: '#fff' }
                       : { border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }
                   }
+                  disabled={loading}
                   onClick={() => setPage(p)}
                 >
                   {p}
                 </button>
               ))}
               <button
-                className="rounded-md border px-3 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-40"
+                className="rounded-md border px-3 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
-                disabled={page >= totalPages}
+                disabled={loading || page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               >
                 Next

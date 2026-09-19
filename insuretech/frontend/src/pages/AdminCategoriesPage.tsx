@@ -31,7 +31,7 @@ function AdminCategoriesPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [items, setItems] = useState<InsuranceCategory[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<InsuranceCategory | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<InsuranceCategory | null>(null)
@@ -52,12 +52,12 @@ function AdminCategoriesPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError(false)
+    setError(null)
     try {
       setItems(await fetchCategories())
     } catch {
       setItems([])
-      setError(true)
+      setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -90,8 +90,9 @@ function AdminCategoriesPage() {
       setShowForm(false)
       setEditing(null)
       load()
-    } catch {
-      setError(true)
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to save category.'
+      setError(msg)
     } finally {
       setSubmitting(false)
     }
@@ -108,9 +109,10 @@ function AdminCategoriesPage() {
       await deleteCategory(deleteTarget.id)
       setDeleteTarget(null)
       load()
-    } catch {
+    } catch (err: any) {
       setDeleteTarget(null)
-      setError(true)
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete category.'
+      setError(msg)
     } finally {
       setDeleting(false)
     }
@@ -161,7 +163,7 @@ function AdminCategoriesPage() {
           {error && !loading && (
             <Banner tone="warning" icon={IconAlertTriangle}>
               <div className="flex items-center justify-between gap-3">
-                <span>Something went wrong. Please try again.</span>
+                <span>{error}</span>
                 <button
                   type="button"
                   onClick={load}
