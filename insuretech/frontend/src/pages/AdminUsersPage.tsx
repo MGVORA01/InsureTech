@@ -219,10 +219,25 @@
                 </thead>
                 <tbody className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
                   {loading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
+                    Array.from({ length: 10 }).map((_, i) => (
                       <tr key={i}>
-                        <td colSpan={6} className="px-5 py-4">
-                          <SkeletonBlock className="h-5 w-full" />
+                        <td className="px-5 py-4">
+                          <div className="h-4.5 w-36 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="h-4 w-44 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="h-5 w-16 rounded-full skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="h-5 w-16 rounded-full skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="h-4 w-24 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="h-7 w-20 rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                         </td>
                       </tr>
                     ))
@@ -263,7 +278,21 @@
             {/* Stacked cards — below md */}
             <div className="mt-6 space-y-3 md:hidden">
               {loading ? (
-                Array.from({ length: 4 }).map((_, i) => <SkeletonBlock key={i} className="h-24" />)
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border bg-white p-4 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-2">
+                        <div className="h-4 w-32 rounded-md skeleton-shimmer" />
+                        <div className="h-3 w-40 rounded-md skeleton-shimmer" />
+                      </div>
+                      <div className="h-5 w-16 rounded-full skeleton-shimmer" />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="h-4 w-28 rounded-md skeleton-shimmer" />
+                      <div className="h-7 w-16 rounded-md skeleton-shimmer" />
+                    </div>
+                  </div>
+                ))
               ) : !data || data.users.length === 0 ? (
                 <div className="rounded-xl border bg-white p-8 text-center text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }}>
                   No users found.

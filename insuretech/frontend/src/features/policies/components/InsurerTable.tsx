@@ -33,24 +33,24 @@ export function InsurerTable({ items, loading, onEdit, onDelete }: InsurerTableP
         </thead>
         <tbody className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
           {loading ? (
-            Array.from({ length: 5 }).map((_, i) => (
-              <tr key={i} className="animate-pulse">
+            Array.from({ length: 8 }).map((_, i) => (
+              <tr key={i}>
                 <td className="px-5 py-4">
-                  <div className="h-4.5 w-44 rounded bg-slate-200/80" />
+                  <div className="h-4.5 w-48 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                 </td>
                 <td className="px-5 py-4">
-                  <div className="h-4 w-36 rounded bg-slate-100" />
+                  <div className="h-4 w-40 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                 </td>
                 <td className="px-5 py-4">
-                  <div className="h-4 w-48 rounded bg-slate-100" />
+                  <div className="h-4 w-52 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                 </td>
                 <td className="px-5 py-4">
-                  <div className="h-5 w-16 rounded-full bg-slate-100" />
+                  <div className="h-5 w-18 rounded-full skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-2">
-                    <div className="h-7 w-12 rounded-md bg-slate-100" />
-                    <div className="h-7 w-14 rounded-md bg-slate-100" />
+                    <div className="h-7 w-12 rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                    <div className="h-7 w-14 rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                   </div>
                 </td>
               </tr>
