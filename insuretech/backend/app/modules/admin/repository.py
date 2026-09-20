@@ -49,9 +49,19 @@ async def get_user_stats(db: AsyncSession) -> dict[str, int | None]:
     inactive = await db.execute(
         select(func.count(User.id)).where(User.is_active.is_(False))
     )
-    policies = await db.execute(select(func.count(Policy.id)))
-    insurers = await db.execute(select(func.count(Insurer.id)))
-    categories = await db.execute(select(func.count(InsuranceCategory.id)))
+    # Policies, insurers, and categories use ``is_active`` for soft deletes.
+    # Dashboard totals must therefore match the records visible in the admin UI.
+    policies = await db.execute(
+        select(func.count(Policy.id)).where(Policy.is_active.is_(True))
+    )
+    insurers = await db.execute(
+        select(func.count(Insurer.id)).where(Insurer.is_active.is_(True))
+    )
+    categories = await db.execute(
+        select(func.count(InsuranceCategory.id)).where(
+            InsuranceCategory.is_active.is_(True)
+        )
+    )
     return {
         TOTAL_USERS_KEY: total.scalar(),
         ACTIVE_USERS_KEY: active.scalar(),
