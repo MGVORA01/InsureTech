@@ -33,6 +33,11 @@ export function saveComparisonState(
 
   const key = buildStorageKey(sessionId, businessProfileId);
   storage.setItem(key, JSON.stringify(state));
+
+  if (businessProfileId) {
+    const bizKey = buildStorageKey(undefined, businessProfileId);
+    storage.setItem(bizKey, JSON.stringify(state));
+  }
 }
 
 export function loadComparisonState(
@@ -43,7 +48,18 @@ export function loadComparisonState(
   if (!storage) return null;
 
   const key = buildStorageKey(sessionId, businessProfileId);
-  const raw = storage.getItem(key);
+  let raw = storage.getItem(key);
+
+  if (!raw && businessProfileId) {
+    const bizKey = buildStorageKey(undefined, businessProfileId);
+    raw = storage.getItem(bizKey);
+  }
+
+  if (!raw && sessionId) {
+    const sessKey = buildStorageKey(sessionId, undefined);
+    raw = storage.getItem(sessKey);
+  }
+
   if (!raw) return null;
 
   try {

@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useNavigationLock } from '../../store/navigationLock'
 
 function LogoIcon() {
   return (
@@ -92,17 +94,37 @@ function IconLogOut(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function IconLock(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  )
+}
+
 interface NavItemProps {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
   label: string
   active: boolean
   onClick?: () => void
+  locked?: boolean
+  lockTooltip?: string
 }
 
-function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
+function NavItem({ icon: Icon, label, active, onClick, locked, lockTooltip }: NavItemProps) {
   return (
     <button
       type="button"
+      title={locked ? lockTooltip : undefined}
       onClick={onClick}
       className={`flex w-full items-center gap-3 rounded-[14px] px-4 py-3 text-[14px] font-semibold transition-all duration-200 ease-out ${
         active
@@ -112,6 +134,7 @@ function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
     >
       <Icon className="h-5 w-5 shrink-0" />
       <span className={active ? 'font-semibold' : ''}>{label}</span>
+      {locked && <IconLock className="ml-auto h-3.5 w-3.5 shrink-0 text-text-tertiary opacity-70" />}
     </button>
   )
 }
@@ -129,9 +152,22 @@ export function UserSidebar({
   activeSection,
   onSectionChange,
   onAfterNavigate,
+  selectedBusinessId,
 }: UserSidebarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const {
+    recommendationUnlocked,
+    comparisonUnlocked,
+    chatbotUnlocked,
+    setActiveBusiness,
+  } = useNavigationLock()
+
+  useEffect(() => {
+    if (selectedBusinessId) {
+      setActiveBusiness(selectedBusinessId)
+    }
+  }, [selectedBusinessId, setActiveBusiness])
 
   const handleLogout = async () => {
     try {
@@ -167,18 +203,36 @@ export function UserSidebar({
 
       {/* Nav */}
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
-        {navItems.map((item) => (
-          <NavItem
-            key={item.section}
-            icon={item.icon}
-            label={item.label}
-            active={activeSection === item.section}
-            onClick={() => {
-              onSectionChange(item.section)
-              onAfterNavigate?.()
-            }}
-          />
-        ))}
+        {navItems.map((item) => {
+          let locked = false
+          let lockTooltip: string | undefined = undefined
+
+          if (item.section === 'recommendation') {
+            locked = !recommendationUnlocked
+            lockTooltip = 'Complete risk assessment and click View Recommendations to unlock'
+          } else if (item.section === 'comparison') {
+            locked = !comparisonUnlocked
+            lockTooltip = 'Compare policies from recommendations to unlock'
+          } else if (item.section === 'chatbot') {
+            locked = !chatbotUnlocked
+            lockTooltip = 'Compare policies to unlock Chatbot'
+          }
+
+          return (
+            <NavItem
+              key={item.section}
+              icon={item.icon}
+              label={item.label}
+              active={activeSection === item.section}
+              locked={locked}
+              lockTooltip={lockTooltip}
+              onClick={() => {
+                onSectionChange(item.section)
+                onAfterNavigate?.()
+              }}
+            />
+          )
+        })}
       </nav>
 
       {/* User + Logout */}

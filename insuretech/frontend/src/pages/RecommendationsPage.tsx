@@ -18,6 +18,9 @@ import { profileApi } from '../features/profile/profileApi'
 import type { RecommendationListOut, RecommendationOut, RiskScoreOut } from '../features/recommendations/recommendations.types'
 import UserLayout from '../layouts/UserLayout'
 import type { Section } from '../components/UserSidebar'
+import { useNavigationLock } from '../store/navigationLock'
+import { useAuth } from '../hooks/useAuth'
+import sessionStore from '../store/sessionStore'
 
 type Status = 'loading' | 'empty' | 'error' | 'ready'
 type ApiError = { response?: { data?: { error?: string } }; message?: string }
@@ -264,12 +267,27 @@ function RecommendationCard({
 export default function RecommendationsPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const {
+    setActiveBusiness,
+    setRiskAssessmentCompleted,
+    unlockRecommendation,
+    unlockComparison,
+  } = useNavigationLock()
   const [data, setData] = useState<RecommendationListOut | null>(null)
   const [status, setStatus] = useState<Status>('loading')
   const [errorMsg, setErrorMsg] = useState('')
   const [selectedPolicyIds, setSelectedPolicyIds] = useState<string[]>([])
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pdfError, setPdfError] = useState('')
+
+  useEffect(() => {
+    if (!data?.business_profile_id) return
+    setActiveBusiness(data.business_profile_id)
+    sessionStore.setLastSelectedBusiness(user?.id ?? null, data.business_profile_id)
+    setRiskAssessmentCompleted(true)
+    unlockRecommendation()
+  }, [data?.business_profile_id, user?.id, setActiveBusiness, setRiskAssessmentCompleted, unlockRecommendation])
 
   const loadRecommendations = useCallback(async () => {
     if (!sessionId) {
@@ -280,8 +298,16 @@ export default function RecommendationsPage() {
     setStatus('loading')
     setErrorMsg('')
     try {
-      const result = await generateRecommendations(sessionId)
-      setData({ ...result, recommendations: result.recommendations.slice(0, 5) })
+      let result: RecommendationListOut
+      try {
+        result = await getRecommendations(sessionId)
+        if (!result.recommendations || result.recommendations.length === 0) {
+          result = await generateRecommendations(sessionId)
+        }
+      } catch {
+        result = await generateRecommendations(sessionId)
+      }
+      setData(result)
       setSelectedPolicyIds([])
       setPdfError('')
       setStatus(result.recommendations.length === 0 ? 'empty' : 'ready')
@@ -299,13 +325,14 @@ export default function RecommendationsPage() {
 
   const topRisks = useMemo(() => highestRisks(data?.scores ?? []), [data?.scores])
   const topRecommendations = useMemo(
-    () => data?.recommendations.slice(0, 5) ?? [],
+    () => data?.recommendations ?? [],
     [data?.recommendations],
   )
   const selectedCount = selectedPolicyIds.length
 
   useEffect(() => {
     if (!sessionId || selectedPolicyIds.length !== 2) return
+    unlockComparison()
     navigate(`/recommendations/${sessionId}/compare`, {
       state: {
         selectedPolicyIds,
@@ -313,7 +340,7 @@ export default function RecommendationsPage() {
         businessProfileId: data?.business_profile_id ?? null,
       },
     })
-  }, [data?.business_profile_id, navigate, selectedPolicyIds, sessionId, topRecommendations])
+  }, [data?.business_profile_id, navigate, selectedPolicyIds, sessionId, topRecommendations, unlockComparison])
 
   const handleTogglePolicy = (policyId: string | null) => {
     if (!policyId) return
@@ -375,7 +402,12 @@ export default function RecommendationsPage() {
 
   if (status === 'loading') {
     return (
-      <UserLayout activeSection="recommendation" onSectionChange={handleSectionChange} contentClassName="w-full">
+      <UserLayout
+        activeSection="recommendation"
+        onSectionChange={handleSectionChange}
+        contentClassName="w-full"
+        selectedBusinessId={data?.business_profile_id ?? undefined}
+      >
         <LoadingView />
       </UserLayout>
     )
@@ -383,7 +415,12 @@ export default function RecommendationsPage() {
 
   if (status === 'error') {
     return (
-      <UserLayout activeSection="recommendation" onSectionChange={handleSectionChange} contentClassName="w-full">
+      <UserLayout
+        activeSection="recommendation"
+        onSectionChange={handleSectionChange}
+        contentClassName="w-full"
+        selectedBusinessId={data?.business_profile_id ?? undefined}
+      >
         <div className="flex min-h-screen items-center justify-center p-6" style={{ background: 'var(--color-background)' }}>
           <div className="w-full max-w-md rounded-2xl border p-8 text-center shadow-sm" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-risk-high-bg)' }}>
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full" style={{ background: 'var(--color-risk-high-bg)', color: 'var(--color-risk-high)' }}>
@@ -406,7 +443,12 @@ export default function RecommendationsPage() {
   }
 
   return (
-    <UserLayout activeSection="recommendation" onSectionChange={handleSectionChange} contentClassName="w-full">
+    <UserLayout
+      activeSection="recommendation"
+      onSectionChange={handleSectionChange}
+      contentClassName="w-full"
+      selectedBusinessId={data?.business_profile_id ?? undefined}
+    >
       <main className="min-h-screen" style={{ background: 'var(--color-background)' }}>
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <section className="rounded-2xl border p-6 shadow-sm sm:p-8" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
@@ -425,6 +467,7 @@ export default function RecommendationsPage() {
             <button
               onClick={() => {
                 if (selectedPolicyIds.length !== 2) return
+                unlockComparison()
                 navigate(`/recommendations/${sessionId}/compare`, {
                   state: {
                     selectedPolicyIds,

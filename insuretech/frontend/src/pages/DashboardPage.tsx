@@ -462,8 +462,16 @@ export default function DashboardPage() {
   const [topRecommendation, setTopRecommendation] =
     useState<RecommendationOut | null>(null);
 
-  const { unlockRecommendation, unlockComparison, setActiveBusiness } =
-    useNavigationLock();
+  const {
+    recommendationUnlocked,
+    comparisonUnlocked,
+    chatbotUnlocked,
+    setRiskAssessmentCompleted,
+    unlockRecommendation,
+    unlockComparison,
+    unlockChatbot,
+    setActiveBusiness,
+  } = useNavigationLock();
 
   const selectedBusiness = useMemo(
     () => businesses.find((b) => b.id === selectedBusinessId) ?? null,
@@ -517,6 +525,7 @@ export default function DashboardPage() {
         if (cancelled) return;
         if (results) {
           setProfilingResults(results);
+          setRiskAssessmentCompleted(true);
           if (activeSection === "profiling" && profilingView === "loading") {
             setProfilingView("results");
           }
@@ -552,6 +561,16 @@ export default function DashboardPage() {
       .getStatus(selectedBusinessId)
       .then((status) => {
         if (cancelled) return;
+        const hasCompleted = Boolean(
+          status.profiling_completed ||
+          Boolean(status.latest_completed_session?.id)
+        );
+        setRiskAssessmentCompleted(hasCompleted);
+        if (hasCompleted) {
+          unlockRecommendation();
+          unlockComparison();
+          unlockChatbot();
+        }
         // Prefer completed session (has risk scores) over active session (may be incomplete)
         const resolved =
           status.latest_completed_session?.id ?? status.session?.id ?? null;
@@ -571,13 +590,16 @@ export default function DashboardPage() {
         setWorkflowSessionId(persisted ?? resolved);
       })
       .catch(() => {
-        if (!cancelled) setWorkflowSessionId(null);
+        if (!cancelled) {
+          setWorkflowSessionId(null);
+          setRiskAssessmentCompleted(false);
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [selectedBusinessId]);
+  }, [selectedBusinessId, setRiskAssessmentCompleted, user?.id]);
 
   useEffect(() => {
     if (!workflowSessionId) {
@@ -602,12 +624,6 @@ export default function DashboardPage() {
         const hasRecommendations =
           data.recommendations && data.recommendations.length > 0;
 
-        if (hasRecommendations) {
-          // Auto-unlock sidebar buttons when recommendations exist
-          unlockRecommendation();
-          unlockComparison();
-        }
-
         setTopRecommendation(data.recommendations?.[0] ?? null);
       } catch {
         if (!cancelled) {
@@ -621,17 +637,31 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [workflowSessionId, unlockRecommendation, unlockComparison]);
+  }, [workflowSessionId]);
+
+  useEffect(() => {
+    if (businessesLoading) return;
+    if (activeSection === "recommendation" && !recommendationUnlocked) {
+      navigate("/dashboard/profiling", { replace: true });
+    } else if (activeSection === "comparison" && !comparisonUnlocked) {
+      navigate("/dashboard/profiling", { replace: true });
+    } else if (activeSection === "chatbot" && !chatbotUnlocked) {
+      navigate("/dashboard/profiling", { replace: true });
+    }
+  }, [activeSection, recommendationUnlocked, comparisonUnlocked, chatbotUnlocked, businessesLoading, navigate]);
 
   useEffect(() => {
     if (!workflowSessionId) return;
-    if (activeSection === "recommendation") {
+    if (activeSection === "recommendation" && recommendationUnlocked) {
       navigate(`/recommendations/${workflowSessionId}`);
-    }
-    if (activeSection === "comparison") {
+    } else if (activeSection === "comparison" && comparisonUnlocked) {
       navigate(`/recommendations/${workflowSessionId}/compare`);
+    } else if (activeSection === "chatbot" && chatbotUnlocked) {
+      navigate(`/recommendations/${workflowSessionId}/compare`, {
+        state: { openChat: true },
+      });
     }
-  }, [activeSection, navigate, workflowSessionId]);
+  }, [activeSection, navigate, workflowSessionId, recommendationUnlocked, comparisonUnlocked, chatbotUnlocked]);
 
   const handleSeeRecommendations = (assessmentId?: string | null) => {
     if (!assessmentId) {
@@ -644,18 +674,19 @@ export default function DashboardPage() {
       return;
     }
 
-    navigate(`/recommendations/${assessmentId}`);
-
     try {
+      setRiskAssessmentCompleted(true);
       unlockRecommendation();
-      unlockComparison();
     } catch {
       // ignore
     }
+
+    navigate(`/recommendations/${assessmentId}`);
   };
 
   const handleBusinessChange = (businessId: string) => {
     setSelectedBusinessId(businessId);
+    setActiveBusiness(businessId);
     setWorkflowSessionId(null);
     setProfilingView("loading");
     setProfilingResults(null);
@@ -676,6 +707,10 @@ export default function DashboardPage() {
       if (prev.some((b) => b.id === newProfile.id)) return prev;
       return [...prev, newProfile];
     });
+    setActiveBusiness(newProfile.id);
+    sessionStore.setLastSelectedBusiness(user?.id ?? null, newProfile.id);
+    unlockRecommendation();
+    unlockComparison();
   };
 
   const handleEditBusiness = (businessId: string) => {
@@ -889,10 +924,15 @@ export default function DashboardPage() {
             setWorkflowSessionId(data.session.id);
             setResumeSessionId(null);
             setProfilingView("results");
+            setRiskAssessmentCompleted(true);
+            unlockRecommendation();
+            unlockComparison();
+            unlockChatbot();
           }}
           onSeeRecommendations={(data) => {
             setProfilingResults(data);
             setWorkflowSessionId(data.session.id);
+            setRiskAssessmentCompleted(true);
             handleSeeRecommendations(data.session.id);
           }}
           onCancel={() => {
@@ -932,13 +972,11 @@ export default function DashboardPage() {
         profilingResults?.session?.id ?? resumeSessionId ?? workflowSessionId;
 
       if (newSection === "recommendation") {
+        if (!recommendationUnlocked) {
+          navigate("/dashboard/profiling");
+          return;
+        }
         if (resolvedSessionId) {
-          try {
-            unlockRecommendation();
-            unlockComparison();
-          } catch {
-            // ignore
-          }
           navigate(`/recommendations/${resolvedSessionId}`);
         } else {
           navigate("/dashboard/profiling");
@@ -947,12 +985,11 @@ export default function DashboardPage() {
       }
 
       if (newSection === "comparison") {
+        if (!comparisonUnlocked) {
+          navigate("/dashboard/profiling");
+          return;
+        }
         if (resolvedSessionId) {
-          try {
-            unlockComparison();
-          } catch {
-            // ignore
-          }
           navigate(`/recommendations/${resolvedSessionId}/compare`);
         } else {
           navigate("/dashboard/comparison");
@@ -961,11 +998,11 @@ export default function DashboardPage() {
       }
 
       if (newSection === "chatbot") {
+        if (!chatbotUnlocked) {
+          navigate("/dashboard/profiling");
+          return;
+        }
         if (resolvedSessionId) {
-          try {
-          } catch {
-            // ignore
-          }
           navigate(`/recommendations/${resolvedSessionId}/compare`, {
             state: { openChat: true },
           });
@@ -981,7 +1018,15 @@ export default function DashboardPage() {
         navigate(`/dashboard/${newSection}`);
       }
     },
-    [navigate, workflowSessionId],
+    [
+      recommendationUnlocked,
+      comparisonUnlocked,
+      chatbotUnlocked,
+      navigate,
+      profilingResults?.session?.id,
+      resumeSessionId,
+      workflowSessionId,
+    ],
   );
 
   const renderFeedbackTab = () => {

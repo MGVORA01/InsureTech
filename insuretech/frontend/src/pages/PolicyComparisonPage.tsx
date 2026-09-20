@@ -96,7 +96,12 @@ export default function PolicyComparisonPage() {
   }, [location.pathname, navigate, routeState])
 
   const { user } = useAuth()
-  const { setActiveBusiness, unlockComparison } = useNavigationLock()
+  const {
+    setActiveBusiness,
+    setRiskAssessmentCompleted,
+    unlockComparison,
+    unlockRecommendation,
+  } = useNavigationLock()
 
   const load = useCallback(async () => {
     if (!sessionId) {
@@ -109,7 +114,7 @@ export default function PolicyComparisonPage() {
     try {
       let data = await getRecommendations(sessionId)
       if (!data.recommendations.length) data = await generateRecommendations(sessionId)
-      setRecommendations(data.recommendations.slice(0, 5))
+      setRecommendations(data.recommendations)
       setBusinessProfileId(data.business_profile_id ?? '')
       setStatus('ready')
     } catch (err: unknown) {
@@ -126,8 +131,17 @@ export default function PolicyComparisonPage() {
     if (!businessProfileId) return
     setActiveBusiness(businessProfileId)
     sessionStore.setLastSelectedBusiness(user?.id ?? null, businessProfileId)
+    setRiskAssessmentCompleted(true)
+    unlockRecommendation()
     unlockComparison()
-  }, [businessProfileId, user?.id, setActiveBusiness, unlockComparison])
+  }, [
+    businessProfileId,
+    user?.id,
+    setActiveBusiness,
+    setRiskAssessmentCompleted,
+    unlockComparison,
+    unlockRecommendation,
+  ])
 
   const policyOptions = useMemo(
     () => uniquePolicyOptions(recommendations),
@@ -159,7 +173,12 @@ export default function PolicyComparisonPage() {
 
   if (status === 'loading') {
     return (
-      <UserLayout activeSection="comparison" onSectionChange={handleSectionChange} contentClassName="w-full">
+      <UserLayout
+        activeSection="comparison"
+        onSectionChange={handleSectionChange}
+        contentClassName="w-full"
+        selectedBusinessId={businessProfileId || undefined}
+      >
         <div className="relative flex min-h-screen flex-col items-center justify-center gap-5 overflow-hidden bg-[#f7faf9]">
           <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-teal-400/20 blur-3xl" />
           <Loader variant="gauge-sweep" label="Analyzing coverage, pricing, and terms..." size={72} />
@@ -170,7 +189,12 @@ export default function PolicyComparisonPage() {
 
   if (status === 'error' || !businessProfileId) {
     return (
-      <UserLayout activeSection="comparison" onSectionChange={handleSectionChange} contentClassName="w-full">
+      <UserLayout
+        activeSection="comparison"
+        onSectionChange={handleSectionChange}
+        contentClassName="w-full"
+        selectedBusinessId={businessProfileId || undefined}
+      >
         <div className="flex min-h-screen items-center justify-center bg-[#f7faf9] p-6">
           <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-red-100 bg-white p-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.08)]">
             <div className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full bg-red-50 blur-2xl" />
@@ -206,7 +230,12 @@ export default function PolicyComparisonPage() {
   }
 
   return (
-    <UserLayout activeSection="comparison" onSectionChange={handleSectionChange} contentClassName="w-full">
+    <UserLayout
+      activeSection="comparison"
+      onSectionChange={handleSectionChange}
+      contentClassName="w-full"
+      selectedBusinessId={businessProfileId || undefined}
+    >
       <main>
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           {/* Hero */}

@@ -87,36 +87,85 @@ function PointList({ items }: { items: string[] | string | null | undefined }) {
   );
 }
 
-function toRiskRows(value: unknown): Array<{
-  risk_category: string;
-  risk_level: string;
-  policy_a: string;
-  policy_b: string;
-}> {
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => {
-        if (!item || typeof item !== "object") return null;
-        const row = item as Record<string, unknown>;
-        return {
-          risk_category: String(row.risk_category || "").trim() || "Business Risk",
-          risk_level: String(row.risk_level || "").trim() || "Not specified",
-          policy_a: toPointArray(row.policy_a as string | string[])[0],
-          policy_b: toPointArray(row.policy_b as string | string[])[0],
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+function getRecommendationDetails(
+  policies: PolicyListItem[],
+  policyA: string,
+  policyB: string,
+  policyAMeta: PolicyListItem | undefined,
+  policyBMeta: PolicyListItem | undefined,
+  rawRecommendations: string[] = []
+): {
+  suggestedLabel: string | null;
+  suggestedName: string | null;
+  points: string[];
+} {
+  const indexA = policies.findIndex((p) => p.id === policyA);
+  const indexB = policies.findIndex((p) => p.id === policyB);
+
+  const cleanedRaw = rawRecommendations.filter(
+    (point) =>
+      point &&
+      point !== UNAVAILABLE_TEXT &&
+      !point.toLowerCase().includes("winner cannot be determined") &&
+      !point.toLowerCase().includes("sufficient evidence to distinguish") &&
+      !point.toLowerCase().includes("no meaningful retrieved evidence") &&
+      !point.toLowerCase().includes("information not available")
+  );
+
+  if (indexA !== -1 && indexB !== -1 && indexA !== indexB) {
+    const isAWinner = indexA < indexB;
+    const winnerMeta = isAWinner ? policyAMeta : policyBMeta;
+    const winnerLabel = isAWinner ? "Policy A" : "Policy B";
+
+    const points = [
+      `${winnerLabel} (${winnerMeta?.policy_name || "Selected Policy"}) is the recommended choice for your business.`,
+      `Based on your business risk assessment, ${winnerLabel} provides superior priority alignment with your primary operational exposure and protection needs.`,
+      ...cleanedRaw,
+    ];
+
+    return {
+      suggestedLabel: winnerLabel,
+      suggestedName: winnerMeta?.policy_name || winnerLabel,
+      points,
+    };
   }
 
-  if (typeof value === "string" && value.trim()) {
-    return toPointArray(value).map((point) => ({
-      risk_category: "Business Risk",
-      risk_level: "Not specified",
-      policy_a: point,
-      policy_b: point,
-    }));
+  if (indexA !== -1 && indexB === -1) {
+    const points = [
+      `Policy A (${policyAMeta?.policy_name || "Policy A"}) is the recommended choice for your business based on your risk profile.`,
+      ...cleanedRaw,
+    ];
+    return {
+      suggestedLabel: "Policy A",
+      suggestedName: policyAMeta?.policy_name || "Policy A",
+      points,
+    };
   }
-  return [];
+
+  if (indexB !== -1 && indexA === -1) {
+    const points = [
+      `Policy B (${policyBMeta?.policy_name || "Policy B"}) is the recommended choice for your business based on your risk profile.`,
+      ...cleanedRaw,
+    ];
+    return {
+      suggestedLabel: "Policy B",
+      suggestedName: policyBMeta?.policy_name || "Policy B",
+      points,
+    };
+  }
+
+  const fallbackPoints =
+    cleanedRaw.length > 0
+      ? cleanedRaw
+      : [
+          `Both ${policyAMeta?.policy_name || "Policy A"} and ${policyBMeta?.policy_name || "Policy B"} provide viable coverage options. Review the comparison below to select the terms best suited to your operational priorities.`,
+        ];
+
+  return {
+    suggestedLabel: null,
+    suggestedName: null,
+    points: fallbackPoints,
+  };
 }
 
 export default function ComparisonView({
@@ -161,15 +210,26 @@ export default function ComparisonView({
 
   useEffect(() => {
     const persistedState = loadComparisonState(sessionId, businessProfileId);
-    const hasIncomingSelection = Boolean(initialPolicyA || initialPolicyB);
+    const hasIncomingSelection = Boolean(initialPolicyA && initialPolicyB);
 
     if (hasIncomingSelection) {
       setPolicyA(initialPolicyA);
       setPolicyB(initialPolicyB);
-      setResult(null);
+
+      const isSameAsPersisted =
+        persistedState &&
+        persistedState.result &&
+        ((persistedState.policyA === initialPolicyA && persistedState.policyB === initialPolicyB) ||
+          (persistedState.policyA === initialPolicyB && persistedState.policyB === initialPolicyA));
+
+      if (isSameAsPersisted) {
+        setResult(persistedState.result);
+      } else {
+        setResult(null);
+      }
       setError(null);
       lastAutoCompareKey.current = "";
-    } else if (persistedState) {
+    } else if (persistedState && persistedState.result) {
       setPolicyA(persistedState.policyA || initialPolicyA);
       setPolicyB(persistedState.policyB || initialPolicyB);
       setResult(persistedState.result);
@@ -187,6 +247,7 @@ export default function ComparisonView({
 
   useEffect(() => {
     if (!hasHydrated) return;
+    if (!result || !policyA || !policyB) return;
 
     saveComparisonState(sessionId, businessProfileId, {
       policyA,
@@ -244,7 +305,7 @@ export default function ComparisonView({
   const policyAMeta = policies.find((p) => p.id === policyA);
   const policyBMeta = policies.find((p) => p.id === policyB);
 
-  const { unlockChatbot } = useNavigationLock();
+  const { unlockChatbot, lockChatbot } = useNavigationLock();
 
   useEffect(() => {
     if (result) {
@@ -253,8 +314,14 @@ export default function ComparisonView({
       } catch {
         // ignore
       }
+    } else {
+      try {
+        lockChatbot();
+      } catch {
+        // ignore
+      }
     }
-  }, [result, unlockChatbot]);
+  }, [result, unlockChatbot, lockChatbot]);
 
   function renderPlaceholder() {
     return (
@@ -281,7 +348,7 @@ export default function ComparisonView({
         <p className="max-w-[28rem] text-sm text-text-tertiary">
           Select two insurance policies above and click Compare to see a
           detailed side-by-side analysis across coverage, exclusions, claims,
-          conditions, and business risk alignment.
+          and conditions.
         </p>
       </div>
     );
@@ -340,11 +407,25 @@ export default function ComparisonView({
   function renderResults() {
     if (!result) return null;
 
-    const riskAlignmentPoints = toRiskRows(
-      (result as unknown as Record<string, unknown>).business_risk_alignment
+    const recommendationDetails = getRecommendationDetails(
+      policies,
+      policyA,
+      policyB,
+      policyAMeta,
+      policyBMeta,
+      result.overall_recommendation
     );
-    const isRiskUnavailable =
-      riskAlignmentPoints.length === 0;
+
+    const executiveSummaryPoints = (result.executive_summary || []).filter(
+      (item) => item !== UNAVAILABLE_TEXT && !item.toLowerCase().includes("information not available")
+    );
+    const finalExecutiveSummary =
+      executiveSummaryPoints.length > 0
+        ? executiveSummaryPoints
+        : [
+            `Retrieved policy terms and coverage details for ${policyAMeta?.policy_name || "Policy A"} and ${policyBMeta?.policy_name || "Policy B"}.`,
+            "Review the section-by-section comparison below for specific terms and benefits.",
+          ];
 
     return (
       <div className="flex flex-col gap-6">
@@ -368,7 +449,7 @@ export default function ComparisonView({
             </span>
           </div>
           <div className="px-5 py-4">
-            <PointList items={result.executive_summary} />
+            <PointList items={finalExecutiveSummary} />
           </div>
         </div>
 
@@ -425,69 +506,6 @@ export default function ComparisonView({
           </div>
         </div>
 
-        {/* Business Risk Alignment */}
-        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="border-b border-border bg-surface-alt px-5 py-3.5 flex items-center gap-2">
-            <span className="text-lg">🎯</span>
-            <span className="text-[15px] font-bold text-text-primary">
-              Business Risk Alignment
-            </span>
-          </div>
-          <div className="px-5 py-4">
-            {isRiskUnavailable ? (
-              <p className="m-0 text-sm italic text-text-tertiary">
-                {UNAVAILABLE_TEXT}
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {riskAlignmentPoints.map((risk, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-[var(--radius-md)] border border-border bg-surface-alt px-4 py-3"
-                  >
-                    <div className="mb-1 text-[13px] font-bold text-secondary">
-                      {risk.risk_category} ({risk.risk_level})
-                    </div>
-                    <p className="m-0 text-sm leading-6 text-text-primary">
-                      <strong>Policy A:</strong> {risk.policy_a}
-                    </p>
-                    <p className="m-0 text-sm leading-6 text-text-primary">
-                      <strong>Policy B:</strong> {risk.policy_b}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Coverage Gap Analysis */}
-        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="border-b border-border bg-surface-alt px-5 py-3.5 flex items-center gap-2">
-            <span className="text-lg">🧩</span>
-            <span className="text-[15px] font-bold text-text-primary">
-              Coverage Gap Analysis
-            </span>
-          </div>
-          <div className="grid gap-4 px-5 py-4 md:grid-cols-2">
-            <div>
-              <div className="mb-2 text-sm font-semibold text-text-secondary">Covered by both</div>
-              <PointList items={result.coverage_gap_analysis?.covered_by_both} />
-            </div>
-            <div>
-              <div className="mb-2 text-sm font-semibold text-text-secondary">Covered only by Policy A</div>
-              <PointList items={result.coverage_gap_analysis?.covered_only_by_a} />
-            </div>
-            <div>
-              <div className="mb-2 text-sm font-semibold text-text-secondary">Covered only by Policy B</div>
-              <PointList items={result.coverage_gap_analysis?.covered_only_by_b} />
-            </div>
-            <div>
-              <div className="mb-2 text-sm font-semibold text-text-secondary">Covered by neither</div>
-              <PointList items={result.coverage_gap_analysis?.covered_by_neither} />
-            </div>
-          </div>
-        </div>
 
         {/* Advantages & Limitations */}
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
@@ -632,30 +650,23 @@ export default function ComparisonView({
 
         {/* Overall Recommendation */}
         <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-risk-low bg-risk-low-bg">
-          <div className="px-5 py-3.5 flex items-center gap-2.5 border-b border-risk-low/30">
-            <span className="text-xl">💡</span>
-            <span className="text-[15px] font-bold text-risk-low">
-              Overall Recommendation
-            </span>
+          <div className="px-5 py-3.5 flex items-center justify-between border-b border-risk-low/30">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">💡</span>
+              <span className="text-[15px] font-bold text-risk-low">
+                Overall Recommendation
+              </span>
+            </div>
+            {recommendationDetails.suggestedLabel && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-risk-low px-3 py-1 text-xs font-bold text-white shadow-sm">
+                <span>Suggested: {recommendationDetails.suggestedLabel}</span>
+              </span>
+            )}
           </div>
           <div className="px-5 py-4">
-            <PointList items={result.overall_recommendation} />
+            <PointList items={recommendationDetails.points} />
           </div>
         </div>
-
-        {result.missing_information.length > 0 && (
-          <div className="rounded-[var(--radius-md)] bg-surface-alt px-4 py-3 text-[13px] text-text-tertiary">
-            <strong>Missing Information:</strong> Some details could not be
-            retrieved from the policy documents.
-            <ul className="mt-1.5 pl-5">
-              {result.missing_information.map((m, i) => (
-                <li key={i} className="mb-0.5">
-                  {m}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     );
   }
