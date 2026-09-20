@@ -17,6 +17,10 @@ class PolicyDocument(Base):
     insurer_id = Column(UUID(as_uuid=True), ForeignKey("insurers.id"), nullable=False)
     doc_type = Column(String(30), nullable=False)
     file_name   = Column(String(255), nullable=False)
+    # Names observed in the uploaded PDF; these are distinct from the curated
+    # Policy record name and make citations/audits reproducible.
+    policy_name = Column(String(255), nullable=True)
+    source_pdf_name = Column(String(255), nullable=True)
     file_url    = Column(Text, nullable=False)        
     file_size   = Column(Integer)                     
     version    = Column(Integer, nullable=False, server_default=text("1"))

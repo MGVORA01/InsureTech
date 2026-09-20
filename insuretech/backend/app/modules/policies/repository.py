@@ -199,6 +199,8 @@ async def create_document(
     doc_type: str = POLICY_WORDING_DOC_TYPE,
     file_size: int | None = None,
     version: int = 1,
+    policy_name: str | None = None,
+    source_pdf_name: str | None = None,
 ) -> PolicyDocument:
     """Create and persist a policy document."""
     return await Base.create(
@@ -211,6 +213,8 @@ async def create_document(
         file_url=file_url,
         file_size=file_size,
         version=version,
+        policy_name=policy_name,
+        source_pdf_name=source_pdf_name,
     )
 
 

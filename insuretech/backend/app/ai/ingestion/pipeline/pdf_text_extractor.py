@@ -36,10 +36,26 @@ def _extract_with_pymupdf(pdf_path: Path) -> dict[str, Any]:
 
     document = fitz.open(str(pdf_path))
     try:
-        pages = [
-            {"page_number": number, "content": page.get_text("text")}
-            for number, page in enumerate(document, start=1)
-        ]
+        pdf_title = str(document.metadata.get("title") or "").strip()
+        pages = []
+        for number, page in enumerate(document, start=1):
+            content = page.get_text("text")
+            # PyMuPDF's table finder retains header/value relationships.  The
+            # markdown representation is indexable and still readable by a LLM.
+            try:
+                tables = page.find_tables()
+                table_text = []
+                for table in tables.tables:
+                    rows = table.extract()
+                    if rows:
+                        table_text.append(_table_to_markdown(rows))
+                if table_text:
+                    content = f"{content}\n\n" + "\n\n".join(table_text)
+            except Exception:
+                # Table recognition varies by PyMuPDF version; normal text must
+                # remain ingestible if it is unavailable.
+                pass
+            pages.append({"page_number": number, "content": content})
     finally:
         document.close()
 
@@ -52,7 +68,23 @@ def _extract_with_pymupdf(pdf_path: Path) -> dict[str, Any]:
         "raw_text_length": len(raw_text),
         "raw_text": raw_text,
         "pages": pages,
+        "pdf_title": pdf_title,
     }
+
+
+def _table_to_markdown(rows: list[list[str | None]]) -> str:
+    normalized = [[("" if cell is None else " ".join(str(cell).split())) for cell in row] for row in rows]
+    normalized = [row for row in normalized if any(row)]
+    if not normalized:
+        return ""
+    width = max(len(row) for row in normalized)
+    normalized = [row + [""] * (width - len(row)) for row in normalized]
+    header = normalized[0]
+    return "\n".join([
+        "| " + " | ".join(header) + " |",
+        "| " + " | ".join(["---"] * width) + " |",
+        *["| " + " | ".join(row) + " |" for row in normalized[1:]],
+    ])
 
 
 def _extract_with_ocr(pdf_path: Path) -> dict[str, Any] | None:

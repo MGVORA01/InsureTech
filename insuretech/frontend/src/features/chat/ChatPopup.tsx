@@ -12,7 +12,7 @@ function ChatPopup({ onClose }: ChatPopupProps) {
     {
       role: 'assistant',
       content:
-        'Hi! I\'m your InsureTech AI assistant. Ask me anything about insurance policies, coverage, or claims.',
+        'Hi! I\'m your InsureTech AI assistant. Feel free to ask me anything about how our platform works, business risk assessment, or getting started!',
     },
   ])
   const [input, setInput] = useState('')

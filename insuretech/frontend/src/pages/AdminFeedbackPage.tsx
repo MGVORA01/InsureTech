@@ -120,7 +120,7 @@ function AdminFeedbackPage() {
   const navigate = useNavigate()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [feedbacks, setFeedbacks] = useState<AdminFeedbackItem[]>([])
@@ -136,7 +136,7 @@ function AdminFeedbackPage() {
 
   const loadFeedbacks = useCallback(async () => {
     setLoading(true)
-    setError(false)
+    setError(null)
     try {
       const response = await feedbackApi.getAdminFeedbackResponses(
         page,
@@ -146,8 +146,9 @@ function AdminFeedbackPage() {
       )
       setFeedbacks(response.feedbacks)
       setTotal(response.total)
-    } catch {
-      setError(true)
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Unable to load feedback responses. Please try again.'
+      setError(msg)
       setFeedbacks([])
       setTotal(0)
     } finally {
@@ -270,7 +271,7 @@ function AdminFeedbackPage() {
                     type="button"
                     onClick={handleClearSearch}
                     aria-label="Clear search"
-                    className="absolute right-2.5 flex h-5 w-5 items-center justify-center rounded-full text-[var(--color-text-tertiary)] transition-colors hover:bg-slate-100 hover:text-[var(--color-text-primary)]"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full text-[var(--color-text-tertiary)] transition-colors hover:bg-slate-100 hover:text-[var(--color-text-primary)]"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                       <path d="M18 6 6 18M6 6l12 12" />
@@ -280,7 +281,7 @@ function AdminFeedbackPage() {
               </div>
               <button
                 type="submit"
-                className="flex h-10 shrink-0 items-center justify-center rounded-full px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:opacity-90 active:scale-95"
+                className="flex h-10 shrink-0 items-center justify-center rounded-full px-5 text-xs font-semibold text-white shadow-sm transition-all duration-150 hover:opacity-90 active:scale-95"
                 style={{ backgroundColor: 'var(--color-secondary)' }}
               >
                 Search
@@ -291,7 +292,7 @@ function AdminFeedbackPage() {
           {error && !loading ? (
             <Banner tone="warning" icon={IconAlertTriangle}>
               <div className="flex items-center justify-between gap-3 animate-fb-fade-in">
-                <span>Unable to load feedback responses. Please try again.</span>
+                <span>{error}</span>
                 <button
                   type="button"
                   onClick={loadFeedbacks}
@@ -447,7 +448,7 @@ function AdminFeedbackPage() {
             )}
           </div>
 
-          {!loading && feedbacks.length > 0 ? (
+          {total > 0 ? (
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between animate-fb-fade-in">
               <p className="text-sm text-[var(--color-text-secondary)]">
                 Showing {Math.min(total, page * PAGE_SIZE) - (page - 1) * PAGE_SIZE} of {total} responses
@@ -456,7 +457,7 @@ function AdminFeedbackPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={page <= 1}
+                  disabled={loading || page <= 1}
                   className="transition-transform duration-150 active:scale-95 disabled:active:scale-100"
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                 >
@@ -468,7 +469,7 @@ function AdminFeedbackPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={page >= totalPages}
+                  disabled={loading || page >= totalPages}
                   className="transition-transform duration-150 active:scale-95 disabled:active:scale-100"
                   onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                 >
