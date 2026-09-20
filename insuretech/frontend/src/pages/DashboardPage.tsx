@@ -467,9 +467,7 @@ export default function DashboardPage() {
     comparisonUnlocked,
     chatbotUnlocked,
     setRiskAssessmentCompleted,
-    unlockRecommendation,
-    unlockComparison,
-    unlockChatbot,
+    setRecommendationViewed,
     setActiveBusiness,
   } = useNavigationLock();
 
@@ -566,11 +564,6 @@ export default function DashboardPage() {
           Boolean(status.latest_completed_session?.id)
         );
         setRiskAssessmentCompleted(hasCompleted);
-        if (hasCompleted) {
-          unlockRecommendation();
-          unlockComparison();
-          unlockChatbot();
-        }
         // Prefer completed session (has risk scores) over active session (may be incomplete)
         const resolved =
           status.latest_completed_session?.id ?? status.session?.id ?? null;
@@ -662,6 +655,11 @@ export default function DashboardPage() {
 
   const handleSeeRecommendations = (assessmentId?: string | null) => {
     if (!assessmentId) {
+      if (workflowSessionId) {
+        setRecommendationViewed(true);
+        navigate(`/recommendations/${workflowSessionId}`);
+        return;
+      }
       navigate("/dashboard/profiling");
       return;
     }
@@ -673,7 +671,7 @@ export default function DashboardPage() {
 
     try {
       setRiskAssessmentCompleted(true);
-      unlockRecommendation();
+      setRecommendationViewed(true);
     } catch {
       // ignore
     }
@@ -706,8 +704,6 @@ export default function DashboardPage() {
     });
     setActiveBusiness(newProfile.id);
     sessionStore.setLastSelectedBusiness(user?.id ?? null, newProfile.id);
-    unlockRecommendation();
-    unlockComparison();
   };
 
   const handleEditBusiness = (businessId: string) => {
@@ -922,9 +918,6 @@ export default function DashboardPage() {
             setResumeSessionId(null);
             setProfilingView("results");
             setRiskAssessmentCompleted(true);
-            unlockRecommendation();
-            unlockComparison();
-            unlockChatbot();
           }}
           onSeeRecommendations={(data) => {
             setProfilingResults(data);

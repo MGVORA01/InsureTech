@@ -98,9 +98,10 @@ export default function PolicyComparisonPage() {
   const { user } = useAuth()
   const {
     setActiveBusiness,
-    setRiskAssessmentCompleted,
-    unlockComparison,
-    unlockRecommendation,
+    selectedPolicyIds: lockedPolicyIds,
+    recommendationUnlocked,
+    comparisonUnlocked,
+    chatbotUnlocked,
   } = useNavigationLock()
 
   const load = useCallback(async () => {
@@ -131,22 +132,22 @@ export default function PolicyComparisonPage() {
     if (!businessProfileId) return
     setActiveBusiness(businessProfileId)
     sessionStore.setLastSelectedBusiness(user?.id ?? null, businessProfileId)
-    setRiskAssessmentCompleted(true)
-    unlockRecommendation()
-    unlockComparison()
   }, [
     businessProfileId,
     user?.id,
     setActiveBusiness,
-    setRiskAssessmentCompleted,
-    unlockComparison,
-    unlockRecommendation,
   ])
 
   const policyOptions = useMemo(
     () => uniquePolicyOptions(recommendations),
     [recommendations],
   )
+
+  const effectivePolicyIds = useMemo(() => {
+    if (selectedPolicyIds && selectedPolicyIds.length >= 2) return selectedPolicyIds
+    if (lockedPolicyIds && lockedPolicyIds.length >= 2) return lockedPolicyIds
+    return selectedPolicyIds
+  }, [selectedPolicyIds, lockedPolicyIds])
 
   const handleSectionChange = (section: Section) => {
     if (section === 'profile') {
@@ -158,16 +159,20 @@ export default function PolicyComparisonPage() {
       return
     }
     if (section === 'recommendation') {
+      if (!recommendationUnlocked) return
       navigate(sessionId ? `/recommendations/${sessionId}` : '/dashboard/profiling')
       return
     }
     if (section === 'comparison') {
+      if (!comparisonUnlocked) return
       setChatOpenSignal(0)
       navigate(sessionId ? `/recommendations/${sessionId}/compare` : '/dashboard/comparison')
       return
     }
     if (section === 'chatbot') {
+      if (!chatbotUnlocked) return
       setChatOpenSignal((current) => current + 1)
+      return
     }
   }
 
@@ -289,8 +294,8 @@ export default function PolicyComparisonPage() {
               businessProfileId={businessProfileId}
               sessionId={sessionId}
               recommendedPolicies={policyOptions}
-              initialPolicyA={selectedPolicyIds[0] ?? ''}
-              initialPolicyB={selectedPolicyIds[1] ?? ''}
+              initialPolicyA={effectivePolicyIds[0] ?? ''}
+              initialPolicyB={effectivePolicyIds[1] ?? ''}
               openChatSignal={chatOpenSignal}
             />
           </section>

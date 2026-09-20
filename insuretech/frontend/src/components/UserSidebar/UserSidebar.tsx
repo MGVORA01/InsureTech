@@ -125,15 +125,19 @@ function NavItem({ icon: Icon, label, active, onClick, locked, lockTooltip }: Na
     <button
       type="button"
       title={locked ? lockTooltip : undefined}
-      onClick={onClick}
+      disabled={locked}
+      onClick={locked ? undefined : onClick}
+      aria-disabled={locked}
       className={`flex w-full items-center gap-3 rounded-[14px] px-4 py-3 text-[14px] font-semibold transition-all duration-200 ease-out ${
-        active
-          ? 'bg-[rgba(207,69,0,0.08)] text-secondary shadow-sm ring-1 ring-[rgba(207,69,0,0.12)]'
-          : 'text-text-secondary hover:-translate-x-0.5 hover:bg-black/5'
+        locked
+          ? 'cursor-not-allowed opacity-45 text-text-tertiary select-none'
+          : active
+            ? 'bg-[rgba(207,69,0,0.08)] text-secondary shadow-sm ring-1 ring-[rgba(207,69,0,0.12)]'
+            : 'text-text-secondary hover:-translate-x-0.5 hover:bg-black/5'
       }`}
     >
       <Icon className="h-5 w-5 shrink-0" />
-      <span className={active ? 'font-semibold' : ''}>{label}</span>
+      <span className={active && !locked ? 'font-semibold' : ''}>{label}</span>
       {locked && <IconLock className="ml-auto h-3.5 w-3.5 shrink-0 text-text-tertiary opacity-70" />}
     </button>
   )
@@ -212,10 +216,10 @@ export function UserSidebar({
             lockTooltip = 'Complete risk assessment and click View Recommendations to unlock'
           } else if (item.section === 'comparison') {
             locked = !comparisonUnlocked
-            lockTooltip = 'Compare policies from recommendations to unlock'
+            lockTooltip = 'Select 2 policies to unlock Policy Comparison'
           } else if (item.section === 'chatbot') {
             locked = !chatbotUnlocked
-            lockTooltip = 'Compare policies to unlock Chatbot'
+            lockTooltip = 'Complete policy comparison to unlock Chatbot'
           }
 
           return (
@@ -223,10 +227,11 @@ export function UserSidebar({
               key={item.section}
               icon={item.icon}
               label={item.label}
-              active={activeSection === item.section}
+              active={!locked && activeSection === item.section}
               locked={locked}
               lockTooltip={lockTooltip}
               onClick={() => {
+                if (locked) return
                 onSectionChange(item.section)
                 onAfterNavigate?.()
               }}

@@ -1,16 +1,28 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { selectAuthUser } from '../features/auth/authSlice'
+import { loadComparisonState } from '../features/comparison/comparisonStorage'
 import sessionStore from './sessionStore'
 
-type NavState = {
-  recommendationUnlocked: boolean
-  comparisonUnlocked: boolean
-  chatbotUnlocked: boolean
+export type ProgressState = {
+  recommendationViewed: boolean
+  selectedPolicyCount: number
+  comparisonCompleted: boolean
+  selectedPolicyIds: string[]
   isRiskAssessmentCompleted: boolean
 }
 
-type NavActions = {
+export type NavState = ProgressState & {
+  recommendationUnlocked: boolean
+  comparisonUnlocked: boolean
+  chatbotUnlocked: boolean
+  isHydrated: boolean
+}
+
+export type NavActions = {
+  setRecommendationViewed: (viewed?: boolean) => void
+  setSelectedPolicies: (policyIds: string[]) => void
+  setComparisonCompleted: (completed?: boolean) => void
   unlockRecommendation: () => void
   unlockComparison: () => void
   unlockChatbot: () => void
@@ -20,17 +32,25 @@ type NavActions = {
   setActiveBusiness: (businessId: string | null | undefined) => void
 }
 
-const STORAGE_KEY = 'insuretech:navLocks:v1'
+const STORAGE_KEY = 'insuretech:progress:v2'
 
-const defaultState: NavState = {
-  recommendationUnlocked: false,
-  comparisonUnlocked: false,
-  chatbotUnlocked: false,
+const defaultState: ProgressState = {
+  recommendationViewed: false,
+  selectedPolicyCount: 0,
+  comparisonCompleted: false,
+  selectedPolicyIds: [],
   isRiskAssessmentCompleted: false,
 }
 
-const NavigationLockContext = createContext<NavState & NavActions>({
+const defaultContextValue: NavState & NavActions = {
   ...defaultState,
+  recommendationUnlocked: false,
+  comparisonUnlocked: false,
+  chatbotUnlocked: false,
+  isHydrated: false,
+  setRecommendationViewed: () => {},
+  setSelectedPolicies: () => {},
+  setComparisonCompleted: () => {},
   unlockRecommendation: () => {},
   unlockComparison: () => {},
   unlockChatbot: () => {},
@@ -38,7 +58,9 @@ const NavigationLockContext = createContext<NavState & NavActions>({
   setRiskAssessmentCompleted: () => {},
   reset: () => {},
   setActiveBusiness: () => {},
-})
+}
+
+const NavigationLockContext = createContext<NavState & NavActions>(defaultContextValue)
 
 export function NavigationLockProvider({ children }: { children: React.ReactNode }) {
   const user = useSelector(selectAuthUser)
@@ -47,7 +69,8 @@ export function NavigationLockProvider({ children }: { children: React.ReactNode
   const [businessId, setBusinessId] = useState<string | null>(() => {
     return sessionStore.getLastSelectedBusiness(user?.id ?? null)
   })
-  const [state, setState] = useState<NavState>(defaultState)
+  const [state, setState] = useState<ProgressState>(defaultState)
+  const [isHydrated, setIsHydrated] = useState(false)
 
   const storage = typeof window !== 'undefined' && userKey === 'anon' ? window.sessionStorage : window.localStorage
   const storageKey = `${STORAGE_KEY}:${userKey}:${businessId ?? '__none__'}`
@@ -60,32 +83,70 @@ export function NavigationLockProvider({ children }: { children: React.ReactNode
   }, [user?.id, businessId])
 
   useEffect(() => {
+    setIsHydrated(false)
     try {
+      const persistedComparison = loadComparisonState(undefined, businessId ?? undefined)
+      const comparisonCompletedFromStorage = Boolean(persistedComparison?.result)
+      let selectedIdsFromStorage: string[] = []
+      if (persistedComparison?.policyA && persistedComparison?.policyB) {
+        selectedIdsFromStorage = [persistedComparison.policyA, persistedComparison.policyB]
+      }
+
       const raw = storage.getItem(storageKey)
       if (raw) {
-        const parsed = JSON.parse(raw) as Partial<NavState>
+        const parsed = JSON.parse(raw) as Partial<ProgressState>
+        const selectedPolicyIds = Array.isArray(parsed.selectedPolicyIds) && parsed.selectedPolicyIds.length > 0
+          ? parsed.selectedPolicyIds
+          : selectedIdsFromStorage
+        const selectedPolicyCount =
+          typeof parsed.selectedPolicyCount === 'number'
+            ? parsed.selectedPolicyCount
+            : selectedPolicyIds.length
+        const comparisonCompleted = Boolean(
+          parsed.comparisonCompleted || comparisonCompletedFromStorage
+        )
+        const recommendationViewed = Boolean(
+          parsed.recommendationViewed || comparisonCompleted || selectedPolicyCount >= 2
+        )
+
         setState({
-          recommendationUnlocked: Boolean(parsed.recommendationUnlocked),
-          comparisonUnlocked: Boolean(parsed.comparisonUnlocked),
-          chatbotUnlocked: Boolean(parsed.chatbotUnlocked),
-          isRiskAssessmentCompleted: Boolean(parsed.isRiskAssessmentCompleted),
+          recommendationViewed,
+          selectedPolicyCount,
+          comparisonCompleted,
+          selectedPolicyIds,
+          isRiskAssessmentCompleted: Boolean(parsed.isRiskAssessmentCompleted || recommendationViewed),
         })
+        setIsHydrated(true)
+        return
+      }
+
+      if (comparisonCompletedFromStorage) {
+        setState({
+          recommendationViewed: true,
+          selectedPolicyCount: Math.max(selectedIdsFromStorage.length, 2),
+          comparisonCompleted: true,
+          selectedPolicyIds: selectedIdsFromStorage,
+          isRiskAssessmentCompleted: true,
+        })
+        setIsHydrated(true)
         return
       }
     } catch {
       // ignore
     }
     setState(defaultState)
+    setIsHydrated(true)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey])
 
   useEffect(() => {
+    if (!isHydrated) return
     try {
       storage.setItem(storageKey, JSON.stringify(state))
     } catch {
       // ignore
     }
-  }, [state, storageKey, storage])
+  }, [state, storageKey, storage, isHydrated])
 
   const setRiskAssessmentCompleted = useCallback((completed: boolean) => {
     setState((prev) => {
@@ -99,20 +160,51 @@ export function NavigationLockProvider({ children }: { children: React.ReactNode
     })
   }, [])
 
-  const unlockRecommendation = useCallback(() => {
-    setState((s) => ({ ...s, recommendationUnlocked: true, isRiskAssessmentCompleted: true }))
+  const setRecommendationViewed = useCallback((viewed = true) => {
+    setState((prev) => ({
+      ...prev,
+      recommendationViewed: viewed,
+      isRiskAssessmentCompleted: viewed ? true : prev.isRiskAssessmentCompleted,
+    }))
   }, [])
 
+  const setSelectedPolicies = useCallback((policyIds: string[]) => {
+    setState((prev) => ({
+      ...prev,
+      selectedPolicyIds: policyIds,
+      selectedPolicyCount: policyIds.length,
+    }))
+  }, [])
+
+  const setComparisonCompleted = useCallback((completed = true) => {
+    setState((prev) => ({
+      ...prev,
+      comparisonCompleted: completed,
+      recommendationViewed: completed ? true : prev.recommendationViewed,
+      selectedPolicyCount: completed ? Math.max(prev.selectedPolicyCount, 2) : prev.selectedPolicyCount,
+    }))
+  }, [])
+
+  const unlockRecommendation = useCallback(() => {
+    setRecommendationViewed(true)
+  }, [setRecommendationViewed])
+
   const unlockComparison = useCallback(() => {
-    setState((s) => ({ ...s, comparisonUnlocked: true, isRiskAssessmentCompleted: true }))
+    setState((prev) => ({
+      ...prev,
+      selectedPolicyCount: Math.max(prev.selectedPolicyCount, 2),
+    }))
   }, [])
 
   const unlockChatbot = useCallback(() => {
-    setState((s) => ({ ...s, chatbotUnlocked: true, isRiskAssessmentCompleted: true }))
-  }, [])
+    setComparisonCompleted(true)
+  }, [setComparisonCompleted])
 
   const lockChatbot = useCallback(() => {
-    setState((s) => ({ ...s, chatbotUnlocked: false }))
+    setState((prev) => ({
+      ...prev,
+      comparisonCompleted: false,
+    }))
   }, [])
 
   const reset = useCallback(() => setState(defaultState), [])
@@ -121,10 +213,27 @@ export function NavigationLockProvider({ children }: { children: React.ReactNode
     setBusinessId((prev) => (nextBusinessId === prev ? prev : (nextBusinessId ?? null)))
   }, [])
 
+  const recommendationUnlocked = isHydrated && Boolean(
+    state.recommendationViewed || state.selectedPolicyCount >= 2 || state.comparisonCompleted
+  )
+  const comparisonUnlocked = isHydrated && Boolean(
+    state.selectedPolicyCount >= 2 || state.comparisonCompleted
+  )
+  const chatbotUnlocked = isHydrated && Boolean(
+    state.comparisonCompleted
+  )
+
   return (
     <NavigationLockContext.Provider
       value={{
         ...state,
+        recommendationUnlocked,
+        comparisonUnlocked,
+        chatbotUnlocked,
+        isHydrated,
+        setRecommendationViewed,
+        setSelectedPolicies,
+        setComparisonCompleted,
         unlockRecommendation,
         unlockComparison,
         unlockChatbot,

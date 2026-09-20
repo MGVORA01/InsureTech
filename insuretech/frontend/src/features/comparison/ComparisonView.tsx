@@ -305,23 +305,23 @@ export default function ComparisonView({
   const policyAMeta = policies.find((p) => p.id === policyA);
   const policyBMeta = policies.find((p) => p.id === policyB);
 
-  const { unlockChatbot, lockChatbot } = useNavigationLock();
+  const { setComparisonCompleted, setSelectedPolicies } = useNavigationLock();
+
+  useEffect(() => {
+    if (policyA && policyB && policyA !== policyB) {
+      setSelectedPolicies([policyA, policyB]);
+    }
+  }, [policyA, policyB, setSelectedPolicies]);
 
   useEffect(() => {
     if (result) {
       try {
-        unlockChatbot();
-      } catch {
-        // ignore
-      }
-    } else {
-      try {
-        lockChatbot();
+        setComparisonCompleted(true);
       } catch {
         // ignore
       }
     }
-  }, [result, unlockChatbot, lockChatbot]);
+  }, [result, setComparisonCompleted]);
 
   function renderPlaceholder() {
     return (

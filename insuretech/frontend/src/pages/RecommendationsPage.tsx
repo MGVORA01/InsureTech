@@ -271,9 +271,11 @@ export default function RecommendationsPage() {
   const { user } = useAuth()
   const {
     setActiveBusiness,
-    setRiskAssessmentCompleted,
-    unlockRecommendation,
-    unlockComparison,
+    setRecommendationViewed,
+    setSelectedPolicies,
+    selectedPolicyIds: lockedPolicyIds,
+    comparisonUnlocked,
+    chatbotUnlocked,
   } = useNavigationLock()
   const [data, setData] = useState<RecommendationListOut | null>(null)
   const [status, setStatus] = useState<Status>('loading')
@@ -286,9 +288,8 @@ export default function RecommendationsPage() {
     if (!data?.business_profile_id) return
     setActiveBusiness(data.business_profile_id)
     sessionStore.setLastSelectedBusiness(user?.id ?? null, data.business_profile_id)
-    setRiskAssessmentCompleted(true)
-    unlockRecommendation()
-  }, [data?.business_profile_id, user?.id, setActiveBusiness, setRiskAssessmentCompleted, unlockRecommendation])
+    setRecommendationViewed(true)
+  }, [data?.business_profile_id, user?.id, setActiveBusiness, setRecommendationViewed])
 
   const loadRecommendations = useCallback(async () => {
     if (!sessionId) {
@@ -309,7 +310,14 @@ export default function RecommendationsPage() {
         result = await generateRecommendations(sessionId)
       }
       setData(result)
-      setSelectedPolicyIds([])
+      const availableIds = new Set(
+        (result.recommendations || [])
+          .map((r) => r.policy_id ?? r.policies?.[0]?.id)
+          .filter(Boolean)
+      )
+      const restored = (lockedPolicyIds || []).filter((id) => availableIds.has(id))
+      setSelectedPolicyIds(restored)
+      setSelectedPolicies(restored)
       setPdfError('')
       setStatus(result.recommendations.length === 0 ? 'empty' : 'ready')
     } catch (err: unknown) {
@@ -317,7 +325,7 @@ export default function RecommendationsPage() {
       setStatus('error')
       setErrorMsg(apiError?.response?.data?.error || apiError?.message || 'Failed to load recommendations.')
     }
-  }, [sessionId])
+  }, [sessionId, lockedPolicyIds, setSelectedPolicies])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -331,28 +339,19 @@ export default function RecommendationsPage() {
   )
   const selectedCount = selectedPolicyIds.length
 
-  useEffect(() => {
-    if (!sessionId || selectedPolicyIds.length !== 2) return
-    unlockComparison()
-    navigate(`/recommendations/${sessionId}/compare`, {
-      state: {
-        selectedPolicyIds,
-        recommendations: topRecommendations,
-        businessProfileId: data?.business_profile_id ?? null,
-      },
-    })
-  }, [data?.business_profile_id, navigate, selectedPolicyIds, sessionId, topRecommendations, unlockComparison])
-
   const handleTogglePolicy = (policyId: string | null) => {
     if (!policyId) return
     setSelectedPolicyIds((current) => {
+      let next: string[]
       if (current.includes(policyId)) {
-        return current.filter((id) => id !== policyId)
+        next = current.filter((id) => id !== policyId)
+      } else if (current.length >= 2) {
+        next = current
+      } else {
+        next = [...current, policyId]
       }
-      if (current.length >= 2) {
-        return current
-      }
-      return [...current, policyId]
+      setSelectedPolicies(next)
+      return next
     })
   }
 
@@ -382,10 +381,18 @@ export default function RecommendationsPage() {
       return
     }
     if (section === 'comparison') {
-      navigate(sessionId ? `/recommendations/${sessionId}/compare` : '/dashboard/comparison')
+      if (!comparisonUnlocked) return
+      navigate(sessionId ? `/recommendations/${sessionId}/compare` : '/dashboard/comparison', {
+        state: {
+          selectedPolicyIds,
+          recommendations: topRecommendations,
+          businessProfileId: data?.business_profile_id ?? null,
+        },
+      })
       return
     }
     if (section === 'chatbot') {
+      if (!chatbotUnlocked) return
       if (sessionId) {
         navigate(`/recommendations/${sessionId}/compare`, {
           state: {
@@ -398,6 +405,7 @@ export default function RecommendationsPage() {
       } else {
         navigate('/dashboard/comparison')
       }
+      return
     }
   }
 
@@ -468,7 +476,6 @@ export default function RecommendationsPage() {
             <button
               onClick={() => {
                 if (selectedPolicyIds.length !== 2) return
-                unlockComparison()
                 navigate(`/recommendations/${sessionId}/compare`, {
                   state: {
                     selectedPolicyIds,
