@@ -150,6 +150,7 @@ export function NavigationLockProvider({ children }: { children: React.ReactNode
 
   const setRiskAssessmentCompleted = useCallback((completed: boolean) => {
     setState((prev) => {
+      if (prev.isRiskAssessmentCompleted === completed) return prev
       if (!completed) {
         return defaultState
       }
@@ -161,28 +162,42 @@ export function NavigationLockProvider({ children }: { children: React.ReactNode
   }, [])
 
   const setRecommendationViewed = useCallback((viewed = true) => {
-    setState((prev) => ({
-      ...prev,
-      recommendationViewed: viewed,
-      isRiskAssessmentCompleted: viewed ? true : prev.isRiskAssessmentCompleted,
-    }))
+    setState((prev) => {
+      if (prev.recommendationViewed === viewed) return prev
+      return {
+        ...prev,
+        recommendationViewed: viewed,
+        isRiskAssessmentCompleted: viewed ? true : prev.isRiskAssessmentCompleted,
+      }
+    })
   }, [])
 
   const setSelectedPolicies = useCallback((policyIds: string[]) => {
-    setState((prev) => ({
-      ...prev,
-      selectedPolicyIds: policyIds,
-      selectedPolicyCount: policyIds.length,
-    }))
+    setState((prev) => {
+      if (
+        prev.selectedPolicyIds.length === policyIds.length &&
+        prev.selectedPolicyIds.every((id, idx) => id === policyIds[idx])
+      ) {
+        return prev
+      }
+      return {
+        ...prev,
+        selectedPolicyIds: policyIds,
+        selectedPolicyCount: policyIds.length,
+      }
+    })
   }, [])
 
   const setComparisonCompleted = useCallback((completed = true) => {
-    setState((prev) => ({
-      ...prev,
-      comparisonCompleted: completed,
-      recommendationViewed: completed ? true : prev.recommendationViewed,
-      selectedPolicyCount: completed ? Math.max(prev.selectedPolicyCount, 2) : prev.selectedPolicyCount,
-    }))
+    setState((prev) => {
+      if (prev.comparisonCompleted === completed) return prev
+      return {
+        ...prev,
+        comparisonCompleted: completed,
+        recommendationViewed: completed ? true : prev.recommendationViewed,
+        selectedPolicyCount: completed ? Math.max(prev.selectedPolicyCount, 2) : prev.selectedPolicyCount,
+      }
+    })
   }, [])
 
   const unlockRecommendation = useCallback(() => {

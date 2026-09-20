@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import BalanceRoundedIcon from '@mui/icons-material/BalanceRounded'
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded'
@@ -284,6 +284,16 @@ export default function RecommendationsPage() {
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pdfError, setPdfError] = useState('')
 
+  const lockedPolicyIdsRef = useRef(lockedPolicyIds)
+  useEffect(() => {
+    lockedPolicyIdsRef.current = lockedPolicyIds
+  }, [lockedPolicyIds])
+
+  const setSelectedPoliciesRef = useRef(setSelectedPolicies)
+  useEffect(() => {
+    setSelectedPoliciesRef.current = setSelectedPolicies
+  }, [setSelectedPolicies])
+
   useEffect(() => {
     if (!data?.business_profile_id) return
     setActiveBusiness(data.business_profile_id)
@@ -315,9 +325,11 @@ export default function RecommendationsPage() {
           .map((r) => r.policy_id ?? r.policies?.[0]?.id)
           .filter(Boolean)
       )
-      const restored = (lockedPolicyIds || []).filter((id) => availableIds.has(id))
+      const restored = (lockedPolicyIdsRef.current || []).filter((id) => availableIds.has(id))
       setSelectedPolicyIds(restored)
-      setSelectedPolicies(restored)
+      if (restored.length > 0) {
+        setSelectedPoliciesRef.current(restored)
+      }
       setPdfError('')
       setStatus(result.recommendations.length === 0 ? 'empty' : 'ready')
     } catch (err: unknown) {
@@ -325,7 +337,7 @@ export default function RecommendationsPage() {
       setStatus('error')
       setErrorMsg(apiError?.response?.data?.error || apiError?.message || 'Failed to load recommendations.')
     }
-  }, [sessionId, lockedPolicyIds, setSelectedPolicies])
+  }, [sessionId])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
