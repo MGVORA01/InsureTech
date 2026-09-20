@@ -323,14 +323,28 @@ function AdminFeedbackPage() {
             </div>
 
             {loading ? (
-              <div className="space-y-4 p-6">
+              <div className="divide-y" style={{ borderColor: 'var(--color-border)' }} aria-busy="true">
                 {Array.from({ length: 4 }).map((_, index) => (
                   <div
                     key={index}
-                    className="relative h-20 overflow-hidden rounded-2xl bg-slate-100 animate-fb-fade-in"
+                    className="px-6 py-5 sm:px-8 animate-fb-fade-in"
                     style={{ animationDelay: `${index * 60}ms` }}
                   >
-                    <div className="absolute inset-0 animate-fb-shimmer" />
+                    <div
+                      className="grid gap-4 md:items-center md:gap-5 md:[grid-template-columns:var(--fb-grid)]"
+                      style={{ ['--fb-grid' as string]: GRID_COLS.replace(/_/g, ' ') }}
+                      aria-hidden="true"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 shrink-0 rounded-full skeleton-shimmer" />
+                        <div className="h-4 w-24 rounded-md skeleton-shimmer" />
+                      </div>
+                      <div className="h-4 w-36 max-w-full rounded-md skeleton-shimmer" />
+                      <div className="h-5 w-20 rounded-full skeleton-shimmer" />
+                      <div className="h-6 w-16 rounded-full skeleton-shimmer" />
+                      <div className="h-4 w-full rounded-md skeleton-shimmer" />
+                      <div className="h-4 w-20 rounded-md skeleton-shimmer" />
+                    </div>
                   </div>
                 ))}
               </div>

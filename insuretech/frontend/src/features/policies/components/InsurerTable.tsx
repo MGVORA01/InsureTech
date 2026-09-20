@@ -18,7 +18,14 @@ export function InsurerTable({ items, loading, onEdit, onDelete }: InsurerTableP
 
   return (
     <div className="mt-6 overflow-hidden rounded-xl border bg-white shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
-      <table className="w-full text-left text-sm">
+      <table className="w-full table-fixed text-left text-sm" aria-busy={loading}>
+        <colgroup>
+          <col className="w-[29%]" />
+          <col className="w-[25%]" />
+          <col className="w-[15%]" />
+          <col className="w-[14%]" />
+          <col className="w-[17%]" />
+        </colgroup>
         <thead>
           <tr
             className="border-b text-xs font-semibold uppercase tracking-widest"
@@ -33,24 +40,24 @@ export function InsurerTable({ items, loading, onEdit, onDelete }: InsurerTableP
         </thead>
         <tbody className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
           {loading ? (
-            Array.from({ length: 8 }).map((_, i) => (
-              <tr key={i}>
+            Array.from({ length: 10 }).map((_, i) => (
+              <tr key={i} aria-hidden="true">
                 <td className="px-5 py-4">
-                  <div className="h-4.5 w-48 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                  <div className="h-[18px] w-44 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                 </td>
                 <td className="px-5 py-4">
-                  <div className="h-4 w-40 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                  <div className="h-4 w-36 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                 </td>
                 <td className="px-5 py-4">
-                  <div className="h-4 w-52 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                  <div className="h-4 w-28 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                 </td>
                 <td className="px-5 py-4">
-                  <div className="h-5 w-18 rounded-full skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                  <div className="h-5 w-[4.5rem] rounded-full skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-2">
-                    <div className="h-7 w-12 rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
-                    <div className="h-7 w-14 rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                    <div className="h-7 w-11 rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                    <div className="h-7 w-[3.625rem] rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                   </div>
                 </td>
               </tr>

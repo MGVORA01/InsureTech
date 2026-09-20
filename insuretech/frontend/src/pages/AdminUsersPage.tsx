@@ -10,7 +10,6 @@
     Banner,
     IconAlertTriangle,
     IconRefresh,
-    SkeletonBlock,
   } from '../components/AdminSidebar'
 
   interface UserItem {
@@ -203,7 +202,15 @@
 
             {/* Table — md and up */}
             <div className="mt-6 hidden overflow-hidden rounded-xl border bg-white shadow-sm md:block" style={{ borderColor: 'var(--color-border)' }}>
-              <table className="w-full text-left text-sm">
+              <table className="w-full table-fixed text-left text-sm" aria-busy={loading}>
+                <colgroup>
+                  <col className="w-[19%]" />
+                  <col className="w-[25%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                </colgroup>
                 <thead>
                   <tr
                     className="border-b text-xs font-semibold uppercase tracking-widest"
@@ -220,9 +227,9 @@
                 <tbody className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
                   {loading ? (
                     Array.from({ length: 10 }).map((_, i) => (
-                      <tr key={i}>
+                      <tr key={i} aria-hidden="true">
                         <td className="px-5 py-4">
-                          <div className="h-4.5 w-36 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
+                          <div className="h-[18px] w-32 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
                         </td>
                         <td className="px-5 py-4">
                           <div className="h-4 w-44 max-w-full rounded-md skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
