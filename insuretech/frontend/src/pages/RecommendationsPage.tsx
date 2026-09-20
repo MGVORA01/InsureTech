@@ -353,18 +353,28 @@ export default function RecommendationsPage() {
 
   const handleTogglePolicy = (policyId: string | null) => {
     if (!policyId) return
-    setSelectedPolicyIds((current) => {
-      let next: string[]
-      if (current.includes(policyId)) {
-        next = current.filter((id) => id !== policyId)
-      } else if (current.length >= 2) {
-        next = current
-      } else {
-        next = [...current, policyId]
-      }
-      setSelectedPolicies(next)
-      return next
-    })
+
+    let next: string[] = []
+    if (selectedPolicyIds.includes(policyId)) {
+      next = selectedPolicyIds.filter((id) => id !== policyId)
+    } else if (selectedPolicyIds.length >= 2) {
+      next = selectedPolicyIds
+    } else {
+      next = [...selectedPolicyIds, policyId]
+    }
+
+    setSelectedPolicyIds(next)
+    setSelectedPolicies(next)
+
+    if (next.length === 2 && sessionId) {
+      navigate(`/recommendations/${sessionId}/compare`, {
+        state: {
+          selectedPolicyIds: next,
+          recommendations: topRecommendations,
+          businessProfileId: data?.business_profile_id ?? null,
+        },
+      })
+    }
   }
 
   const handleDownloadReport = async () => {
