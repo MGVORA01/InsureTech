@@ -621,9 +621,6 @@ export default function DashboardPage() {
           count: data?.recommendations?.length ?? 0,
         });
         if (cancelled) return;
-        const hasRecommendations =
-          data.recommendations && data.recommendations.length > 0;
-
         setTopRecommendation(data.recommendations?.[0] ?? null);
       } catch {
         if (!cancelled) {

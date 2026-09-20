@@ -11,6 +11,7 @@ import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRou
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import {
   generateRecommendations,
+  getRecommendations,
   getRecommendationPolicyDownload,
 } from '../features/recommendations/recommendationsApi'
 import { downloadRecommendationReportPdf } from '../features/recommendations/recommendationReportPdf'
