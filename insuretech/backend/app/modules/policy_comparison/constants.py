@@ -63,7 +63,7 @@ ADVANTAGE_NEGATION_TERMS = (
     "inadmissible",
 )
 
-LLM_MODEL = "llama-3.3-70b-versatile"
+LLM_MODEL = "openai/gpt-oss-120b"
 LLM_TEMPERATURE = 0.05
 
 COMPARE_PREFIX = "/compare"

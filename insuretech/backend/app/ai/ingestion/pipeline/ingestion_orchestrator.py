@@ -20,8 +20,8 @@ from app.ai.ingestion.pipeline.duplicate_chunk_detector import detect_duplicates
 from app.ai.ingestion.pipeline.policy_attribute_extractor import extract_structured_attributes
 
 
-def run_full_pipeline(data_dir: Path, skip_extract: bool = False) -> None:
-    """Run the full ingestion pipeline with staged processing steps."""
+async def run_full_pipeline_async(data_dir: Path, skip_extract: bool = False) -> None:
+    """Run the full ingestion pipeline with staged processing steps (async)."""
     print("=" * 60)
     print("Stage 1: Document Classification")
     print("=" * 60)
@@ -93,11 +93,26 @@ def run_full_pipeline(data_dir: Path, skip_extract: bool = False) -> None:
     print("\n" + "=" * 60)
     print("Stage 14: Embedding + PostgreSQL + pgvector")
     print("=" * 60)
-    asyncio.run(pgvector_main())
+    await pgvector_main()
 
     print("\n" + "=" * 60)
     print("Pipeline complete.")
     print("=" * 60)
+
+
+def run_full_pipeline(data_dir: Path, skip_extract: bool = False) -> None:
+    """Run the full ingestion pipeline. Supports both standalone calls and already-running async loops."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            pool.submit(asyncio.run, run_full_pipeline_async(data_dir, skip_extract)).result()
+    else:
+        asyncio.run(run_full_pipeline_async(data_dir, skip_extract))
 
 
 def main() -> None:
@@ -110,3 +125,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

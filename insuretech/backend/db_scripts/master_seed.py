@@ -166,7 +166,7 @@ async def run_stage_3_questionnaire_and_rules():
     logger.info("Stage 3 Complete!\n")
 
 
-def run_stage_4_policy_ingestion(skip_pdf: bool = False):
+async def run_stage_4_policy_ingestion(skip_pdf: bool = False):
     """Stage 4: Ingest Policy PDFs and populate vector index."""
     logger.info("==================================================")
     logger.info("STAGE 4: Ingesting Policy PDFs into Vector DB...")
@@ -189,8 +189,8 @@ def run_stage_4_policy_ingestion(skip_pdf: bool = False):
 
     logger.info("Found %d PDF file(s) in %s. Starting ingestion pipeline...", len(pdf_files), data_dir)
     try:
-        from app.ai.ingestion.pipeline.ingestion_orchestrator import run_full_pipeline
-        run_full_pipeline(data_dir=data_dir, skip_extract=False)
+        from app.ai.ingestion.pipeline.ingestion_orchestrator import run_full_pipeline_async
+        await run_full_pipeline_async(data_dir=data_dir, skip_extract=False)
         logger.info("Stage 4 Complete!\n")
     except Exception as e:
         logger.error("Error during PDF ingestion: %s", str(e), exc_info=True)
@@ -232,8 +232,8 @@ async def main_async(skip_pdf: bool = False):
     # 3. Questionnaire & Risk Engine Rules
     await run_stage_3_questionnaire_and_rules()
 
-    # 4. Policy PDF Ingestion (Synchronous heavy ML/PDF process)
-    run_stage_4_policy_ingestion(skip_pdf=skip_pdf)
+    # 4. Policy PDF Ingestion
+    await run_stage_4_policy_ingestion(skip_pdf=skip_pdf)
 
     # 5. Link Insurance Categories to Risk Categories
     await run_stage_5_link_categories()

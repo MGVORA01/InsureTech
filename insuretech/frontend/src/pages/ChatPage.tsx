@@ -19,7 +19,8 @@ function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: 'Upload a policy PDF, then ask questions about that document.',
+      content:
+        'Hi! I\'m your InsureTech assistant. Feel free to ask me anything about how our platform works, business risk assessment, or getting started!',
     },
   ])
   const [question, setQuestion] = useState('')

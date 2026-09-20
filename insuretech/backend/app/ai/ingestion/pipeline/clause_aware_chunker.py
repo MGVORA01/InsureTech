@@ -6,8 +6,8 @@ OUTPUT_BASE_DIR = Path(__file__).resolve().parents[2] / "output"
 SECTION_DIR = OUTPUT_BASE_DIR / "section_output"
 CHUNK_DIR = OUTPUT_BASE_DIR / "chunk_output"
 
-TOKEN_THRESHOLD = 450
-TOKEN_OVERLAP = 60
+TOKEN_THRESHOLD = 550
+TOKEN_OVERLAP = 75
 
 
 def _token_chunks(text: str) -> list[str]:
@@ -47,17 +47,31 @@ def chunk_section(section: dict, doc_info: dict) -> list[dict]:
     if not content:
         return []
 
-    clause_units = section.get("clauses") or [{"clause_id": None, "text": content}]
+    clause_units = section.get("clauses") or [{"clause_id": None, "text": content, "page_number": section.get("page_number")}]
     chunks = []
     for clause in clause_units:
         for chunk_text in _token_chunks(clause.get("text", "")):
+            subsection = clause.get("subsection") or section.get("subsection")
+            # Embed the retrieval context too. This makes short, generic
+            # clauses searchable without losing the original chunk text.
+            context = [
+                f"Policy Name: {doc_info['policy_name']}",
+                f"Section: {heading}",
+            ]
+            if subsection:
+                context.append(f"Subsection: {subsection}")
+            if clause.get("clause_id"):
+                context.append(f"Clause: {clause['clause_id']}")
+            context.extend([f"Page: {clause.get('page_number') or section.get('page_number') or 'N/A'}", "Document Type: insurance_policy", f"Content: {chunk_text}"])
             chunks.append({
                 "chunk_id": str(uuid.uuid4()),
                 "document_id": doc_info["document_id"], "policy_name": doc_info["policy_name"],
                 "insurer": doc_info["insurer_name"], "insurance_category": doc_info["insurance_category"],
                 "section_name": heading, "section_type": section_type,
-                "clause_id": clause.get("clause_id"), "page_number": section.get("page_number"),
-                "chunk_index": len(chunks) + 1, "total_chunks": 0, "text": chunk_text,
+                "clause_id": clause.get("clause_id"), "subsection": subsection,
+                "page_number": clause.get("page_number") or section.get("page_number"),
+                "chunk_index": len(chunks) + 1, "total_chunks": 0,
+                "text": chunk_text, "embedding_text": "\n".join(context),
             })
 
     total = len(chunks)

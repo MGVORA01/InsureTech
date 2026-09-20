@@ -31,7 +31,7 @@ function AdminInsurersPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [items, setItems] = useState<Insurer[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<Insurer | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Insurer | null>(null)
@@ -52,12 +52,12 @@ function AdminInsurersPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError(false)
+    setError(null)
     try {
       setItems(await fetchInsurers())
     } catch {
       setItems([])
-      setError(true)
+      setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -91,8 +91,9 @@ function AdminInsurersPage() {
       setShowForm(false)
       setEditing(null)
       load()
-    } catch {
-      setError(true)
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to save insurer.'
+      setError(msg)
     } finally {
       setSubmitting(false)
     }
@@ -109,9 +110,10 @@ function AdminInsurersPage() {
       await deleteInsurer(deleteTarget.id)
       setDeleteTarget(null)
       load()
-    } catch {
+    } catch (err: any) {
       setDeleteTarget(null)
-      setError(true)
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete insurer.'
+      setError(msg)
     } finally {
       setDeleting(false)
     }
@@ -162,7 +164,7 @@ function AdminInsurersPage() {
           {error && !loading && (
             <Banner tone="warning" icon={IconAlertTriangle}>
               <div className="flex items-center justify-between gap-3">
-                <span>Something went wrong. Please try again.</span>
+                <span>{error}</span>
                 <button
                   type="button"
                   onClick={load}
